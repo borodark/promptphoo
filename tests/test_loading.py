@@ -1,4 +1,4 @@
-"""Phase 1 loaders: YAML, $ref, CSV assertions, prompts, tests, config combination."""
+"""Loaders: YAML, $ref, CSV assertions, prompts, tests, config combination."""
 
 import json
 import os

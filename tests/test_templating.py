@@ -8,9 +8,10 @@ from promptphoo import cli_state, templating
 FIXTURES = Path(__file__).parent / "fixtures"
 CASES = json.loads((FIXTURES / "templating_cases.json").read_text())
 GOLDEN = json.loads((FIXTURES / "templating_golden.json").read_text())
+PAIRS = list(zip(CASES, GOLDEN, strict=True))
 
 
-@pytest.mark.parametrize(("case", "expected"), zip(CASES, GOLDEN, strict=True), ids=lambda x: "")
+@pytest.mark.parametrize(("case", "expected"), PAIRS, ids=lambda x: "")
 def test_matches_nunjucks(case, expected):
     if "error" in expected:
         with pytest.raises(Exception):  # noqa: B017

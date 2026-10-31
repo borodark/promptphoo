@@ -1,5 +1,5 @@
 """Ports test/tracing/traceContext.test.ts, plus the local-store path of fetchTraceContext and
-the TraceStore shim against a real SQLite database."""
+the TraceStore against a real SQLite database."""
 
 from __future__ import annotations
 

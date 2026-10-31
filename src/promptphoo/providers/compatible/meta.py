@@ -327,18 +327,8 @@ class MetaProvider(_MetaOpenAiMixin, OpenAiChatCompletionProvider):
 
 
 def _load_openai_responses_provider() -> type:
-    try:
-        module = importlib.import_module("promptphoo.providers.openai.responses")
-    except ImportError:
-        module = None
-    cls = getattr(module, "OpenAiResponsesProvider", None) if module else None
-    if cls is None:
-        raise ValueError(
-            "The Meta Model API Responses route (meta:<model>, meta:responses:<model>) needs the "
-            "OpenAI Responses provider, which promptphoo has not ported yet. Use "
-            "meta:chat:<model> or meta:messages:<model> meanwhile."
-        )
-    return cls
+    # Imported lazily: the Responses provider pulls in the OpenAI chat stack.
+    return importlib.import_module("promptphoo.providers.openai.responses").OpenAiResponsesProvider
 
 
 def create_meta_responses_provider(model_name: str, options: dict[str, Any]) -> Any:

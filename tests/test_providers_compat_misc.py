@@ -589,13 +589,11 @@ def test_meta_routing():
     for sub in ("agents", "chatkit", "codex-sdk", "voice"):
         with pytest.raises(ValueError, match=f"Unknown Meta Model API sub-type '{sub}'"):
             _meta(f"meta:{sub}:x")
-    # The Responses route needs the OpenAI Responses provider.
-    try:
-        import promptphoo.providers.openai.responses  # noqa: F401
-    except ImportError:
-        for path in ("meta:muse-spark-1.1", "meta:responses:muse-spark-1.1", "meta:"):
-            with pytest.raises(ValueError, match="OpenAI Responses provider"):
-                _meta(path)
+    # The Responses route subclasses the OpenAI Responses provider.
+    from promptphoo.providers.openai.responses import OpenAiResponsesProvider
+
+    for path in ("meta:muse-spark-1.1", "meta:responses:muse-spark-1.1"):
+        assert isinstance(_meta(path), OpenAiResponsesProvider)
 
 
 def test_meta_configuration(monkeypatch: pytest.MonkeyPatch):

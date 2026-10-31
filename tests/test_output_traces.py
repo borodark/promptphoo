@@ -150,7 +150,7 @@ def test_projection_drops_attributes_left_empty_and_keeps_other_spans():
 
 async def test_traces_survive_a_python_export_import_round_trip(tmp_path, monkeypatch):
     """`import` writes the exported traces through the trace store, and `export` reads them
-    back unchanged (the D43 gap: a traced eval no longer loses `traces`)."""
+    back unchanged (the D42 gap: a traced eval no longer loses `traces`)."""
     from click.testing import CliRunner
 
     from promptphoo import db

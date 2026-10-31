@@ -4,19 +4,44 @@ description: promptphoo architectural decisions
 
 # promptphoo decisions
 
-The decision log for the Python port of promptfoo v0.125.1. The local knowledge graph
-(`~/exmc-scratch/kg_ladybug`) indexes it as `decision:promptphoo:D<n>`.
+This is the decision log for promptphoo, the Python port of promptfoo v0.125.1. It records
+why the port is built the way it is, and every place where it deliberately behaves differently
+from Node. A difference from Node that is not explained here is a bug.
 
-Format rules (the extractor parses them):
-- Each entry is `## N. Title` followed by `- Field:` bullets.
-- `- Modules:` lists repo-relative paths, comma-separated.
-- `- Commits:` lists backticked short shas.
-- When one decision replaces another, write `- Note: Supersedes D<n>.` on the new entry and
-  `- Note: Superseded by D<n>.` on the old one. Keep that sentence to just those words.
-- Commits that make or change a decision carry a `Decision: D<n>` trailer.
+Each decision is a level-two heading, `## N. Title`, followed by bullets. Tools read the log,
+so keep this structure exactly:
 
-The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is in
-`.claude/skills/port-promptfoo/SKILL.md`.
+- `- Decision:` what was decided. A long decision continues as indented sub-bullets.
+- `- Rationale:` why.
+- `- Alternatives:` options that were considered and rejected, when worth recording.
+- `- Assumption:` what must stay true for the decision to hold. If it stops holding, the
+  decision needs revisiting.
+- `- Implication:` consequences elsewhere in the code, or for users.
+- `- Note:` later remarks: corrections, status updates, and the supersession lines below.
+- `- Modules:` the repo-relative paths the decision governs, comma-separated.
+- `- Commits:` the backticked short shas of the commits that made or changed it.
+
+Only Decision is required. A bullet is left out when it has nothing to say.
+
+**Supersession.** When a decision replaces an earlier one, the new entry carries the bullet
+`- Note: Supersedes D<n>.` and the old entry carries `- Note: Superseded by D<n>.` Each is a
+bullet of its own, worded exactly so, with nothing else on the line. Everywhere else (other
+documents, docstrings, comments) a decision is cited as "see D<n>".
+
+**Append-only.** Entries are not deleted, and their reasoning is not rewritten when it goes
+out of date. A change of mind is a new entry that supersedes the old one. A smaller
+correction, or news that a promised follow-up has landed, is a `- Note:` bullet added to the
+entry, so the original reasoning stays readable.
+
+**Numbering.** Numbers are assigned in order and are never reused or renumbered. D30 and D50
+were never assigned; their headings say so, so that every number is accounted for.
+
+**Commits.** A commit that adds or changes an entry ends its message with a trailer naming
+it, `Decision: D<n>` (or `Decision: D<n>, D<m>`), and the entry's Commits bullet lists it.
+
+The historical porting plan, with its phases and module layout, is in
+[PLAN_PORT.md](PLAN_PORT.md). What is and is not covered today is in [SCOPE.md](SCOPE.md).
+How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 1. Eval core first; web UI, redteam, code-scan, optimizer, MCP and model-audit are out
 - Decision: Port the eval pipeline (config, prompts, tests, evaluator, assertions, providers, DB, CLI) and leave out the web UI, redteam, code-scan, the optimizer, MCP and model-audit.
@@ -70,8 +95,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Hooks and output writers expect the same shapes Node uses.
 - Implication: pydantic is still listed in pyproject.toml, but nothing imports it.
 - Note: Supersedes D6.
+- Note: pydantic has since been removed from the dependencies, together with the equally unused rapidfuzz and rich (see D59).
 - Modules: src/promptphoo/ajv.py, src/promptphoo/_data/config-schema.json
-- Commits: `6d075ff`
+- Commits: `6d075ff` `9ffd3ec`
 
 ## 8. JS undefined is an omitted key, or the UNDEFINED sentinel where Node emits the key
 - Decision: Model JS `undefined` by leaving the key out. Where Node still emits the key (empty XML tags, the `config` key on prompts, the duration fields in stats), use `jsvalues.UNDEFINED`.
@@ -97,10 +123,10 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 
 ## 11. Reference Node promptfoo is an npm install run as dist/src/main.js
 - Decision: Install promptfoo 0.125.1 with npm in a scratch directory and run `node .../dist/src/main.js`, which bypasses `entrypoint.js`. Pass the command to the harness in `NODE_PROMPTFOO`.
-- Rationale: `entrypoint.js` requires Node 22.22 or later, and the container has 22.21.1. The user authorised the npm install in the container.
+- Rationale: `entrypoint.js` requires Node 22.22 or later, and the development machine had 22.21.1. Installing the published release from npm, rather than building a checkout, pins the reference at exactly 0.125.1.
 - Assumption: Running on Node 22.21 doesn't change promptfoo's output for these fixtures.
 - Modules: tools/parity.py
-- Commits: `400e703`
+- Commits: `400e703` `c181195`
 
 ## 12. Parity harness: parallel, normalized, with a list of expected divergences
 - Decision:
@@ -108,16 +134,20 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - It masks eval ids, timestamps and latencies, and sorts result rows before diffing, because Node loads results without ORDER BY.
   - Fixtures in its EXPECTED dict are reported as XFAIL/XERROR, so the harness exits 0.
   - The GPU is not used, because this workload has nothing for it.
-- Rationale: The user asked to use all the CPUs. A full run takes about 10 seconds.
+- Rationale: Parity runs across all cores to keep the harness fast enough to run after every change. A full run takes about 10 seconds.
 - Assumption: Every EXPECTED entry names the phase or the upstream reason that explains it.
 - Implication: The Phase 2 exit criterion was met with 61 PASS and 0 unexpected failures.
 - Modules: tools/parity.py
-- Commits: `400e703`
+- Commits: `400e703` `c181195`
 
 ## 13. pytest runs serially by default
 - Decision: pytest-xdist is installed in the venv but is opt-in (`pytest -n auto`). It is not in pyproject.toml.
 - Rationale: The suite takes about 8 to 11 seconds either way, because worker startup costs about as much as it saves.
 - Assumption: The suite stays fast. Revisit if it grows past about 30 seconds.
+- Note: The suite has grown to about 6,500 tests and past that mark. pytest-xdist is now in the `dev` extra, and the documented verify command runs `pytest -q -n auto` (see D59).
+- Note: Superseded by D59.
+- Modules: pyproject.toml
+- Commits: `9ffd3ec`
 
 ## 14. Console table colour follows TTY detection
 - Decision: Colour the console table only when stdout is a TTY, using the supports-color rules.
@@ -156,24 +186,27 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Modules: src/promptphoo/fetch, src/promptphoo/providers/registry.py
 - Commits: `ba71ed9`
 
-## 19. Phase 3 wave 1 runs as six worktree agents; duplicated helpers are merged when branches land
+## 19. The first Phase 3 areas are ported on parallel branches; duplicated helpers are merged when the branches land
 - Decision:
-  - Port six areas in parallel git worktrees: fetch/cache, scheduler, OpenAI core, Anthropic/Bedrock, HTTP, and Google/Ollama.
+  - Port six areas on parallel branches: fetch/cache, scheduler, OpenAI core, Anthropic/Bedrock, HTTP, and Google/Ollama.
   - When two branches port the same upstream helper, keep one copy and add the functions only the other has.
-- Rationale: The areas are mostly independent, and the user asked to use all the CPUs.
+- Rationale: The areas are mostly independent, so porting them side by side shortens the phase without the ports conflicting.
 - Implication: `providers/shared.py` kept the Google branch's version plus four functions from the Anthropic branch. `finish_reason.py` and `providers/credentials.py` still duplicate helpers in `shared.py`, to be folded together.
+- Note: The duplicates have since been folded: `normalize_finish_reason` exists only in `finish_reason.py`, and the credential resolvers only in `providers/credentials.py`.
 - Modules: src/promptphoo/providers/shared.py, src/promptphoo/cache.py
-- Commits: `cef9bb0` `c6eec72`
+- Commits: `cef9bb0` `c6eec72` `c181195`
 
-## 20. Wave 2 waits for the OpenAI core
+## 20. Providers built on OpenAI chat wait for the OpenAI core
 - Decision: Start the OpenAI Responses API, Azure and the table of about 40 OpenAI-compatible wrappers only after the OpenAI chat provider lands.
 - Rationale: All three subclass or reuse the OpenAI chat provider.
+- Note: All three have landed: `providers/openai/responses.py`, `providers/azure/` and `providers/compatible/` (see D23, D24, D31).
 - Modules: src/promptphoo/providers
+- Commits: `c181195`
 
 ## 21. TLS verification follows upstream's PROMPTFOO_INSECURE_SSL, which defaults to true
 - Decision: Port `rejectUnauthorized: !getEnvBool('PROMPTFOO_INSECURE_SSL', true)` as written, so certificates are not verified unless `PROMPTFOO_INSECURE_SSL=false`.
 - Rationale: Drop-in behaviour (D2). Upstream `src/util/fetch/index.ts:289`.
-- Assumption: The user accepts upstream's default. This is open for review: verifying by default would be safer.
+- Assumption: Drop-in users expect upstream's default. Verifying by default would be safer.
 - Modules: src/promptphoo/fetch/__init__.py
 - Commits: `b27751e`
 - Note: Superseded by D61.
@@ -202,13 +235,14 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - Authentication starts when the first request calls `ensure_initialized`, not eagerly in the constructor. Concurrent requests share one in-flight attempt, and a failure is retried by the next request, as upstream does.
   - Credential creation is synchronous and cached on the provider. Upstream's "install @azure/identity" error has no equivalent here, and construction errors propagate as the "Azure Authentication failed" error.
   - The Azure pricing tables (`AZURE_MODELS` and the cache-read and priority maps) are generated by Node from upstream by `tools/gen_azure_tables.mjs` into `providers/azure/tables.py`, as for OpenAI. Cost is `calculateAzureCost` over that table, not the OpenAI billing helpers, as upstream does.
-  - Supported: `azure:chat`, `azure:completion` and `azure:embedding(s)`. `azure:responses` raises NotImplementedError until the Responses port lands for Azure (wave 2b). Assistant, Foundry agent, image, video, moderation (Content Safety) and realtime raise "not supported by promptphoo". MCP (`config.mcp.enabled`) and tracing spans are not ported.
+  - Supported: `azure:chat`, `azure:completion` and `azure:embedding(s)`. `azure:responses` raises NotImplementedError until the Responses port is extended to Azure. Assistant, Foundry agent, image, video, moderation (Content Safety) and realtime raise "not supported by promptphoo". MCP (`config.mcp.enabled`) and tracing spans are not ported.
 - Rationale: No pip installs, and the eval core needs only API-key auth plus the two credentials upstream actually constructs. A Python constructor has no running event loop to start authentication on.
 - Assumption: Users who rely on managed identity or workload identity get those only through Azure CLI login, exactly as upstream (which never builds DefaultAzureCredential).
 - Implication: `FunctionCallbackHandler` (without MCP) now lives in `providers/function_callbacks.py`. The evaluator calls `maybe_emit_azure_openai_warning` after appending prompts.
   - `azure:responses:<deployment>` is now supported (`providers/azure/responses.py`). As upstream, it extends the Azure base and composes the shared ResponsesProcessor, with cost from `calculateAzureCost`. It keeps D23's limits: `stream: true` raises the OpenAI Responses error, and a queued or in-progress background response returns an error and is evicted from the cache.
+- Note: Azure chat now records upstream's GenAI tracing span (see D57). MCP is still not ported.
 - Modules: src/promptphoo/providers/azure, src/promptphoo/providers/function_callbacks.py, src/promptphoo/evaluator/run.py, tools/gen_azure_tables.mjs
-- Commits: `48aa106`
+- Commits: `48aa106` `c181195`
 
 ## 25. LLM-judge matchers always grade locally; Pi and JS rubric prompts raise
 - Decision:
@@ -221,8 +255,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Drop-in behaviour for every non-redteam config, and loud errors instead of silently different grading.
 - Assumption: Configs with a `redteam` section are not run through promptphoo.
 - Implication: When the RAG branch lands, it may carry its own copy of `ragDefaults.ts`. Keep one copy and import it from both modules.
+- Note: There is one copy. `finalize_graded_assertion` lives in `assertions/rag_defaults.py` (see D27), and `assertions/modelgraded.py` imports it from there.
 - Modules: src/promptphoo/matchers/rubric.py, src/promptphoo/matchers/llm_grading.py, src/promptphoo/assertions/modelgraded.py, src/promptphoo/assertions/trajectory.py, tools/grading_render_golden.js, tools/gen_grading_render_cases.py
-- Commits: `3a9c8f9`
+- Commits: `3a9c8f9` `c181195`
 
 ## 26. agent-rubric needs an explicitly configured agentic grader
 - Decision:
@@ -240,12 +275,12 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - `assertions/rag_defaults.py` (ragDefaults.ts) is owned here and also carries `is_grader_failure` from llmGrading.ts, so that `finalize_graded_assertion` and `apply_rag_inverse` have no dependency on the llm-rubric branch. `assertions/context_utils.py` ports contextUtils.ts, with `get_transform_error_message` reading the `__cause__` that `transform()` chains.
   - Handler and matcher invariants raise with Node's `Invariant failed: ` prefix, which is the text upstream users see. `assertions/base.invariant` omits that prefix and is left alone.
   - Grader prompts are checked byte for byte against real Nunjucks renders (`tools/rag_prompts_golden.js` writes `tests/fixtures/rag_prompts_golden.json`).
-- Rationale: The grading-infrastructure branch runs in parallel. Shims with identical names let this branch test end to end, and at merge the other branch's files replace them.
+- Rationale: The grading infrastructure was being ported at the same time, on another branch. Shims with identical names let the RAG matchers be tested end to end, and at merge the other branch's files replace them.
 - Assumption: The other branch exports these exact names and signatures, and ports `isGraderFailure` with the same `metadata.graderError === true` rule. If its `rubric.py` uses different names, the RAG and search matchers' imports must follow it.
 - Implication: Once the shims are replaced, drop the duplicate `is_grader_failure` in rag_defaults.py if llm_grading exports one.
 - Modules: src/promptphoo/matchers, src/promptphoo/providers/defaults.py, src/promptphoo/assertions/rag_defaults.py, src/promptphoo/assertions/context_utils.py, src/promptphoo/assertions/modelgraded_rag.py, tools/rag_prompts_golden.js
-- Note: at merge the shims were replaced by the grading-infrastructure branch's modules (D32–D34); the RAG matchers now call the real `call_grading_provider`, so their `invoke` callbacks accept the optional `on_response_headers` argument.
-- Commits: `336d4e7`
+- Note: At merge the shims were replaced by the grading-infrastructure branch's modules (see D32, D33, D34). The RAG matchers now call the real `call_grading_provider`, so their `invoke` callbacks accept the optional `on_response_headers` argument. The duplicate `is_grader_failure` is gone: `rag_defaults.py` imports it from `matchers/llm_grading.py`.
+- Commits: `336d4e7` `c181195`
 
 ## 28. Similarity, moderation and classifier paths that depend on unported upstream code
 - Decision:
@@ -255,8 +290,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - search-rubric's last-resort `load_web_search_provider` keeps upstream's candidate order and model ids. Candidates whose provider family is not ported (perplexity, xai) are skipped like any load failure.
 - Rationale: Port upstream's branches as written, and fail loudly where a dependency is missing instead of changing which provider grades.
 - Assumption: Eval users of moderation have an OpenAI key or configure the grader explicitly.
+- Note: The perplexity family has since been ported (see D31), so search-rubric's Perplexity candidate now loads. The xAI candidate, `xai:responses:`, still fails to load and is skipped.
 - Modules: src/promptphoo/matchers/similarity.py, src/promptphoo/matchers/moderation.py, src/promptphoo/matchers/classification.py, src/promptphoo/providers/web_search_utils.py
-- Commits: `336d4e7`
+- Commits: `336d4e7` `c181195`
 
 ## 29. The select-best / max-score pass mutates stored EvalResult records; resume and cancellation paths wait for Phase 5
 - Decision:
@@ -270,8 +306,13 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Persisted rows reach the comparison in SQLite's order for `WHERE eval_id = ? AND test_idx = ?`, which uses the `(eval_id, test_idx, success)` index, so failing rows come before passing ones rather than in prompt order. Node runs the same query on the same schema and was observed to agree (parity PASS on `tests/fixtures/parity_comparison/`). Only the order of texts in the grader prompt depends on it.
 - Implication: The grading-infrastructure branch's versions of the shim modules win at merge; `matchers/comparison.py` imports them lazily by the contract names.
 - Modules: src/promptphoo/evaluator/comparison.py, src/promptphoo/evaluator/run.py, src/promptphoo/models/eval.py, src/promptphoo/matchers/comparison.py, src/promptphoo/assertions/index.py
-- Commits: `9af5f6e`
+- Commits: `9af5f6e` `c181195`
+- Note: The shim modules were replaced by the grading infrastructure at merge (see D32, D33, D34), and the resume and cancellation branches were ported later (see D36).
 - Note: Superseded by D36.
+
+## 30. (unused)
+- Note: This number was never assigned. It was left free when decisions written on parallel branches were merged, and it is not reused.
+- Commits: `c181195`
 
 ## 31. OpenAI-compatible families: a data table for pure routing wrappers, a small subclass for the rest
 - Decision:
@@ -293,7 +334,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - The Responses provider will expose `OpenAiResponsesProvider` in `promptphoo.providers.openai.responses`, with the same `get_openai_body` hook as chat.
   - `configuredProviderFactory` families (deepseek, openrouter, orcarouter, perplexity, truefoundry, minimax, llamaapi, atlascloud, xai) take the `{config: providerOptions, env}` shape, so a provider-level `id` is dropped for most of them, as it is upstream.
 - Implication: Abort signals, tracing spans and response-header observers are left out of the providers that override `callApi` (openrouter, snowflake, xai), as they are in the OpenAI chat port.
+- Note: The OpenAI Responses provider landed with the assumed name and hook. `groq:responses:`, `meta:<model>` and `meta:responses:` build on it. `xai:responses:` is still rejected, because upstream's xAI Responses provider is a separate module that is not ported.
 - Modules: src/promptphoo/providers/compatible, src/promptphoo/providers/registry.py
+- Commits: `c181195`
 
 ## 32. Graders always run locally; grader calls skip the provider resource registry
 - Decision:
@@ -317,8 +360,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: The selection order is user-visible: it decides which model grades and who is billed. Lazy imports let the defaults land before the provider families they name.
 - Assumption: When Mistral, xAI, Voyage or Content Safety are ported, they expose `get_mistral_providers(env)`, `MistralEmbeddingProvider({env})`, `get_xai_providers(env)`, `VoyageEmbeddingProvider(model, config, env)` and `AzureModerationProvider(model, {env})` at those paths, mirroring upstream. A port at another path has to update the loaders.
 - Implication: Until then, a user with only `MISTRAL_API_KEY` or `XAI_API_KEY` gets OpenAI graders (which fail without `OPENAI_API_KEY`), where upstream would use Mistral or xAI.
+- Note: The TODO markers at the loaders are now comments saying why each branch is skipped. None of the four modules exists yet. xAI chat is ported (see D31), but upstream's xAI default bundle also needs the xAI Responses provider, so the xAI branch stays skipped.
 - Modules: src/promptphoo/providers/defaults.py, src/promptphoo/providers/openai/defaults.py, src/promptphoo/providers/anthropic/defaults.py
-- Commits: `956e36a`
+- Commits: `956e36a` `c181195`
 
 ## 34. Grader references reuse configured providers; the final test shares provider instances
 - Decision:
@@ -427,8 +471,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Recorded goldens keep the parity check in the default test run without Node, while the gated tests catch drift against a live CLI.
 - Assumption: Node 0.125.1 is the reference. Regenerate the goldens with the tool after an upstream bump.
 - Implication: Scripts that pipe an answer into `delete eval all` get the same result and exit code under both CLIs; only the terminal rendering of the prompt differs.
+- Note: promptphoo has since gained per-run log files and the same footer (see D45). The footer is still cut from the goldens, because its log file paths differ on every run.
 - Modules: src/promptphoo/cli/list_.py, src/promptphoo/cli/show.py, src/promptphoo/cli/delete.py, tools/list_show_golden.py, tests/test_cli_list_show_delete.py, tests/fixtures/list_show/golden.json
-- Commits: `89b55d0`
+- Commits: `89b55d0` `c181195`
 
 ## 42. export and import write and read Node's exact files and rows; only three fields are nondeterministic
 - Decision:
@@ -523,6 +568,10 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Modules: src/promptphoo/cli/import_.py, src/promptphoo/cli/export.py, src/promptphoo/output/writer.py, src/promptphoo/db/import_export.py, tests/test_import_export.py, tests/test_blobs_node.py
 - Commits: `f21cee5`
 
+## 50. (unused)
+- Note: This number was never assigned. It was left free when decisions written on parallel branches were merged, and it is not reused.
+- Commits: `c181195`
+
 ## 51. The OTLP receiver is an asyncio port of upstream's express app, byte for byte at the HTTP level
 - Decision:
   - `tracing/otlp_receiver.py` ports `src/tracing/otlpReceiver.ts`: `POST /v1/traces` (OTLP/JSON and OTLP/protobuf, gated by `acceptFormats`), `GET /v1/traces` (service info), `POST /v1/logs` (OTLP/JSON logs become 1 ms child spans), `GET /health` and `GET /debug/status`. Each handler is a straight port, covering id conversion (hex, base64 via Node-lenient decoding, zero ids), attribute parsing, the receiver-created trace rows for `evaluation.id` spans, ingest-time redaction (span name and status message echoes too), registered per-evaluation trace policies, and the log body/name limits.
@@ -566,11 +615,11 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
     - `cliState.activeOtlpReceiver`.
   - D57's `promptfoo.test_case` root span through the GenAI tracer is kept.
   - `Evaluator.evaluate` follows upstream's order: acquire the receiver, initialize OTEL, run; then flush OTEL, wait `SPAN_EXPORT_GRACE_SECONDS` (3 s) if a receiver is running, and release the lease.
-- Rationale: The coordinator's contract kept the shim's method names and camelCase dict shapes, so the trace assertions, the local span exporter and import all share one store. sqlite3 is synchronous, so each async method wraps its sync twin and both kinds of caller can use it.
+- Rationale: The interface agreed before the tracing work was split kept the shim's method names and camelCase dict shapes, so the trace assertions, the local span exporter and import all share one store. sqlite3 is synchronous, so each async method wraps its sync twin and both kinds of caller can use it.
 - Assumption: Python file providers run in a worker thread (`python_hooks.call_async`), so a provider that POSTs to the in-loop receiver cannot deadlock it. Spans are read back only after the grace wait.
 - Implication: `tests/test_tracing_receiver_node.py` runs the same traced eval under both CLIs, skipped without NODE_PROMPTFOO. Its stdlib provider (`tests/fixtures/tracing/otlp_posting_provider.py`) exports OTLP/JSON and OTLP/protobuf spans to the eval's receiver. The provider-posted span rows and the trace rows match Node's. Tracing telemetry (`record('feature_used')`) is not ported.
 - Modules: src/promptphoo/tracing/store.py, src/promptphoo/tracing/sanitize_attributes.py, src/promptphoo/tracing/evaluator_tracing.py, src/promptphoo/evaluator/run.py, src/promptphoo/cli/import_.py, src/promptphoo/db/import_export.py, tests/test_tracing_store.py, tests/test_tracing_sanitize_attributes.py, tests/test_tracing_evaluator_tracing.py, tests/test_tracing_receiver_node.py, tests/fixtures/tracing/otlp_posting_provider.py
-- Commits: `3b43b7d`
+- Commits: `3b43b7d` `c181195`
 
 ## 53. `export` emits `traces` as upstream does, and trace parity compares them
 - Decision:
@@ -598,8 +647,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: The assertions only need the stored spans, and upstream reads them from the store in the assertion step, not from fetchTraceContext. Porting that path exactly lets a target that writes spans by any route (OTLP, an external backend, or straight into the store) be graded the same way under Node and Python.
 - Assumption: Spans reach the `spans` table before grading or during the stable-poll window. promptfoo's own spans (test case, provider, grader) come from the spans branch; until it lands, a traced Python eval stores only the target's spans, so unfiltered `trace-*` patterns count fewer spans than Node does.
 - Implication: With tracing enabled, every test with a `python` or `file://` assertion polls the store (6 x 250 ms by default) when no spans arrive, as upstream does.
+- Note: promptfoo's own spans have landed (see D56, D57), so a traced Python eval stores the test-case, target and grader spans as Node does. `get_active_traceparent` reads the tracer's active span, and the `ACTIVE_SPAN_CONTEXT` ContextVar is gone.
 - Modules: src/promptphoo/assertions/trace.py, src/promptphoo/assertions/index.py, src/promptphoo/assertions/trajectory.py, src/promptphoo/evaluator/run.py, src/promptphoo/tracing/trace_context.py, src/promptphoo/tracing/span_filter.py, src/promptphoo/tracing/span_roles.py, src/promptphoo/tracing/tool_attributes.py, src/promptphoo/tracing/store.py, src/promptphoo/tracing/sanitize_attributes.py, src/promptphoo/tracing/evaluator_tracing.py
-- Commits: `b646b5b`
+- Commits: `b646b5b` `c181195`
 
 ## 55. External trace providers fetch through fetch_with_proxy; trace parity runs a stdlib sqlite3 span writer under both CLIs
 - Decision:
@@ -677,6 +727,29 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Alternatives: Putting a header on every source file (REUSE-style) was rejected for now as noise; NOTICE plus module docstrings ("Ports src/...ts", "Apache-2.0; see NOTICE") identify provenance.
 - Implication: New vendored files or ported third-party algorithms need a NOTICE entry. The NOTICE also states that promptphoo is unofficial and not endorsed by Promptfoo, Inc. or OpenAI.
 - Modules: LICENSE, NOTICE, LICENSES/Apache-2.0.txt, src/promptphoo/_data/NOTICE, pyproject.toml
+
+## 59. Packaging for the alpha: only used dependencies, an extra per optional library, xdist for development
+- Decision:
+  - The core dependencies are only what promptphoo imports: click, pyyaml, jinja2, httpx, jsonschema and python-dotenv. pydantic, rapidfuzz and rich are dropped; nothing imported them.
+  - Each optional library has an extra: `nlp` (nltk), `sql` (sqlglot), `bedrock` (boto3), `vertex` (google-auth), `pdf` (pypdf) and `http-signing` (cryptography, for the HTTP provider's `signatureAuth`). `all` installs every one of them.
+  - `dev` adds pytest-xdist, and the documented verify command runs `pytest -q -n auto`.
+  - The version is `0.1.0a1`. The metadata gains classifiers (Alpha, Console, MIT, Python 3.11 to 3.13), keywords and an Upstream project URL. Homepage and Issues URLs wait until the repository has a public home.
+- Rationale: A dependency nobody imports is a cost to every installer and a false signal to license and security scanners. cryptography was already imported lazily by `providers/http/signature.py`, but nothing declared it.
+- Alternatives: Making cryptography a core dependency was rejected: only signed HTTP targets need it, and it is a large binary wheel.
+- Assumption: Every optional import stays lazy, inside the function that needs it, so the base install imports cleanly.
+- Implication: Parallel test runs become the documented default, replacing D13's serial default, and D7's remark that pydantic is still listed is out of date (see its note). A missing extra fails only when the feature that needs it runs, and its tests skip.
+- Note: Supersedes D13.
+- Modules: pyproject.toml, src/promptphoo/__init__.py
+- Commits: `9ffd3ec`
+
+## 60. The test suite never touches the real state directory or needs an optional extra
+- Decision:
+  - An autouse fixture in `tests/conftest.py` gives every test a fresh `PROMPTFOO_CONFIG_DIR` under pytest's temp directory, clears `PROMPTFOO_CACHE_PATH` and `PROMPTFOO_LOG_DIR`, and resets the config-directory override in `paths.py`. The database, cache, logs, blobs and `promptfoo.yaml` all resolve under that directory. A test that needs a particular directory still sets it itself.
+  - Tests that need `boto3`/`botocore`, `cryptography` or `google-auth` call `pytest.importorskip` at the point of use, as `tests/test_assertions_sql.py` does for sqlglot, so the suite passes on a base install plus `dev`.
+- Rationale: Run with `HOME` pointing at an empty directory, the suite without the fixture created `~/.promptfoo/promptfoo.db`; with it, nothing is created. Tests that write to the user's real eval history, or that read whatever is already there, are both harmful and flaky.
+- Assumption: Every state path goes through `paths.get_config_directory_path` or one of the two env vars cleared here.
+- Modules: tests/conftest.py, tests/test_providers_bedrock.py, tests/test_providers_http.py, tests/test_providers_google.py
+- Commits: `9ffd3ec`
 
 ## 61. Safer defaults than upstream: sandboxed templates, TLS verified, no feedback upload
 - Decision: Three deliberate departures from upstream, made before the public alpha.

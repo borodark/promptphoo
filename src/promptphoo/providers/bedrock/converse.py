@@ -1,9 +1,9 @@
-"""Bedrock Converse API provider (`bedrock:converse:<model>`).
-Ports src/providers/bedrock/converse.ts.
+"""Bedrock Converse API provider (`bedrock:converse:<model>`). Ports
+src/providers/bedrock/converse.ts.
 
-Not ported: MCP tool dispatch, ConverseStream (`callApiStreaming`), tracing spans and
-telemetry. `functionToolCallbacks` accepts Python callables or `file://path.py:function`
-references (inline JavaScript function strings are rejected).
+Calls run inside a GenAI tracing span (see D57). Not ported: MCP tool dispatch, ConverseStream
+(`callApiStreaming`) and telemetry. `functionToolCallbacks` accepts Python callables or
+`file://path.py:function` references (inline JavaScript function strings are rejected).
 """
 
 from __future__ import annotations

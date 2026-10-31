@@ -6,8 +6,9 @@ eval (a v2 summary with a stored table). The tool snapshots the DB rows after ea
 records Node's output for every command in the scenario. `tests/test_cli_list_show_delete.py`
 loads the same rows into a migrated DB and requires promptphoo's output to match byte for byte.
 
-Node's "There were some errors during the operation. See logs for more details." footer (with
-its per-run log file paths) is cut from the goldens: promptphoo writes no log files (see D41).
+Node's "There were some errors during the operation. See logs for more details." footer is cut
+from the goldens, because it names per-run log files whose paths differ on every run (D41;
+promptphoo writes the same footer and log files since D45).
 
 Usage:
   NODE_PROMPTFOO="node ../promptfoo/dist/src/main.js" tools/list_show_golden.py

@@ -407,7 +407,7 @@ def _read_raw_body(request: Request) -> bytes:
     elif encoding == "deflate":
         decompressor = zlib.decompressobj()
     else:
-        # body-parser also inflates br (and zstd); Python's stdlib cannot (see D52).
+        # body-parser also inflates br (and zstd); Python's stdlib cannot (see D51).
         raise HttpError(415, f'unsupported content encoding "{encoding}"')
     try:
         data = decompressor.decompress(raw, BODY_LIMIT_BYTES + 1)

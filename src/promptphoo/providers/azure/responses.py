@@ -8,7 +8,7 @@ body's `model`.
 
 Not ported (see D23): `stream: true` is rejected with the OpenAI Responses provider's error, and a
 background request that comes back queued or in progress returns an error instead of polling.
-Tracing spans and abort signals are omitted.
+Abort signals are omitted, and, as upstream, no GenAI tracing span is recorded.
 """
 
 from __future__ import annotations

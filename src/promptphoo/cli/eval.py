@@ -37,7 +37,6 @@ from promptphoo.providers import filter_providers
 logger = logging.getLogger("promptphoo")
 
 DEFAULT_CONFIG_EXTENSIONS = ("yaml", "yml", "json", "cjs", "cts", "js", "mjs", "mts", "ts")
-_UNSUPPORTED_OPTIONS = {}
 
 
 class EvalRunError(RuntimeError):
@@ -103,10 +102,6 @@ async def do_eval(
     that `--watch` needs to build its watch list."""
     start = time.time()
     setup_env(cmd.get("envPath"))
-    for key, flag in _UNSUPPORTED_OPTIONS.items():
-        if cmd.get(key):
-            raise EvalRunError(f"{flag} is not supported by promptphoo yet")
-
     if cmd.get("write"):
         db.run_db_migrations()
     if default_config_path:

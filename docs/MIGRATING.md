@@ -69,7 +69,7 @@ silently.
 | `transform: file://t.js` | `transform: file://t.py`, with `def get_transform(output, context)` |
 | `vars: { x: file://v.js }` | `file://v.py`, with `def get_var(var_name, prompt, other_vars)` |
 | `tests: file://gen.js` | `file://gen.py`, with `def generate_tests(config)` |
-| `nunjucksFilters: { f: ./f.js }` | `./f.py`, exporting a function |
+| `nunjucksFilters: { f: path/to/filter.js }` | `path/to/filter.py`, exporting a function |
 | `-x file://hooks.js:fn` (extensions) | `-x file://hooks.py:fn`, called with `(hook_name, context)` |
 
 **Short inline expressions still work.** Examples are

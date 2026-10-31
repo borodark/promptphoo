@@ -1,5 +1,5 @@
 """`promptphoo config` and the global config file: ports test/commands/config.test.ts and the
-email/read/write cases of test/globalConfig/{globalConfig,accounts}.test.ts."""
+email/read/write cases of test/globalConfig.test.ts and test/globalConfig/accounts.test.ts."""
 
 from __future__ import annotations
 

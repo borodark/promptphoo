@@ -2,8 +2,8 @@
 
 Ports the module-level helpers of src/models/evalResult.ts (provider snapshots, sanitizeForDb,
 credential-header redaction, trace/repeat linkage metadata and the PROMPTFOO_STRIP_* output
-projections). Blob extraction (`extractAndStoreBinaryData`) and trace projection
-(`projectTracesForOutput`) are not ported.
+projections). Blob extraction (`extractAndStoreBinaryData`) lives in blobs/extractor.py and
+trace projection (`projectTracesForOutput`) in output/writer.py.
 """
 
 from __future__ import annotations

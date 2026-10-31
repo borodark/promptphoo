@@ -1,9 +1,10 @@
 """The eval loop. Ports runEval / Evaluator from src/evaluator.ts (the non-redteam path). The
 select-best / max-score pass is in evaluator/comparison.py and the extension hooks in
-evaluator/extensions.py. Derived metrics are not ported yet; configs that use them warn
-explicitly. Tracing gives each step a W3C trace context, external trace collection and the
-trace id that the assertions load their spans for (see D54); promptfoo's own OpenTelemetry
-spans are not recorded here.
+evaluator/extensions.py. Derived metrics (mathjs expressions upstream) are not ported; configs
+that use them get a warning and the metrics are skipped. Tracing gives each step a W3C trace
+context, external trace collection and the trace id that the assertions load their spans for
+(see D54), and promptfoo's own spans (test case, target and grader) are recorded through
+tracing/ (see D57).
 """
 
 from __future__ import annotations
@@ -1146,8 +1147,8 @@ class Evaluator:
         self, restore_prompt_columns: bool, tests: list[dict[str, Any]]
     ) -> tuple[list[dict], list[tuple[ApiProvider, list]]]:
         """buildCompletedPrompts: on resume, restore the saved columns (and their metrics) so
-        result indices keep pointing at the same column. The extension-hook recovery path is
-        not ported (extensions are not supported)."""
+        result indices keep pointing at the same column. The extension-hook recovery path
+        (preparePromptRecovery) is not ported (see D36)."""
         suite, store = self.test_suite, self.store
         providers: list[ApiProvider] = suite["providers"]
         provider_indices: dict[str, int] = {}
@@ -1477,7 +1478,7 @@ class Evaluator:
         suite = self.test_suite = await run_before_all_extensions(suite)
         await maybe_add_generated_prompts(suite, options)
         if suite.get("derivedMetrics"):
-            logger.warning("derivedMetrics are not supported yet; they will be skipped")
+            logger.warning("derivedMetrics are not supported by promptphoo; they will be skipped")
 
         # The caller's cancellation and the CLI pause (Ctrl+C) both stop the run.
         abort_signal = combine_signals(options.get("abortSignal"), options.get("pauseSignal"))

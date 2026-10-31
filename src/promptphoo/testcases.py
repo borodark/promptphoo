@@ -2,7 +2,7 @@
 
 Supported sources: inline tests, YAML/JSON/JSONL/CSV files and globs, Python generators
 (`file://tests.py:generate_tests`), and vars files. Remote sources (Hugging Face, Azure Blob,
-SharePoint, Google Sheets) and xlsx are not yet ported and raise a clear error.
+SharePoint, Google Sheets) and xlsx files are not ported and raise a clear error.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ def _is_remote_test_case(test: Any) -> bool:
 
 def _unsupported_remote(source: str) -> list[TestCase]:
     raise NotImplementedError(
-        f"Remote test sources are not supported by promptphoo yet: {source}. "
+        f"Remote test sources are not supported by promptphoo: {source}. "
         "Download the file and reference it locally."
     )
 
@@ -136,7 +136,7 @@ async def read_standalone_tests_file(
     if ext == "csv":
         return _csv_rows_to_test_cases(_parse_csv_rows(Path(resolved).read_text(encoding="utf-8")))
     if ext in ("xlsx", "xls"):
-        raise NotImplementedError(f"Excel test files are not supported yet: {resolved}")
+        raise NotImplementedError(f"Excel test files are not supported by promptphoo: {resolved}")
     if ext == "json":
         content = Path(resolved).read_text(encoding="utf-8")
         try:

@@ -121,7 +121,8 @@ def merge_provider_env(*layers: EnvOverrides) -> dict[str, Any] | None:
     """Merge env layers low-to-high priority, skipping None values.
 
     Node additionally drops conflicting aliases of credential env vars per provider family
-    (getProviderEnvAliasGroups); that only matters for network providers and lands with them.
+    (getProviderEnvAliasGroups / getProviderEndpointAliases), so a key set in a higher layer
+    clears its aliases from the lower ones. That is not ported: every layer is merged key by key.
     """
     merged: dict[str, Any] | None = None
     for layer in layers:
