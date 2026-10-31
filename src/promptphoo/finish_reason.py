@@ -1,11 +1,11 @@
-"""Normalize provider finish/stop reasons. Ports src/util/finishReason.ts."""
+"""Finish-reason normalization. Ports src/util/finishReason.ts."""
 
 from __future__ import annotations
 
 from typing import Any
 
 FINISH_REASON_MAP: dict[str, str] = {
-    # OpenAI - standard values
+    # OpenAI - standard values (pass through unchanged)
     "stop": "stop",
     "length": "length",
     "content_filter": "content_filter",
@@ -28,9 +28,8 @@ FINISH_REASON_MAP: dict[str, str] = {
 }
 
 
-def normalize_finish_reason(raw: Any) -> str | None:
-    """Map a provider finish reason to the OpenAI-compatible value; unknown values are trimmed
-    and lowercased."""
+def normalize_finish_reason(raw: Any = None) -> str | None:
+    """Normalize a provider finish/stop reason; unknown values are trimmed and lowercased."""
     if raw is None or not isinstance(raw, str):
         return None
     trimmed = raw.strip()
