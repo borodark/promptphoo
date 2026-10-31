@@ -125,4 +125,6 @@ NODE_PROMPTFOO="node /path/to/promptfoo/dist/src/main.js" .venv/bin/python tools
 - With `NODE_PROMPTFOO` set, the interop suites also run. They check that each CLI reads the other's databases, exports, imports, blobs and traces.
 - `src/promptphoo/_data/` holds upstream assets that are vendored unchanged, or generated from upstream by Node: migrations, the config schema, grading prompts and init templates. The scripts under `tools/` regenerate them.
 
+**Why the decision log exists.** [`docs/WHY_A_KNOWLEDGE_BASE.md`](docs/WHY_A_KNOWLEDGE_BASE.md) explains, for readers of any background, why every choice in [`docs/DECISIONS.md`](docs/DECISIONS.md) is written down and what you can do with the record.
+
 **Credits.** promptfoo is © Promptfoo and its contributors, released under the MIT license. promptphoo is an independent port. It is not affiliated with or endorsed by Promptfoo or OpenAI.
