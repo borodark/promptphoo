@@ -54,16 +54,16 @@ The package installs three commands that do the same thing: `promptphoo`, `promp
 
 ## What's covered
 
-- **Commands:** `eval`, `init`, `validate`, `list`, `show`, `delete`, `export`, `import`, `retry`, `cache clear`, `config`, `logs`, `debug`, `generate dataset`, `generate assertions`.
-- **Eval flags:** the full set, including filters, `--repeat`, `--resume`, `--retry-errors`, `--filter-failing`, `--watch`, `-x` extension hooks (Python), `--grader` and `--suggest-prompts`.
+- **Commands:** `eval`, `init`, `validate` (config and target), `list`, `show`, `delete`, `export` (evals and logs), `import`, `retry`, `cache clear`, `config`, `logs`, `debug`, `feedback`, `generate dataset`, `generate assertions`. `share` is registered but always fails; results stay local.
+- **Eval flags:** the full set, including filters, `--repeat`, `--resume`, `--retry-errors`, `--filter-failing`, `--watch`, `-x` extension hooks (Python), `--grader` and `--suggest-prompts`. `--share` only warns, and `--remote` is accepted and ignored.
 - **Prompts and tests:** text, chat JSON, YAML, Markdown, Jinja and CSV prompts; Python prompt functions; test files in YAML, JSON, JSONL and CSV, plus Python `generate_tests`; `defaultTest`; scenarios; `$ref`s.
 - **Providers:**
-  - OpenAI (chat, completion, Responses, embeddings, moderation), Anthropic, Azure OpenAI, Google AI Studio and Vertex, Bedrock, Ollama, HTTP.
+  - OpenAI (chat, completion, Responses, embeddings, moderation), Anthropic, Azure OpenAI, Google AI Studio and Vertex, Bedrock (InvokeModel, Converse, Messages and embeddings), Ollama, HTTP.
   - Around forty OpenAI-compatible families (DeepSeek, Groq, OpenRouter, xAI, Perplexity, LiteLLM, llama.cpp and more).
-  - `echo`, `sequence`, `exec:` and Python (`file://provider.py`).
+  - `echo`, `sequence`, `exec:`, `webhook:` and Python (`file://provider.py`).
 - **Assertions:**
-  - Deterministic: string, regex, JSON, XML, HTML, SQL, similarity metrics, cost and latency, tool calls, trajectories.
-  - Model-graded: `llm-rubric`, `factuality`, `model-graded-closedqa`, `g-eval`, `answer-relevance`, `context-*`, `conversation-relevance`, `similar`, `select-best`, `max-score`.
+  - Deterministic: string, regex, JSON, XML, HTML, SQL, text-similarity metrics (levenshtein, rouge, bleu, gleu, meteor), cost and latency, finish reason, perplexity, refusals, word count, guardrails, tool calls, skill use, trajectories, plus `python` and `webhook`.
+  - Model-graded: `llm-rubric`, `factuality`, `model-graded-factuality`, `model-graded-closedqa`, `g-eval`, `search-rubric`, `answer-relevance`, `context-*`, `conversation-relevance`, `similar`, `classifier`, `moderation`, `agent-rubric` (with an explicitly configured grader), `trajectory:goal-success`, `select-best`, `max-score`.
   - Trace-based: `trace-span-count`, `trace-span-duration`, `trace-error-spans`.
 - **Output formats:** console table, JSON, JSONL, CSV, YAML, TXT, HTML, XML and JUnit, matching Node's output byte for byte.
 - **Media blobs and tracing:** blobs stored in Node's layout; an OTLP receiver (JSON and protobuf) and promptfoo's own spans.
@@ -75,6 +75,10 @@ The package installs three commands that do the same thing: `promptphoo`, `promp
 - Cloud features such as `share` and remote grading.
 - **Hooks in JavaScript, TypeScript or Ruby.** Use `file://*.py` hooks, which keep upstream's signatures: `call_api`, `get_assert`, `get_transform`, and so on. A JS hook fails with a clear message rather than silently.
 - Mistral and AI21 providers, which upstream implements with their own request code. They are planned.
+- Other providers: HuggingFace, Replicate, Cohere, Voyage, watsonx, SageMaker, Bedrock agents and knowledge bases, Claude on Vertex, WebSocket and browser targets, and the OpenAI and Google image, audio, video and live routes.
+- Test cases from Excel, Google Sheets, Hugging Face datasets, Azure Blob or SharePoint; `derivedMetrics`; streaming responses.
+- The `pi` assertion, which needs Promptfoo's remote scoring API.
+- The full inventory, item by item against upstream, is in [`docs/SCOPE.md`](docs/SCOPE.md).
 
 ## Corrections and departures
 
@@ -116,7 +120,7 @@ If promptfoo serves your needs, use promptfoo. It is the original, and it is mai
 **For contributors:**
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+python3 -m venv .venv && .venv/bin/pip install -e '.[dev,all]'
 .venv/bin/pytest -q -n auto && .venv/bin/ruff check src tests tools && .venv/bin/pyright
 NODE_PROMPTFOO="node /path/to/promptfoo/dist/src/main.js" .venv/bin/python tools/parity.py --all
 ```

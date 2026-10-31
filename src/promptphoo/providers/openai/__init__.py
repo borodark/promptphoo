@@ -150,7 +150,7 @@ def create_provider(provider_path: str, options: dict[str, Any]) -> Any:
     )
     allow_transcription = model_type in ("gpt-transcribe", "transcription")
 
-    if model_type == "agents-api" or model_type in _CODEX_TYPES:
+    if model_type in ("agents-api", "codex-security") or model_type in _CODEX_TYPES:
         raise _unsupported(provider_path, "Agents/Codex")
     requested_api_model = model_name or configured_model or model_type
     if any(
