@@ -24,6 +24,10 @@ from promptphoo.evaluator.build import (
 )
 from promptphoo.evaluator.render import FILE_METADATA_KEY, collect_file_metadata, render_prompt
 from promptphoo.filters import filter_by_range
+from promptphoo.grading_provider import (
+    build_configured_provider_map,
+    resolve_runtime_grading_provider_references,
+)
 from promptphoo.jsonutil import js_json_parse
 from promptphoo.jsvalues import UNDEFINED, json_stringify
 from promptphoo.providers import canonicalize_provider_id, load_api_provider
@@ -714,8 +718,10 @@ class Evaluator:
         default = get_default_test(suite) or {}
         steps: list[RunEvalOptions] = []
         test_idx = 0
+        configured_provider_map = build_configured_provider_map(suite.get("providers") or [])
         for index, test in enumerate(tests):
             await _prepare_test_case(suite, test, index)
+            resolve_runtime_grading_provider_references(test, configured_provider_map)
             test_options = test.get("options") or {}
             prefix = (
                 test_options.get("prefix") or (default.get("options") or {}).get("prefix") or ""

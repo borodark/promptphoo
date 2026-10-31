@@ -14,7 +14,8 @@ from promptphoo import cli_state, envars, python_hooks
 from promptphoo.assertions.base import AssertionParams, GradingResult, Handler, coerce_string
 from promptphoo.assertions.result import AssertionsResult
 from promptphoo.files import is_javascript_file
-from promptphoo.jsvalues import json_stringify
+from promptphoo.jsvalues import is_truthy, json_stringify
+from promptphoo.providers.base import ApiProvider
 from promptphoo.templating import get_engine
 from promptphoo.transform import transform
 from promptphoo.yamlload import load_yaml
@@ -87,19 +88,36 @@ def process_file_reference(file_ref: str) -> Any:
     raise ValueError(f"Unsupported file type: {path}")
 
 
+def _clone_test_value(value: Any) -> Any:
+    """Deep-copy plain data, but share loaded providers (graders resolved to configured
+    provider instances may sit in `assert` entries; they hold clients and locks)."""
+    if isinstance(value, dict):
+        return {k: _clone_test_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_clone_test_value(v) for v in value]
+    if isinstance(value, ApiProvider) or callable(value):
+        return value
+    return copy.deepcopy(value)
+
+
 def get_final_test(test: dict[str, Any], assertion: dict[str, Any]) -> dict[str, Any]:
     provider = test.get("provider")
     options = test.get("options") or {}
     base = {k: v for k, v in test.items() if k != "provider"}
     if options.get("provider") is not None:
         base["options"] = {**options, "provider": None}
-    ret = copy.deepcopy(base)
+    ret = _clone_test_value(base)
     ret["options"] = ret.get("options") or {}
     if provider is not None:
         ret["provider"] = provider
-    ret["options"]["provider"] = assertion.get("provider") or options.get("provider")
-    ret["options"]["rubricPrompt"] = assertion.get("rubricPrompt") or ret["options"].get(
-        "rubricPrompt"
+    ret["options"]["provider"] = (
+        assertion.get("provider")
+        if is_truthy(assertion.get("provider"))
+        else options.get("provider")
+    )
+    rubric_prompt = assertion.get("rubricPrompt")
+    ret["options"]["rubricPrompt"] = (
+        rubric_prompt if is_truthy(rubric_prompt) else ret["options"].get("rubricPrompt")
     )
     return ret
 
