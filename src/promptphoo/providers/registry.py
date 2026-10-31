@@ -85,23 +85,80 @@ def _prefixed(*prefixes: str) -> Callable[[str], bool]:
     return lambda p: p.startswith(prefixes)
 
 
-# Network provider families. Each module exposes `create_provider(path, options)`.
+_COMPAT = "promptphoo.providers.compatible"
+
+# Upstream's `providerFamilies` (registry.ts) are consulted before every providerMap entry, so a
+# family id whose model ends in `.js` is not taken for a JavaScript file provider.
+FAMILY_FACTORIES: list[tuple[Callable[[str], bool], str]] = [
+    (_prefixed("cerebras:"), f"{_COMPAT}.cerebras:create_provider"),
+    (_prefixed("envoy:"), f"{_COMPAT}.simple:create_envoy"),
+    (_prefixed("litellm:"), f"{_COMPAT}.litellm:create_provider"),
+    (_prefixed("novita:"), f"{_COMPAT}.novita:create_provider"),
+    (_prefixed("nscale:", "togetherai:"), f"{_COMPAT}.table:create_provider"),
+]
+
+# Network provider families. Each module exposes `create_provider(path, options)`. The
+# OpenAI-compatible entries follow upstream providerMap order (see D23).
 NETWORK_FACTORIES: list[tuple[Callable[[str], bool], str]] = [
+    (_prefixed("abliteration:"), f"{_COMPAT}.abliteration:create_provider"),
+    (_prefixed("ai21:"), f"{_COMPAT}.skipped:create_provider"),
+    (_prefixed("alibaba:", "alicloud:", "aliyun:", "dashscope:"),
+     f"{_COMPAT}.alibaba:create_provider"),
     (_prefixed("anthropic:"), "promptphoo.providers.anthropic:create_provider"),
+    (_prefixed("atlascloud:"), f"{_COMPAT}.simple:create_atlascloud"),
     (_prefixed("azure:", "azureopenai:"), "promptphoo.providers.azure:create_provider"),
     (_prefixed("bedrock:"), "promptphoo.providers.bedrock:create_provider"),
+    (_prefixed("cloudera:"), f"{_COMPAT}.simple:create_cloudera"),
+    (_prefixed("cloudflare-ai:"), f"{_COMPAT}.cloudflare_ai:create_provider"),
+    (_prefixed("cloudflare-gateway:"), f"{_COMPAT}.cloudflare_gateway:create_provider"),
+    (_prefixed("databricks:"), f"{_COMPAT}.databricks:create_provider"),
+    (_prefixed("mlflow-gateway:"), f"{_COMPAT}.mlflow_gateway:create_provider"),
+    (_prefixed("deepseek:"), f"{_COMPAT}.deepseek:create_provider"),
+    (_prefixed("fireworks:"), f"{_COMPAT}.fireworks:create_provider"),
+    (_prefixed("github:"), f"{_COMPAT}.ghmodels:create_provider"),
+    (_prefixed("groq:"), f"{_COMPAT}.groq:create_provider"),
+    (_prefixed("helicone:"), f"{_COMPAT}.simple:create_helicone"),
+    (_prefixed("hyperbolic:"), f"{_COMPAT}.hyperbolic:create_provider"),
+    (_prefixed("localai:"), f"{_COMPAT}.localai:create_provider"),
+    (_prefixed("meta:"), f"{_COMPAT}.meta:create_provider"),
+    (_prefixed("minimax:"), f"{_COMPAT}.minimax:create_provider"),
+    (_prefixed("mistral:"), f"{_COMPAT}.skipped:create_provider"),
+    (_prefixed("moonshot:"), f"{_COMPAT}.moonshot:create_provider"),
+    (_prefixed("nvidia:"), f"{_COMPAT}.nvidia:create_provider"),
     (_prefixed("vertex:", "google:"), "promptphoo.providers.google:create_provider"),
     (_prefixed("ollama:"), "promptphoo.providers.ollama:create_provider"),
     (_prefixed("openai:"), "promptphoo.providers.openai:create_provider"),
+    (_prefixed("openrouter:"), f"{_COMPAT}.openrouter:create_provider"),
+    (_prefixed("orcarouter:"), f"{_COMPAT}.orcarouter:create_provider"),
+    (_prefixed("perplexity:"), f"{_COMPAT}.perplexity:create_provider"),
+    (_prefixed("portkey:"), f"{_COMPAT}.portkey:create_provider"),
+    (_prefixed("truefoundry:"), f"{_COMPAT}.truefoundry:create_provider"),
+    (_prefixed("llamaapi:"), f"{_COMPAT}.simple:create_llamaapi"),
+    (_prefixed("aimlapi:", "cometapi:"), f"{_COMPAT}.table:create_provider"),
+    (_prefixed("docker:"), f"{_COMPAT}.docker:create_provider"),
+    (_prefixed("vercel:"), f"{_COMPAT}.skipped:create_provider"),
+    (_prefixed("xai:"), f"{_COMPAT}.xai:create_provider"),
     (_prefixed("http:", "https:"), "promptphoo.providers.http:create_provider"),
-]
+    (_prefixed("jfrog:", "qwak:"), f"{_COMPAT}.simple:create_jfrog"),
+    (lambda p: p == "llama" or p.startswith("llama:"), f"{_COMPAT}.llama:create_provider"),
+    (_prefixed("snowflake:"), f"{_COMPAT}.snowflake:create_provider"),
+]  # fmt: skip
 
 
-def find_factory(provider_path: str) -> Factory | None:
-    for test, create in PROVIDER_FACTORIES:
-        if test(provider_path):
-            return create
-    for test, target in NETWORK_FACTORIES:
+def _find_lazy(
+    table: list[tuple[Callable[[str], bool], str]], provider_path: str
+) -> Factory | None:
+    for test, target in table:
         if test(provider_path) and importlib.util.find_spec(target.split(":")[0]) is not None:
             return _lazy(target)
     return None
+
+
+def find_factory(provider_path: str) -> Factory | None:
+    family = _find_lazy(FAMILY_FACTORIES, provider_path)
+    if family is not None:
+        return family
+    for test, create in PROVIDER_FACTORIES:
+        if test(provider_path):
+            return create
+    return _find_lazy(NETWORK_FACTORIES, provider_path)
