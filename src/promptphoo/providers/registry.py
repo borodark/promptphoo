@@ -6,6 +6,8 @@ Each factory is (test, create): `test(path)` decides whether it handles a provid
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
 import os
 from collections.abc import Callable
 from typing import Any
@@ -69,8 +71,37 @@ PROVIDER_FACTORIES: list[tuple[Callable[[str], bool], Factory]] = [
 ]  # fmt: skip
 
 
+def _lazy(target: str) -> Factory:
+    """A factory living in `module:function`, imported on first use (Phase 3 provider families)."""
+
+    def create(path: str, options: dict[str, Any]) -> Any:
+        module_name, attr = target.split(":")
+        return getattr(importlib.import_module(module_name), attr)(path, options)
+
+    return create
+
+
+def _prefixed(*prefixes: str) -> Callable[[str], bool]:
+    return lambda p: p.startswith(prefixes)
+
+
+# Network provider families. Each module exposes `create_provider(path, options)`.
+NETWORK_FACTORIES: list[tuple[Callable[[str], bool], str]] = [
+    (_prefixed("anthropic:"), "promptphoo.providers.anthropic:create_provider"),
+    (_prefixed("azure:", "azureopenai:"), "promptphoo.providers.azure:create_provider"),
+    (_prefixed("bedrock:"), "promptphoo.providers.bedrock:create_provider"),
+    (_prefixed("vertex:", "google:"), "promptphoo.providers.google:create_provider"),
+    (_prefixed("ollama:"), "promptphoo.providers.ollama:create_provider"),
+    (_prefixed("openai:"), "promptphoo.providers.openai:create_provider"),
+    (_prefixed("http:", "https:"), "promptphoo.providers.http:create_provider"),
+]
+
+
 def find_factory(provider_path: str) -> Factory | None:
     for test, create in PROVIDER_FACTORIES:
         if test(provider_path):
             return create
+    for test, target in NETWORK_FACTORIES:
+        if test(provider_path) and importlib.util.find_spec(target.split(":")[0]) is not None:
+            return _lazy(target)
     return None
