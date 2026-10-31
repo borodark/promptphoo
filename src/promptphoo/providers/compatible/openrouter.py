@@ -41,6 +41,7 @@ from promptphoo.providers.openrouter_billing import (
     get_openrouter_billing_metadata,
 )
 from promptphoo.providers.shared import get_request_timeout_ms
+from promptphoo.tracing.genai_tracer import extract_genai_response, get_test_index, with_genai_span
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +140,31 @@ class OpenRouterProvider(OpenAiChatCompletionProvider):
         return calculate_openrouter_response_cost(data, config)
 
     async def call_api(self, prompt, context=None, options=None) -> ProviderResponse:
-        prepared = await self.get_openai_body(prompt, context, options)
-        return await self.execute_openrouter_call(prepared, context, options)
+        span_context = {
+            "system": "openrouter",
+            "operationName": "chat",
+            "model": self.model_name,
+            "providerId": self.id(),
+            "testIndex": get_test_index(context),
+            "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+            "traceparent": (context or {}).get("traceparent"),
+        }
+        try:
+            prepared = await self.get_openai_body(prompt, context, options)
+        except Exception as error:
+            failure = error
+
+            async def rethrow(_span: Any) -> ProviderResponse:
+                raise failure
+
+            return await with_genai_span(
+                span_context, rethrow, lambda response: extract_genai_response(response, True)
+            )
+        return await with_genai_span(
+            {**span_context, **self.get_chat_tracing_request(prepared["body"])},
+            lambda _span: self.execute_openrouter_call(prepared, context, options),
+            lambda response: extract_genai_response(response, True),
+        )
 
     async def execute_openrouter_call(
         self,

@@ -23,6 +23,11 @@ from promptphoo.providers.openai.util import (
     normalize_openai_billing_model_name,
 )
 from promptphoo.providers.shared import get_request_timeout_ms
+from promptphoo.tracing.genai_tracer import (
+    extract_provider_response_attributes,
+    get_test_index,
+    with_genai_span,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +115,39 @@ class OpenAiCompletionProvider(OpenAiGenericProvider):
         if is_first_party:
             body.pop("service_tier", None)
         assert_openai_api_model(body.get("model"), self.get_api_url())
-        return await self._call_api_internal(body, context)
+
+        def as_number(value: Any) -> Any:
+            return value if isinstance(value, int | float) and not isinstance(value, bool) else None
+
+        body_stop = body.get("stop")
+        stop_sequences = (
+            [body_stop]
+            if isinstance(body_stop, str)
+            else body_stop
+            if isinstance(body_stop, list) and all(isinstance(s, str) for s in body_stop)
+            else None
+        )
+        return await with_genai_span(
+            {
+                "system": self.get_gen_ai_system(),
+                "operationName": "text_completion",
+                "model": body.get("model"),
+                "providerId": self.id(),
+                "maxTokens": as_number(body.get("max_tokens")),
+                "temperature": as_number(body.get("temperature")),
+                "topP": as_number(body.get("top_p")),
+                "stopSequences": stop_sequences,
+                "presencePenalty": as_number(body.get("presence_penalty")),
+                "frequencyPenalty": as_number(body.get("frequency_penalty")),
+                "evalId": (context or {}).get("evaluationId"),
+                "testIndex": get_test_index(context),
+                "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+                "traceparent": (context or {}).get("traceparent"),
+                "requestBody": prompt,
+            },
+            lambda _span: self._call_api_internal(body, context),
+            extract_provider_response_attributes,
+        )
 
     async def _call_api_internal(
         self, body: dict[str, Any], context: dict[str, Any] | None

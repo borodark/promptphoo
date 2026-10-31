@@ -57,6 +57,7 @@ from promptphoo.providers.shared import (
     should_bust_provider_cache,
     with_response_cache_metadata,
 )
+from promptphoo.tracing.genai_tracer import extract_genai_response, get_test_index, with_genai_span
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +228,39 @@ class VertexChatProvider(GoogleGenericProvider):
         return has_api_key and not disabled and not has_oauth
 
     async def call_api(
+        self,
+        prompt: str,
+        context: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        system = (
+            "vertex:anthropic"
+            if "claude" in self.model_name
+            else "vertex:gemini"
+            if "gemini" in self.model_name
+            else "vertex:llama"
+            if "llama" in self.model_name
+            else "vertex:palm2"
+        )
+        span_context = {
+            "system": system,
+            "operationName": "chat",
+            "model": self.model_name,
+            "providerId": self.id(),
+            "temperature": self.config.get("temperature"),
+            "topP": self.config.get("topP"),
+            "maxTokens": self.config.get("maxOutputTokens") or self.config.get("max_tokens"),
+            "testIndex": get_test_index(context),
+            "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+            "traceparent": (context or {}).get("traceparent"),
+        }
+        return await with_genai_span(
+            span_context,
+            lambda _span: self._call_api_internal(prompt, context, options),
+            extract_genai_response,
+        )
+
+    async def _call_api_internal(
         self,
         prompt: str,
         context: dict[str, Any] | None = None,

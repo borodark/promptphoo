@@ -57,6 +57,11 @@ from promptphoo.providers.shared import (
     transform_tool_choice,
 )
 from promptphoo.templating import render_vars_in_object
+from promptphoo.tracing.genai_tracer import (
+    extract_provider_response_attributes,
+    get_test_index,
+    with_genai_span,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -596,8 +601,56 @@ class OpenAiChatCompletionProvider(OpenAiGenericProvider):
         api_key = self.get_api_key()
         if self.requires_api_key() and not api_key:
             raise ValueError(self.get_missing_api_key_error_message())
-        prepared = await self.get_openai_body(prompt, context, options)
-        return await self._call_api_internal(prepared, context, options, api_key)
+        span_context = {
+            "system": self.get_gen_ai_system(),
+            "operationName": "chat",
+            "openaiApiType": "chat_completions",
+            "model": self.model_name,
+            "providerId": self.id(),
+            "evalId": (context or {}).get("evaluationId")
+            or (((context or {}).get("test") or {}).get("metadata") or {}).get("evaluationId"),
+            "testIndex": get_test_index(context),
+            "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+            "traceparent": (context or {}).get("traceparent"),
+            "requestBody": prompt,
+        }
+        try:
+            prepared = await self.get_openai_body(prompt, context, options)
+        except Exception as error:
+            failure = error
+
+            async def rethrow(_span: Any) -> ProviderResponse:
+                raise failure
+
+            return await with_genai_span(
+                span_context, rethrow, extract_provider_response_attributes
+            )
+        return await with_genai_span(
+            {**span_context, **self.get_chat_tracing_request(prepared["body"])},
+            lambda _span: self._call_api_internal(prepared, context, options, api_key),
+            extract_provider_response_attributes,
+        )
+
+    def get_chat_tracing_request(self, body: dict[str, Any]) -> dict[str, Any]:
+        """getChatTracingRequest: the request parameters the span records."""
+
+        def as_number(value: Any) -> Any:
+            return value if isinstance(value, int | float) and not isinstance(value, bool) else None
+
+        max_tokens = as_number(body.get("max_completion_tokens"))
+        if max_tokens is None:
+            max_tokens = as_number(body.get("max_tokens"))
+        stop = body.get("stop")
+        return {
+            "maxTokens": max_tokens,
+            "temperature": as_number(body.get("temperature")),
+            "topP": as_number(body.get("top_p")),
+            "stopSequences": stop
+            if isinstance(stop, list)
+            else [stop]
+            if isinstance(stop, str)
+            else None,
+        }
 
     def _http(self, status: Any, status_text: Any, headers: Any) -> dict[str, Any]:
         return {"http": {"status": status, "statusText": status_text, "headers": headers or {}}}

@@ -21,6 +21,7 @@ from promptphoo.providers.shared import (
     transform_tools,
     with_response_cache_metadata,
 )
+from promptphoo.tracing.genai_tracer import extract_genai_response, get_test_index, with_genai_span
 
 logger = logging.getLogger(__name__)
 
@@ -280,6 +281,39 @@ class _OllamaBase(ApiProvider):
             headers["Authorization"] = f"Bearer {api_key}"
         return headers
 
+    async def call_api(
+        self,
+        prompt: str,
+        context: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> ProviderResponse:
+        span_context = {
+            "system": "ollama",
+            "operationName": self.kind,
+            "model": self.model_name,
+            "providerId": self.id(),
+            "temperature": self.config.get("temperature"),
+            "topP": self.config.get("top_p"),
+            "maxTokens": self.config.get("num_predict"),
+            "stopSequences": self.config.get("stop"),
+            "testIndex": get_test_index(context),
+            "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+            "traceparent": (context or {}).get("traceparent"),
+        }
+        return await with_genai_span(
+            span_context,
+            lambda _span: self._call_api_internal(prompt, context, options),
+            lambda response: extract_genai_response(response, True),
+        )
+
+    async def _call_api_internal(
+        self,
+        prompt: str,
+        context: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> ProviderResponse:
+        raise NotImplementedError
+
     async def _post(self, path: str, params: dict[str, Any], fmt: Any, context: Any) -> Any:
         from promptphoo.fetch import fetch_with_cache
 
@@ -298,7 +332,7 @@ class OllamaCompletionProvider(_OllamaBase):
     def __str__(self) -> str:
         return f"[Ollama Completion Provider {self.model_name}]"
 
-    async def call_api(
+    async def _call_api_internal(
         self,
         prompt: str,
         context: dict[str, Any] | None = None,
@@ -355,7 +389,7 @@ class OllamaChatProvider(_OllamaBase):
     def __str__(self) -> str:
         return f"[Ollama Chat Provider {self.model_name}]"
 
-    async def call_api(
+    async def _call_api_internal(
         self,
         prompt: str,
         context: dict[str, Any] | None = None,

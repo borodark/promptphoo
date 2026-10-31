@@ -16,6 +16,7 @@ from promptphoo.assertions.result import AssertionsResult
 from promptphoo.files import is_javascript_file
 from promptphoo.jsvalues import is_truthy, json_stringify
 from promptphoo.providers.base import ApiProvider
+from promptphoo.scheduler.provider_call_execution_context import get_provider_call_tracing_context
 from promptphoo.templating import get_engine
 from promptphoo.transform import transform
 from promptphoo.yamlload import load_yaml
@@ -140,6 +141,39 @@ async def run_assertion(
     latency_ms: float | None = None,
     trace_id: str | None = None,
 ) -> GradingResult:
+    """runAssertion: a traced assertion runs inside a `grader <type>` span."""
+    kwargs: dict[str, Any] = {
+        "assertion": assertion, "test": test, "provider_response": provider_response,
+        "prompt": prompt, "provider": provider, "vars": vars, "latency_ms": latency_ms,
+        "trace_id": trace_id,
+    }  # fmt: skip
+    if not trace_id:
+        return await _run_assertion_internal(**kwargs)
+    tracing_context = get_provider_call_tracing_context()
+    with_grader_span = tracing_context.get("withGraderSpan") if tracing_context else None
+    if not tracing_context or with_grader_span is None:
+        return await _run_assertion_internal(**kwargs)
+    return await with_grader_span(
+        {
+            "graderId": assertion.get("type"),
+            "evalId": (test.get("metadata") or {}).get("evaluationId"),
+            "testIndex": tracing_context.get("testIndex"),
+        },
+        lambda: _run_assertion_internal(**kwargs),
+    )
+
+
+async def _run_assertion_internal(
+    *,
+    assertion: dict[str, Any],
+    test: dict[str, Any],
+    provider_response: dict[str, Any],
+    prompt: str | None = None,
+    provider: Any = None,
+    vars: dict[str, Any] | None = None,  # noqa: A002 - Node's parameter name
+    latency_ms: float | None = None,
+    trace_id: str | None = None,
+) -> GradingResult:
     resolved_vars = vars if vars is not None else (test.get("vars") or {})
     output = provider_response.get("output")
     if not assertion.get("type"):
@@ -229,9 +263,22 @@ async def run_assertion(
             )
         rendered = value_from_script
 
+    # Generate a traceparent for grader calls to link them to the main trace.
+    tracing_context = get_provider_call_tracing_context()
+    get_traceparent = tracing_context.get("getActiveTraceparent") if tracing_context else None
+    active_traceparent = get_traceparent() if get_traceparent else None
+    grader_traceparent = None
+    if trace_id:
+        if active_traceparent and active_traceparent.split("-")[1] == trace_id:
+            grader_traceparent = active_traceparent
+        else:
+            from promptphoo.tracing.otel_trace_sdk import generate_span_id
+
+            grader_traceparent = f"00-{trace_id}-{generate_span_id()}-01"
     provider_call_context = (
         {"originalProvider": provider, "prompt": {"raw": prompt or "", "label": ""},
-         "vars": resolved_vars}
+         "vars": resolved_vars,
+         **({"traceparent": grader_traceparent} if grader_traceparent else {})}
         if provider is not None else None
     )  # fmt: skip
     final_test = get_final_test(

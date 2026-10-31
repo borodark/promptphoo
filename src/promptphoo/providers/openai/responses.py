@@ -18,7 +18,7 @@ from typing import Any, ClassVar
 
 from promptphoo import envars, fetch
 from promptphoo.jsonutil import js_json_parse
-from promptphoo.jsvalues import is_truthy, json_stringify
+from promptphoo.jsvalues import is_truthy, js_string, json_stringify
 from promptphoo.providers.base import ProviderResponse
 from promptphoo.providers.function_callbacks import FunctionCallbackHandler
 from promptphoo.providers.openai import gpt6
@@ -66,6 +66,11 @@ from promptphoo.providers.responses import (
 )
 from promptphoo.providers.shared import LONG_RUNNING_MODEL_TIMEOUT_MS, get_request_timeout_ms
 from promptphoo.templating import render_vars_in_object
+from promptphoo.tracing.genai_tracer import (
+    build_chat_span_context,
+    extract_provider_response_attributes,
+    with_genai_span,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -548,7 +553,30 @@ class OpenAiResponsesProvider(OpenAiGenericProvider):
                 "Streaming Responses API requests (stream: true) are not supported by "
                 "promptphoo. Remove `stream` from the provider config."
             )
-        return await self._call_api_internal(context, prepared, api_key)
+        effective_body = prepared["body"]
+
+        def as_number(value: Any) -> Any:
+            return value if isinstance(value, int | float) and not isinstance(value, bool) else None
+
+        stop = effective_body.get("stop")
+        span_context = build_chat_span_context(
+            system=self.get_gen_ai_system(),
+            model=js_string(effective_body.get("model")),
+            provider_id=self.id(),
+            prompt=prompt,
+            context=context,
+            request={
+                "maxTokens": as_number(effective_body.get("max_output_tokens")),
+                "temperature": as_number(effective_body.get("temperature")),
+                "topP": as_number(effective_body.get("top_p")),
+                "stopSequences": stop if isinstance(stop, list) else None,
+            },
+        )
+        return await with_genai_span(
+            {**span_context, "openaiApiType": "responses"},
+            lambda _span: self._call_api_internal(context, prepared, api_key),
+            extract_provider_response_attributes,
+        )
 
     def _validate_deep_research(self, model_name: str, config: dict[str, Any]) -> str | None:
         raw_tools = config.get("tools")
