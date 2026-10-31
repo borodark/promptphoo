@@ -27,7 +27,11 @@ JS/Ruby hooks are all out. The full plan is in `/home/io/.claude/plans/reactive-
 5. **Check parity** once `eval` exists: `.venv/bin/python tools/parity.py <config|--all>`. It needs a
    reference Node promptfoo, either `npx -y promptfoo@0.125.1` (ask before running it) or
    `NODE_PROMPTFOO="node ../promptfoo/dist/src/main.js"` after `npm ci && npm run build` upstream.
-6. **Commit** each coherent piece on `main` with the message `Phase N: <what>`.
+6. **Commit** each coherent piece on `main` with the message `Phase N: <what>`. If the commit makes or
+   changes a design decision, add or amend its entry in `docs/DECISIONS.md` in the same commit, and end
+   the message with a `Decision: D<n>` trailer (several: `Decision: D<n>, D<m>`). Before logging,
+   re-read the Assumption lines of entries whose Modules you touched; if one no longer holds, write a
+   new entry that replaces it.
 
 ## Conventions (keep these consistent)
 
@@ -60,6 +64,18 @@ JS/Ruby hooks are all out. The full plan is in `/home/io/.claude/plans/reactive-
 - **Python's cache file** is `<configDir>/cache/cache-py.json`, kept separate from Node's `cache.json`.
   It uses the same `{value, expires}` envelope.
 - Code style: line length 100 and py311. Use `# fmt: skip` only on dense literal blocks.
+
+## Decision log
+
+`docs/DECISIONS.md` is the record of *why*. The local knowledge graph indexes it as
+`decision:promptphoo:D<n>`. Each entry is `## N. Title` followed by bullets: Decision, Rationale,
+Assumption, Implication, `Modules:` (repo-relative paths, comma-separated) and `Commits:` (backticked
+shas). The extractor finds replacements only from the exact wording `- Note: Supersedes D<n>.` on the
+new entry and `- Note: Superseded by D<n>.` on the old one, so keep each to its own bullet with no
+colon after the verb. Elsewhere (this skill, PLAN_PORT.md, docstrings), write "see D<n>", and keep
+the words supersede/retire/obsolete off any line that also has a D-number, or the graph links that
+line to the decision as if it replaced it.
+Reasons in `tools/parity.py` EXPECTED are indexed too, as `divergence:promptphoo:<fixture>`.
 
 ## Known parity traps
 
