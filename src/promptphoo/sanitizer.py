@@ -926,8 +926,8 @@ def sanitize_config_for_output(
                 sanitized["env"][name] = value
         for field in ("auth", "headers"):
             values = provider.get(field)
-            if not values:
-                continue
+            if values is None or values is UNDEFINED or values in ("", 0, False):
+                continue  # JS `!values`: an empty object is truthy and still gets reassigned
             sanitized_values = sanitize_object(values)
             for key, value in values.items():
                 if _is_safe_tracing_credential_template(value):
