@@ -245,8 +245,7 @@ class EvalResult:
     @staticmethod
     def find_many_by_eval_id_batched(eval_id: str, batch_size: int = 100) -> Iterator[list]:
         """findManyByEvalIdBatched: batches by testIdx so that a test's results stay together."""
-        conn = db.get_db()
-        conn.row_factory = _row_factory
+        conn = _dict_cursor()
         offset = 0
         while True:
             nxt = conn.execute(
@@ -474,8 +473,7 @@ class Eval:
 
     @classmethod
     def find_by_id(cls, eval_id: str) -> Eval | None:
-        conn = db.get_db()
-        conn.row_factory = _row_factory
+        conn = _dict_cursor()
         row = conn.execute("SELECT * FROM evals WHERE id = ?", (eval_id,)).fetchone()
         if row is None:
             return None
@@ -486,8 +484,7 @@ class Eval:
 
     @classmethod
     def latest(cls) -> Eval | None:
-        conn = db.get_db()
-        conn.row_factory = _row_factory
+        conn = _dict_cursor()
         row = conn.execute("SELECT id FROM evals ORDER BY created_at DESC LIMIT 1").fetchone()
         return cls.find_by_id(row["id"]) if row else None
 
@@ -539,8 +536,7 @@ class Eval:
 
     async def read_results_by_test_idx(self, test_idx: int) -> list[EvalResult]:
         """fetchResultsByTestIdx (EvalResult.findManyByEvalId with testIdx; no ORDER BY)."""
-        conn = db.get_db()
-        conn.row_factory = _row_factory
+        conn = _dict_cursor()
         rows = conn.execute(
             "SELECT * FROM eval_results WHERE eval_id = ? AND test_idx = ?",
             (self.id, test_idx),
@@ -649,8 +645,7 @@ class Eval:
 
     def load_results(self) -> list[EvalResult]:
         if self.persisted:
-            conn = db.get_db()
-            conn.row_factory = _row_factory
+            conn = _dict_cursor()
             rows = conn.execute(
                 "SELECT * FROM eval_results WHERE eval_id = ?",  # Node: no ORDER BY
                 (self.id,),
@@ -767,6 +762,14 @@ class Eval:
         from promptphoo.output.writer import get_table
 
         return get_table(self)
+
+
+def _dict_cursor() -> Any:
+    """A cursor on the shared connection that yields dict rows, leaving the connection's own
+    row factory alone (other modules expect tuple rows from it)."""
+    cur = db.get_db().cursor()
+    cur.row_factory = _row_factory
+    return cur
 
 
 def _row_factory(cursor: Any, row: tuple[Any, ...]) -> dict[str, Any]:
