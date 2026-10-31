@@ -507,7 +507,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Spans reach the `spans` table before grading or during the stable-poll window. promptfoo's own spans (test case, provider, grader) come from the spans branch; until it lands, a traced Python eval stores only the target's spans, so unfiltered `trace-*` patterns count fewer spans than Node does.
 - Implication: With tracing enabled, every test with a `python` or `file://` assertion polls the store (6 x 250 ms by default) when no spans arrive, as upstream does.
 - Modules: src/promptphoo/assertions/trace.py, src/promptphoo/assertions/index.py, src/promptphoo/assertions/trajectory.py, src/promptphoo/evaluator/run.py, src/promptphoo/tracing/trace_context.py, src/promptphoo/tracing/span_filter.py, src/promptphoo/tracing/span_roles.py, src/promptphoo/tracing/tool_attributes.py, src/promptphoo/tracing/store.py, src/promptphoo/tracing/sanitize_attributes.py, src/promptphoo/tracing/evaluator_tracing.py
-- Commits:
+- Commits: `b646b5b`
 
 ## 55. External trace providers fetch through fetch_with_proxy; trace parity runs a stdlib sqlite3 span writer under both CLIs
 - Decision:
@@ -524,4 +524,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: A provider that writes through promptphoo's store cannot run under Node, but both CLIs read spans from the same SQLite table. Writing the rows directly gives a real cross-implementation check of the assertion path.
 - Assumption: Node and promptphoo both keep the database at `<configDir>/promptfoo.db` in WAL mode, and Node's spans for the test case, provider call and graders never match the fixture's `tool.*` / `llm.*` / `agent.*` patterns.
 - Modules: src/promptphoo/tracing/providers/__init__.py, src/promptphoo/tracing/providers/types.py, src/promptphoo/tracing/providers/fetch.py, src/promptphoo/tracing/providers/tempo.py, src/promptphoo/tracing/providers/langfuse.py, src/promptphoo/tracing/providers/braintrust.py, tools/parity.py, tests/fixtures/parity_tracing/trace-assertions.yaml, tests/fixtures/parity_tracing/span_writer.py
-- Commits:
+- Commits: `b646b5b`
