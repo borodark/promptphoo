@@ -406,6 +406,7 @@ def test_credentials(monkeypatch):
 
 
 def test_explicit_credentials_reach_boto3_client():
+    pytest.importorskip("boto3")
     p = AwsBedrockConverseProvider(
         "m", {"config": {"accessKeyId": "AK", "secretAccessKey": "SK", "region": "us-west-2"}}
     )
@@ -425,6 +426,7 @@ class _Raw:
 
 
 def test_bearer_token_auth_sent_on_wire(monkeypatch):
+    pytest.importorskip("boto3")
     from botocore.awsrequest import AWSResponse
 
     monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "bedrock-key")
@@ -691,7 +693,7 @@ def test_converse_cache_round_trip():
 
 
 def test_converse_errors():
-    from botocore.exceptions import ClientError
+    ClientError = pytest.importorskip("botocore.exceptions").ClientError
 
     def call(code):
         err = ClientError({"Error": {"Code": code, "Message": "bad"}}, "Converse")
@@ -926,7 +928,7 @@ def test_invoke_llama_and_mistral_and_titan():
 
 
 def test_invoke_errors():
-    from botocore.exceptions import ClientError
+    ClientError = pytest.importorskip("botocore.exceptions").ClientError
 
     err = ClientError({"Error": {"Code": "ValidationException", "Message": "nope"}}, "InvokeModel")
     p = with_client(AwsBedrockCompletionProvider("amazon.nova-micro-v1:0"), FakeClient([err]))

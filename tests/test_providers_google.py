@@ -355,7 +355,7 @@ class FakeCredentials:
 
 @pytest.fixture
 def adc(monkeypatch):
-    import google.auth
+    google_auth = pytest.importorskip("google.auth")
 
     calls: list[Any] = []
 
@@ -363,7 +363,7 @@ def adc(monkeypatch):
         calls.append(scopes)
         return FakeCredentials(), "adc-project"
 
-    monkeypatch.setattr(google.auth, "default", fake_default)
+    monkeypatch.setattr(google_auth, "default", fake_default)
     return calls
 
 

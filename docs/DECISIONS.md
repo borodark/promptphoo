@@ -70,6 +70,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Hooks and output writers expect the same shapes Node uses.
 - Implication: pydantic is still listed in pyproject.toml, but nothing imports it.
 - Note: Supersedes D6.
+- Note: pydantic has since been removed from the dependencies, together with the equally unused rapidfuzz and rich (see D59).
 - Modules: src/promptphoo/ajv.py, src/promptphoo/_data/config-schema.json
 - Commits: `6d075ff`
 
@@ -118,6 +119,9 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Decision: pytest-xdist is installed in the venv but is opt-in (`pytest -n auto`). It is not in pyproject.toml.
 - Rationale: The suite takes about 8 to 11 seconds either way, because worker startup costs about as much as it saves.
 - Assumption: The suite stays fast. Revisit if it grows past about 30 seconds.
+- Note: The suite has grown to about 6,500 tests and past that mark. pytest-xdist is now in the `dev` extra, and the documented verify command runs `pytest -q -n auto` (see D59).
+- Note: Superseded by D59.
+- Modules: pyproject.toml
 
 ## 14. Console table colour follows TTY detection
 - Decision: Colour the console table only when stdout is a TTY, using the supports-color rules.
@@ -676,3 +680,24 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Alternatives: Putting a header on every source file (REUSE-style) was rejected for now as noise; NOTICE plus module docstrings ("Ports src/...ts", "Apache-2.0; see NOTICE") identify provenance.
 - Implication: New vendored files or ported third-party algorithms need a NOTICE entry. The NOTICE also states that promptphoo is unofficial and not endorsed by Promptfoo, Inc. or OpenAI.
 - Modules: LICENSE, NOTICE, LICENSES/Apache-2.0.txt, src/promptphoo/_data/NOTICE, pyproject.toml
+
+## 59. Packaging for the alpha: only used dependencies, an extra per optional library, xdist for development
+- Decision:
+  - The core dependencies are only what promptphoo imports: click, pyyaml, jinja2, httpx, jsonschema and python-dotenv. pydantic, rapidfuzz and rich are dropped; nothing imported them.
+  - Each optional library has an extra: `nlp` (nltk), `sql` (sqlglot), `bedrock` (boto3), `vertex` (google-auth), `pdf` (pypdf) and `http-signing` (cryptography, for the HTTP provider's `signatureAuth`). `all` installs every one of them.
+  - `dev` adds pytest-xdist, and the documented verify command runs `pytest -q -n auto`.
+  - The version is `0.1.0a1`. The metadata gains classifiers (Alpha, Console, MIT, Python 3.11 to 3.13), keywords and an Upstream project URL. Homepage and Issues URLs wait until the repository has a public home.
+- Rationale: A dependency nobody imports is a cost to every installer and a false signal to license and security scanners. cryptography was already imported lazily by `providers/http/signature.py`, but nothing declared it.
+- Alternatives: Making cryptography a core dependency was rejected: only signed HTTP targets need it, and it is a large binary wheel.
+- Assumption: Every optional import stays lazy, inside the function that needs it, so the base install imports cleanly.
+- Implication: Parallel test runs become the documented default, replacing D13's serial default, and D7's remark that pydantic is still listed is out of date (see its note). A missing extra fails only when the feature that needs it runs, and its tests skip.
+- Note: Supersedes D13.
+- Modules: pyproject.toml, src/promptphoo/__init__.py
+
+## 60. The test suite never touches the real state directory or needs an optional extra
+- Decision:
+  - An autouse fixture in `tests/conftest.py` gives every test a fresh `PROMPTFOO_CONFIG_DIR` under pytest's temp directory, clears `PROMPTFOO_CACHE_PATH` and `PROMPTFOO_LOG_DIR`, and resets the config-directory override in `paths.py`. The database, cache, logs, blobs and `promptfoo.yaml` all resolve under that directory. A test that needs a particular directory still sets it itself.
+  - Tests that need `boto3`/`botocore`, `cryptography` or `google-auth` call `pytest.importorskip` at the point of use, as `tests/test_assertions_sql.py` does for sqlglot, so the suite passes on a base install plus `dev`.
+- Rationale: Run with `HOME` pointing at an empty directory, the suite without the fixture created `~/.promptfoo/promptfoo.db`; with it, nothing is created. Tests that write to the user's real eval history, or that read whatever is already there, are both harmful and flaky.
+- Assumption: Every state path goes through `paths.get_config_directory_path` or one of the two env vars cleared here.
+- Modules: tests/conftest.py, tests/test_providers_bedrock.py, tests/test_providers_http.py, tests/test_providers_google.py

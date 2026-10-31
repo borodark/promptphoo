@@ -1633,6 +1633,7 @@ async def test_token_overwrite_warning(fake_fetch, caplog):
 
 
 def _rsa_pem() -> tuple[str, Any]:
+    pytest.importorskip("cryptography")
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -1726,6 +1727,8 @@ async def test_signature_auth_inline_key_and_errors(fake_fetch):
 
 async def test_signature_auth_pfx(tmp_path):
     import datetime
+
+    pytest.importorskip("cryptography")
 
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
