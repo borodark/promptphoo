@@ -855,8 +855,19 @@ async def _apply_response_outcome(
         )  # fmt: skip
     if processed.get("output") is None:
         raise ValueError("Response output should not be null")
+    from promptphoo.blobs.extractor import extract_and_store_binary_data
 
-    assertion_response = {**processed, "providerTransformedOutput": provider_transformed_output}
+    blob_context = {"evalId": step.eval_id, "testIdx": step.test_idx, "promptIdx": step.prompt_idx}
+    processed = extract_and_store_binary_data(processed, blob_context) or processed
+
+    # Keep generated audio available to graders after persistence replaces its inline bytes
+    # with a blob reference in the saved result.
+    raw_audio = response.get("audio")
+    assertion_response = {
+        **processed,
+        **({"audio": raw_audio} if isinstance(raw_audio, dict) and raw_audio.get("data") else {}),
+        "providerTransformedOutput": provider_transformed_output,
+    }
     check = await with_provider_call_execution_context(
         {"abortSignal": None, "rateLimitRegistry": step.rate_limit_registry},
         lambda: run_assertions(

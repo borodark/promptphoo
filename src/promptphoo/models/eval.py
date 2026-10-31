@@ -139,6 +139,13 @@ class EvalResult:
             r.get("traceId"),
             r.get("evaluationId"),
         )
+        from promptphoo.blobs.extractor import extract_and_store_binary_data
+
+        processed_response = extract_and_store_binary_data(
+            result.get("response"),
+            {"evalId": eval_id, "testIdx": result.get("testIdx"),
+             "promptIdx": result.get("promptIdx")},
+        )  # fmt: skip
         error = r.get("error")
         args: dict[str, Any] = {
             "id": str(uuid.uuid4()),
@@ -151,7 +158,8 @@ class EvalResult:
             "error": None if error is None else str(error),
             "success": r["success"],
             "score": 0 if r.get("score") is None else r["score"],
-            "response": rs.sanitize_for_db(result.get("response") or None),
+            # `processedResponse || null`: a response is an object (truthy in JS) or absent.
+            "response": rs.sanitize_for_db(processed_response),
             "gradingResult": rs.sanitize_for_db(r.get("gradingResult") or None),
             "namedScores": rs.sanitize_for_db(r.get("namedScores")),
             "provider": rs.sanitize_provider(r["provider"]),

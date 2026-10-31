@@ -3,14 +3,13 @@
 Reads a promptfoo eval export (a v3 `results` summary written for a v4 eval, or a legacy
 table-backed v2 summary) or an OpenAI Evals output-items JSONL file and writes it to the shared
 SQLite DB. Traces in the export are restored into the `traces`/`spans` tables. Embedded blob
-assets (`--include-media` exports) are validated exactly as upstream validates them, then
-skipped: promptphoo has no blob store until Phase 6 (see D43).
+assets (`--include-media` exports) are validated exactly as upstream validates them, stored in
+the blob store before any `--force` delete, and referenced from the new eval with
+`location='import'` (see D49).
 """
 
 from __future__ import annotations
 
-import base64
-import binascii
 import email.utils
 import errno
 import hashlib
@@ -24,16 +23,22 @@ from typing import Any
 import click
 
 from promptphoo import db
+from promptphoo.blobs import (
+    BLOB_MAX_SIZE,
+    is_safe_inline_blob_mime_type,
+    record_blob_reference,
+    store_blob,
+)
+from promptphoo.blobs.blob_refs import BLOB_HASH_REGEX, collect_blob_hashes
+from promptphoo.blobs.extractor import buffer_from_base64
 from promptphoo.jsvalues import is_truthy, json_stringify
 from promptphoo.models import result_sanitize as rs
 
 logger = logging.getLogger("promptphoo")
 
-BLOB_MAX_SIZE = 52_428_800
-BLOB_SCHEME = "promptfoo://blob/"
-BLOB_HASH_REGEX = re.compile(r"^[a-f0-9]{64}\Z", re.I)
-BLOB_URI_REGEX = re.compile(r"promptfoo://blob/([a-f0-9]{64})", re.I)
 MAX_EXPORTED_BLOB_BASE64_LENGTH = math.ceil(BLOB_MAX_SIZE / 3) * 4 + 4
+# Portable exports are untrusted input; imported blobs must not become active same-origin content.
+IMPORTED_BLOB_MIME_TYPE_FALLBACK = "application/octet-stream"
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _MAX_DATE_MS = 8.64e15
@@ -206,63 +211,6 @@ def is_importable_legacy_results(results: Any) -> bool:
 # --- blob assets ------------------------------------------------------------------------------
 
 
-def _extract_blob_hashes_from_string(value: str, max_string_length: int | None) -> list[str]:
-    if BLOB_SCHEME not in value:
-        return []
-    if (
-        max_string_length is not None
-        and not value.startswith(BLOB_SCHEME)
-        and len(value) > max_string_length
-    ):
-        return []
-    return [m.group(1).lower() for m in BLOB_URI_REGEX.finditer(value)]
-
-
-def _extract_blob_hashes_from_value(value: Any, max_string_length: int | None) -> list[str]:
-    if isinstance(value, str):
-        return _extract_blob_hashes_from_string(value, max_string_length)
-    if not isinstance(value, dict):
-        return []
-    hash_ = value.get("hash")
-    if isinstance(hash_, str) and BLOB_HASH_REGEX.match(hash_):
-        return [hash_.lower()]
-    uri = value.get("uri")
-    if isinstance(uri, str):
-        return _extract_blob_hashes_from_string(uri, max_string_length)
-    return []
-
-
-def collect_blob_hashes(
-    value: Any,
-    *,
-    max_depth: int | None = None,
-    max_string_length: int | None = None,
-    hashes: set[str] | None = None,
-    depth: int = 0,
-    visited: set[int] | None = None,
-) -> set[str]:
-    """collectBlobHashes (src/blobs/blobRefs.ts)."""
-    hashes = set() if hashes is None else hashes
-    visited = set() if visited is None else visited
-    if max_depth is not None and depth > max_depth:
-        return hashes
-    hashes.update(_extract_blob_hashes_from_value(value, max_string_length))
-    if not isinstance(value, dict | list) or id(value) in visited:
-        return hashes
-    visited.add(id(value))
-    children = value if isinstance(value, list) else list(value.values())
-    for child in children:
-        collect_blob_hashes(
-            child,
-            max_depth=max_depth,
-            max_string_length=max_string_length,
-            hashes=hashes,
-            depth=depth + 1,
-            visited=visited,
-        )
-    return hashes
-
-
 def _is_importable_blob_asset(asset: Any) -> bool:
     if not isinstance(asset, dict):
         return False
@@ -281,17 +229,11 @@ def _is_importable_blob_asset(asset: Any) -> bool:
     )
 
 
-def _node_base64_decode(data: str) -> bytes:
-    """Buffer.from(data, 'base64'): accepts url-safe letters, skips junk, stops at '='."""
-    cleaned = data.replace("-", "+").replace("_", "/")
-    cleaned = cleaned.split("=", 1)[0]
-    cleaned = re.sub(r"[^A-Za-z0-9+/]", "", cleaned)
-    if len(cleaned) % 4 == 1:
-        cleaned = cleaned[:-1]
-    try:
-        return base64.b64decode(cleaned + "=" * (-len(cleaned) % 4))
-    except binascii.Error:
-        return b""
+def _sanitize_imported_blob_mime_type(mime_type: str) -> str:
+    normalized = mime_type.strip().lower()
+    if is_safe_inline_blob_mime_type(normalized):
+        return normalized
+    return IMPORTED_BLOB_MIME_TYPE_FALLBACK
 
 
 def _validate_blob_asset_data(asset: dict[str, Any]) -> bytes:
@@ -299,7 +241,7 @@ def _validate_blob_asset_data(asset: dict[str, Any]) -> bytes:
         raise ValueError(
             f"Embedded blob {asset['hash']} exceeds the {BLOB_MAX_SIZE} byte import limit"
         )
-    data = _node_base64_decode(asset["data"])
+    data = buffer_from_base64(asset["data"])
     if len(data) != asset["sizeBytes"]:
         raise ValueError(f"Embedded blob {asset['hash']} size does not match its exported metadata")
     if hashlib.sha256(data).hexdigest() != asset["hash"].lower():
@@ -308,7 +250,7 @@ def _validate_blob_asset_data(asset: dict[str, Any]) -> bytes:
 
 
 def prepare_blob_assets(
-    blob_assets: Any, referenced: set[str]
+    blob_assets: Any, referenced: dict[str, None]
 ) -> list[tuple[dict[str, Any], bytes]]:
     if not isinstance(blob_assets, list):
         return []
@@ -325,14 +267,19 @@ def prepare_blob_assets(
 
 
 def import_blob_assets(blob_assets: list[tuple[dict[str, Any], bytes]]) -> None:
-    """importBlobAssets. No blob store yet (Phase 6): validated assets are dropped with a
-    warning, and the eval keeps its `promptfoo://blob/` references."""
-    if blob_assets:
-        logger.warning(
-            "Skipping %d embedded media blob(s): promptphoo has no blob store yet, so their "
-            "promptfoo://blob/ references will not resolve in this database.",
-            len(blob_assets),
-        )
+    """importBlobAssets: store each validated asset (with a sanitized MIME type) before any
+    destructive replace, so a corrupt artifact cannot delete the existing eval."""
+    for asset, data in blob_assets:
+        result = store_blob(data, _sanitize_imported_blob_mime_type(asset["mimeType"]))
+        if result.ref["hash"] != asset["hash"].lower():
+            raise ValueError(f"Embedded blob hash mismatch for {asset['hash']}")
+
+
+def record_imported_blob_references(
+    blob_assets: list[tuple[dict[str, Any], bytes]], eval_id: str
+) -> None:
+    for asset, _data in blob_assets:
+        record_blob_reference(asset["hash"].lower(), {"evalId": eval_id, "location": "import"})
 
 
 # --- traces -----------------------------------------------------------------------------------
@@ -440,7 +387,10 @@ def _prepare_import_artifacts(eval_data: Any, import_v3: bool) -> dict[str, Any]
 
 
 def _create_imported_v3_eval(
-    eval_data: dict[str, Any], traces: list[dict[str, Any]], context: dict[str, Any]
+    eval_data: dict[str, Any],
+    traces: list[dict[str, Any]],
+    blob_assets: list[tuple[dict[str, Any], bytes]],
+    context: dict[str, Any],
 ) -> str:
     from promptphoo.db import import_export as ie
 
@@ -462,6 +412,7 @@ def _create_imported_v3_eval(
         results["results"], imported_trace_ids, record.id
     )
     ie.create_many_from_evaluate_result(imported_results, record.id)
+    record_imported_blob_references(blob_assets, record.id)
     return record.id
 
 
@@ -576,7 +527,9 @@ def import_eval(file: str, *, new_id: bool = False, force: bool = False) -> int:
             "importAuthor": import_author,
         }
         if state["importV3"]:
-            eval_id = _create_imported_v3_eval(eval_data, artifacts["traces"], context)
+            eval_id = _create_imported_v3_eval(
+                eval_data, artifacts["traces"], artifacts["blobAssets"], context
+            )
         else:
             eval_id = _create_imported_v2_eval(eval_data, context)
         db.update_signal_file(eval_id)

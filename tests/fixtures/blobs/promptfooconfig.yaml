@@ -1,0 +1,25 @@
+description: blobs
+prompts:
+  - "Draw {{thing}}"
+providers:
+  - id: file://provider.py
+    label: image
+    config: {mode: image}
+  - id: file://provider.py
+    label: images
+    config: {mode: images}
+  - id: file://provider.py
+    label: audio
+    config: {mode: audio}
+  - id: file://provider.py
+    label: b64json
+    config: {mode: b64json}
+  - id: file://provider.py
+    label: svg
+    config: {mode: svg}
+  - id: file://provider.py
+    label: small
+    config: {mode: small}
+tests:
+  - vars: {thing: cat}
+  - vars: {thing: dog}

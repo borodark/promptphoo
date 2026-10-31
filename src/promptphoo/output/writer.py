@@ -233,9 +233,80 @@ def create_output_data(
         from promptphoo import sanitizer
 
         output["runtimeOptions"] = sanitizer.sanitize_runtime_options(runtime_options)
-    # Traces and blob assets (includeMedia) come from upstream's tracing store and blob store,
-    # neither of which exists in promptphoo, so they are always omitted.
+    # Traces come from upstream's tracing store, which promptphoo does not have yet.
+    if include_media:
+        blob_assets = export_blob_assets(
+            eval_record.id,
+            summary,
+            strip_flags["shouldStripResponseOutput"],
+            output.get("traces"),
+        )
+        if blob_assets:
+            output["blobAssets"] = blob_assets
     return output
+
+
+def results_for_media_export_scan(results: Any, should_strip_response_output: bool) -> Any:
+    """resultsForMediaExportScan: with response output stripping on, `metadata.blobUris` must
+    not pull the stripped media back into the export."""
+    if not should_strip_response_output:
+        return results
+
+    def project(result: Any) -> Any:
+        response = result.get("response") if isinstance(result, dict) else None
+        metadata = response.get("metadata") if isinstance(response, dict) else None
+        if not isinstance(metadata, dict) or "blobUris" not in metadata:
+            return result
+        assert isinstance(response, dict)
+        rest = {k: v for k, v in metadata.items() if k != "blobUris"}
+        projected = {k: v for k, v in response.items() if k != "metadata"}
+        if rest:
+            projected["metadata"] = rest
+        return {**result, "response": projected}
+
+    return {**results, "results": [project(r) for r in results.get("results") or []]}
+
+
+def export_blob_assets(
+    eval_id: str, results: Any, should_strip_response_output: bool, traces: Any = None
+) -> list[dict[str, Any]]:
+    """exportBlobAssets (src/util/output.ts): the referenced blobs the eval has trusted
+    provenance for, base64-embedded in discovery order."""
+    import base64
+
+    from promptphoo.blobs import BLOB_MAX_SIZE, get_share_authorized_blob
+    from promptphoo.blobs.blob_refs import collect_blob_hashes
+
+    scan = {
+        "results": results_for_media_export_scan(results, should_strip_response_output),
+        "traces": traces,
+    }
+    assets: list[dict[str, Any]] = []
+    for hash_ in collect_blob_hashes(scan):
+        try:
+            blob = get_share_authorized_blob(hash_, eval_id)
+            if not blob:
+                continue
+            if len(blob.data) > BLOB_MAX_SIZE:
+                logger.warning(
+                    "[Output] Skipping oversized blob in eval export (hash=%s, sizeBytes=%d)",
+                    hash_,
+                    len(blob.data),
+                )
+                continue
+            assets.append(
+                {
+                    "hash": hash_,
+                    "mimeType": blob.metadata.get("mimeType"),
+                    "sizeBytes": len(blob.data),
+                    "data": base64.b64encode(blob.data).decode("ascii"),
+                }
+            )
+        except Exception as error:
+            logger.warning(
+                "[Output] Skipping missing blob in eval export (hash=%s): %s", hash_, error
+            )
+    return assets
 
 
 # --- per-format writers ---------------------------------------------------------------------
@@ -246,9 +317,11 @@ def _write_text(path: str, text: str) -> None:
         f.write(text)
 
 
-def _write_json(output_path: str, eval_record: Any, shareable_url: str | None) -> None:
+def _write_json(
+    output_path: str, eval_record: Any, shareable_url: str | None, include_media: bool = False
+) -> None:
     try:
-        data = create_output_data(eval_record, shareable_url)
+        data = create_output_data(eval_record, shareable_url, include_media)
         text = json_stringify(data, 2)
     except MemoryError as exc:
         count = len(getattr(eval_record, "results", None) or [])
@@ -505,8 +578,11 @@ def _rewrite_with_external_backup(output_path: str, mode: int | None, text: str)
 # --- public API -----------------------------------------------------------------------------
 
 
-def write_output(output_path: str, eval_record: Any, share_url: str | None = None) -> None:
-    """writeOutput(outputPath, evalRecord, shareableUrl)."""
+def write_output(
+    output_path: str, eval_record: Any, share_url: str | None = None, include_media: bool = False
+) -> None:
+    """writeOutput(outputPath, evalRecord, shareableUrl, {includeMedia}). Only the json and
+    yaml/yml/txt formats embed media, as upstream."""
     if output_path.startswith("https://docs.google.com/spreadsheets/"):
         raise RuntimeError(
             "Writing results to Google Sheets is not supported by promptphoo; "
@@ -530,9 +606,10 @@ def write_output(output_path: str, eval_record: Any, share_url: str | None = Non
                 is_redteam=is_truthy((eval_record.config or {}).get("redteam")),
             )
     elif fmt == "json":
-        _write_json(output_path, eval_record, share_url)
+        _write_json(output_path, eval_record, share_url, include_media)
     elif fmt in ("yaml", "yml", "txt"):
-        _write_text(output_path, jsyaml.dump(create_output_data(eval_record, share_url)))
+        data = create_output_data(eval_record, share_url, include_media)
+        _write_text(output_path, jsyaml.dump(data))
     elif fmt == "html":
         _write_text(output_path, _render_html(eval_record))
     elif fmt == "jsonl":
