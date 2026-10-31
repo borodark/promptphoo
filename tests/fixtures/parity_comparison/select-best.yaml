@@ -1,0 +1,19 @@
+description: select-best parity
+prompts:
+  - "Lyon is a city in {{country}}"
+  - "Paris is the capital of {{country}}"
+providers:
+  - echo
+tests:
+  - vars: {country: France}
+    assert:
+      - type: contains
+        value: "{{country}}"
+      - type: select-best
+        value: names the capital
+        provider: file://grader.py
+  - vars: {country: Spain}
+    assert:
+      - type: select-best
+        value: names the capital
+        provider: file://grader.py

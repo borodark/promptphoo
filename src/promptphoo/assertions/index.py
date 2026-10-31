@@ -338,3 +338,29 @@ def read_assertions(file_path: str) -> list[dict[str, Any]]:
         return assertions
     except Exception as e:
         raise ValueError(f"Failed to read assertions from {file_path}:\n{e}") from e
+
+
+async def run_compare_assertion(
+    test: dict[str, Any],
+    assertion: dict[str, Any],
+    outputs: list[Any],
+    context: dict[str, Any] | None = None,
+) -> list[GradingResult]:
+    """runCompareAssertion: grade every output of one test together (select-best)."""
+    from promptphoo.matchers.comparison import matches_select_best
+
+    if not isinstance(assertion.get("value"), str):
+        raise ValueError("select-best must have a string value")
+    # The matcher needs options and vars, not the assertion list. A runtime assertion can
+    # contain a provider with a live client, which get_final_test cannot deep-copy.
+    final = get_final_test({**test, "assert": None}, assertion)
+    comparison_results = await matches_select_best(
+        assertion["value"], outputs, final.get("options"), final.get("vars"), context
+    )
+    # The runtime assertion may contain a live grader and secrets. Results only need
+    # the comparison criteria and scoring labels, so keep provider config out of memory.
+    safe_assertion: dict[str, Any] = {"type": assertion["type"], "value": assertion["value"]}
+    for key in ("metric", "weight"):
+        if assertion.get(key) is not None:
+            safe_assertion[key] = assertion[key]
+    return [{**result, "assertion": safe_assertion} for result in comparison_results]
