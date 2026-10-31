@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 
 import click
@@ -12,11 +13,13 @@ from promptphoo.envfile import env_paths_from_argv, setup_env
 
 
 class _StreamHandler(logging.Handler):
-    """Info to stdout, warnings and errors to stderr, plain text like Node's console logger."""
+    """Plain text like Node's winston console transport: every level goes to stdout, or every
+    level to stderr when PROMPTFOO_LOG_TO_STDERR=true (src/logger.ts)."""
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            stream = sys.stderr if record.levelno >= logging.WARNING else sys.stdout
+            to_stderr = os.environ.get("PROMPTFOO_LOG_TO_STDERR") == "true"
+            stream = sys.stderr if to_stderr else sys.stdout
             stream.write(self.format(record) + "\n")
             stream.flush()
         except Exception:
