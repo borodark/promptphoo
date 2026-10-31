@@ -7,7 +7,8 @@ description: Port a module of upstream promptfoo (TypeScript, ../promptfoo, v0.1
 
 The goal is a **drop-in replacement**: the same YAML configs, CLI flags, `~/.promptfoo` SQLite schema and drizzle
 migrations, and output JSON. Scope is the eval core. Redteam, the web UI, code-scan, the optimizer, MCP and
-JS/Ruby hooks are all out. The full plan is in `/home/io/.claude/plans/reactive-sprouting-tower.md`.
+JS/Ruby hooks are all out. The historical plan is `docs/PLAN_PORT.md`, the current scope is
+`docs/SCOPE.md`, and the contributor conventions are in `CONTRIBUTING.md`.
 
 ## Workflow
 
@@ -15,16 +16,17 @@ JS/Ruby hooks are all out. The full plan is in `/home/io/.claude/plans/reactive-
    `grep -v "^import" ../promptfoo/src/<file>.ts`, or use `sed -n '/export function X/,/^}/p'` for one function.
    Keep Node's names (snake_cased), its branch order and its error messages, because users and the parity
    diffs both see them. Put the source file in the module docstring ("Ports src/...ts").
-2. **Put the module where the plan's layout table says** (`src/promptphoo/<area>/`). Import modules from
-   later phases lazily, inside the function, so that earlier phases still import cleanly.
+2. **Put the module where the plan's layout table says** (`src/promptphoo/<area>/`). Import optional
+   or heavy modules (provider families, optional extras) lazily, inside the function.
 3. **Write tests** in `tests/test_<area>.py`. Use the upstream fixtures (`../promptfoo/test/...`,
    `../promptfoo/test/smoke/fixtures/configs/`) and the expected values from upstream's own specs.
    When it's practical, generate golden output from real Node. One example is `tools/nunjucks_golden.js`,
    which needs nunjucks installed under a scratch `NODE_PATH`.
 4. **Verify** with:
-   `.venv/bin/pytest -q && .venv/bin/ruff check src tests tools && .venv/bin/ruff format --check src tests tools && .venv/bin/pyright`
-   Pyright errors about modules that don't exist yet are expected until the phase that adds them.
-5. **Check parity** once `eval` exists: `.venv/bin/python tools/parity.py <config|--all>`. It needs a
+   `.venv/bin/pytest -q -n auto && .venv/bin/ruff check src tests tools && .venv/bin/ruff format --check src tests tools && .venv/bin/pyright`
+   Then `.venv/bin/python tools/check_refs.py` to check the paths and `D<n>` references in docs
+   and comments.
+5. **Check parity**: `.venv/bin/python tools/parity.py <config|--all>`. It needs a
    reference Node promptfoo, either `npx -y promptfoo@0.125.1` (ask before running it) or
    `NODE_PROMPTFOO="node ../promptfoo/dist/src/main.js"` after `npm ci && npm run build` upstream.
 6. **Commit** each coherent piece on `main` with the message `Phase N: <what>`. If the commit makes or
@@ -67,15 +69,16 @@ JS/Ruby hooks are all out. The full plan is in `/home/io/.claude/plans/reactive-
 
 ## Decision log
 
-`docs/DECISIONS.md` is the record of *why*. The local knowledge graph indexes it as
-`decision:promptphoo:D<n>`. Each entry is `## N. Title` followed by bullets: Decision, Rationale,
-Assumption, Implication, `Modules:` (repo-relative paths, comma-separated) and `Commits:` (backticked
-shas). The extractor finds replacements only from the exact wording `- Note: Supersedes D<n>.` on the
-new entry and `- Note: Superseded by D<n>.` on the old one, so keep each to its own bullet with no
-colon after the verb. Elsewhere (this skill, PLAN_PORT.md, docstrings), write "see D<n>", and keep
-the words supersede/retire/obsolete off any line that also has a D-number, or the graph links that
-line to the decision as if it replaced it.
-Reasons in `tools/parity.py` EXPECTED are indexed too, as `divergence:promptphoo:<fixture>`.
+`docs/DECISIONS.md` is the record of *why*; its preamble describes the format. Each entry is
+`## N. Title` followed by bullets: Decision, Rationale, Alternatives, Assumption, Implication,
+Note, `Modules:` (repo-relative paths, comma-separated) and `Commits:` (backticked shas). A
+replacement is recorded only with the exact bullets `- Note: Supersedes D<n>.` on the new entry
+and `- Note: Superseded by D<n>.` on the old one, each on its own line. Elsewhere (this skill,
+PLAN_PORT.md, docstrings), write "see D<n>", and keep the words supersede/retire/obsolete off any
+line that also has a D-number, so that only the supersession bullets read as replacements. The
+log is append-only: correct an out-of-date entry with a `- Note:` bullet, and never reuse or
+renumber an entry. Every reason in `tools/parity.py` EXPECTED should name its decision or the
+upstream behaviour that explains it.
 
 ## Known parity traps
 

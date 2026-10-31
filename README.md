@@ -121,12 +121,13 @@ If promptfoo serves your needs, use promptfoo. It is the original, and it is mai
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev,all]'
-.venv/bin/pytest -q -n auto && .venv/bin/ruff check src tests tools && .venv/bin/pyright
+.venv/bin/pytest -q -n auto && .venv/bin/ruff check src tests tools && .venv/bin/ruff format --check src tests tools && .venv/bin/pyright
 NODE_PROMPTFOO="node /path/to/promptfoo/dist/src/main.js" .venv/bin/python tools/parity.py --all
 ```
 
 - `tools/parity.py` runs upstream's smoke fixtures through both CLIs and diffs the normalized JSON. Its outputs land in `.parity/`.
 - With `NODE_PROMPTFOO` set, the interop suites also run. They check that each CLI reads the other's databases, exports, imports, blobs and traces.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) has the porting rule, the decision-log format and the commit conventions.
 - `src/promptphoo/_data/` holds upstream assets that are vendored unchanged, or generated from upstream by Node: migrations, the config schema, grading prompts and init templates. The scripts under `tools/` regenerate them.
 
 **Credits.** promptfoo is © Promptfoo and its contributors, released under the MIT license. promptphoo is an independent port. It is not affiliated with or endorsed by Promptfoo or OpenAI.

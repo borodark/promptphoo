@@ -1,10 +1,13 @@
-<!-- Snapshot of the approved plan (~/.claude/plans/reactive-sprouting-tower.md, 2026-10-30).
-     Phases and layout live here; the reasons behind choices live in DECISIONS.md. -->
+# The porting plan (historical)
 
-# Plan: Port promptfoo eval core to Python 3 (`promptphoo`)
+This is the plan the port was built from, approved on 2026-10-30 before the first commit. It is
+kept as a record: the phases, the module layout and the design points below are as planned, and
+each phase ends with a short **Outcome** saying what was actually built and which decisions
+explain the differences. The reasons behind individual choices are in
+[DECISIONS.md](DECISIONS.md), and what is covered today is in [SCOPE.md](SCOPE.md).
 
 ## Context
-`../promptfoo` (v0.125.1) is a ~250k-line TypeScript LLM-eval toolkit plus a 200k-line React UI. We want a Python 3 implementation in `/home/io/projects/promptphoo` (currently empty, not a git repo).
+promptfoo v0.125.1 (checked out as `../promptfoo` next to this repository) is a ~250k-line TypeScript LLM-eval toolkit plus a 200k-line React UI. The goal was a Python 3 implementation of its eval core, started from an empty repository.
 
 Decisions already made: scope D1, drop-in compatibility D2, Python-only hooks D3, Jinja2 for Nunjucks D4 (see [DECISIONS.md](DECISIONS.md)).
 
@@ -21,6 +24,8 @@ Success means two things:
 - Other libraries: `pyyaml`, `jsonschema`, `rapidfuzz`, `rich` (table and progress), `sqlite3` from the stdlib, `python-dotenv`.
 - Optional extras: `nltk` (meteor), `sqlglot` (is-sql), `boto3` (bedrock), `google-auth` (vertex), `pypdf`.
 - Tooling: `ruff`, `pyright`, `pytest`, `pytest-asyncio`, `respx` (HTTP mocking).
+
+**Outcome.** The package is built with hatchling and installed with pip into a venv; `uv` was not needed. Runtime data stayed plain dicts (D7, which replaced D6), so pydantic was never used, and neither were `rapidfuzz` or `rich`: the console table and text metrics are hand-ported to match Node byte for byte (D15, D58). All three were dropped from the dependencies (D59).
 
 ## Package layout (`src/promptphoo/`)
 Each module mirrors its TypeScript source:
@@ -48,6 +53,8 @@ Each module mirrors its TypeScript source:
 | `envars.py` | `src/envars.ts` | typed `PROMPTFOO_*` accessors |
 
 `drizzle/*.sql`, `drizzle/meta/_journal.json`, `src/tableOutput.html` and `src/python/wrapper.py` / `persistent_wrapper.py` are copied in as package data.
+
+**Outcome.** The layout held, with these differences. There is no `types/` package, because runtime data is plain dicts (D7). The DB connection and the migrator live in `db/__init__.py` (D10), with the queries in `db/queries.py` and import/export in `db/import_export.py`. The grading prompts are vendored as `_data/grading_prompts.json` rather than written as Python modules (D25). Later phases added `blobs/` (D48) and `tracing/` (D51–D57), and the OpenAI-compatible families live in `providers/compatible/` (D31).
 
 ## Key design points
 
@@ -105,6 +112,8 @@ Each phase ends with its parity-harness subset passing.
 - Write the parity harness: `tools/parity.py <config>` runs `npx promptfoo eval -c X -o node.json --no-write` (this needs `npm ci` in `../promptfoo`) and `promptphoo eval -c X -o py.json --no-write`. It normalizes ids, timestamps, latency and durations, then diffs the two files.
 - Feed it the fixtures from `test/smoke/fixtures/configs/`.
 
+*Outcome:* `tools/parity.py` runs every fixture under both CLIs in parallel and keeps a checked-in list of expected divergences (D12). The Node reference is the published 0.125.1 npm package run as `dist/src/main.js`, passed in `NODE_PROMPTFOO` (D11).
+
 **Phase 1: config, types, prompts, templating, tests**
 - Pydantic schemas.
 - `readConfig`, dereferencing, combining configs, env vars.
@@ -112,6 +121,8 @@ Each phase ends with its parity-harness subset passing.
 - Test readers: yaml, json, jsonl, csv with `__` columns, py `generate_tests`, globs. Google Sheets is optional.
 - `defaultTest`, scenarios, the var cartesian product (`evaluator.ts:2142`) and the Jinja shim.
 - Unit tests port the relevant `test/util/*` and `test/prompts/*` specs.
+
+*Outcome:* Done without pydantic: configs are plain camelCase dicts validated against the vendored JSON schema, with warnings only (D7). Templates run on Jinja2 configured to behave like Nunjucks and checked against goldens from real Nunjucks (D4). Config merging uses JS truthiness (D17, which replaced D16), and JS `undefined` is an omitted key (D8). Google Sheets and other remote test sources were not ported (see SCOPE.md).
 
 **Phase 2: evaluator, deterministic path and DB**
 - `Evaluator` and `runEval`: concurrency, `repeat` with the `repeat:i` cache namespace, delay, abort, timeouts (`PROMPTFOO_EVAL_TIMEOUT_MS`, `PROMPTFOO_MAX_EVAL_TIME_MS`), `transformVars` and `options.transform`. Serial mode is forced for `_conversation` and `storeOutputAs`.
@@ -122,6 +133,8 @@ Each phase ends with its parity-harness subset passing.
 - Outputs: the console table and all file writers.
 - DB writes and migrations, and the exit code from `PROMPTFOO_PASS_RATE_THRESHOLD`.
 - Exit criterion: at least 90% of the echo/python/exec smoke fixtures match Node.
+
+*Outcome:* The exit criterion was met with 61 fixtures passing and no unexpected failures (D12). Ids and hashes go through a JSON.stringify port (D9), the migrator is drizzle-compatible and refuses a newer database (D10), and the console table colours its borders as Node does even when piped (D15, which replaced D14).
 
 **Phase 3: network providers, cache and scheduler**
 - The cache module.
@@ -138,11 +151,15 @@ Each phase ends with its parity-harness subset passing.
 - Cost tables come from the per-provider pricing files.
 - Tests use `respx` to replay recorded responses.
 
+*Outcome:* Every listed family landed. The fetch contract and a lazy provider registry came first (D18), the areas were ported on parallel branches (D19, D20), and the scheduler and fetch layer share one retry context (D22). TLS verification follows upstream's default (D21). The OpenAI Responses provider rejects streaming and background polling (D23). Azure supports API-key and two Entra ID credentials (D24). The OpenAI-compatible wrappers became a data table plus one module per family with its own behaviour (D31), and Mistral and AI21 were left out.
+
 **Phase 4: model-graded assertions**
 - Default grader selection, ported faithfully from `src/providers/defaults.ts:73-259`.
 - `get_grading_provider` from `src/matchers/providers.ts:205`.
 - Assertions: llm-rubric, model-graded-closedqa, factuality, model-graded-factuality, g-eval, answer-relevance, context-*, similar (cosine, dot, euclidean), classifier, moderation, select-best and max-score (`evaluator.ts:4962-5263`), and search-rubric.
 - Grading prompts are copied verbatim. Rendering parity is tested by comparing Jinja output with the Nunjucks output captured from Node.
+
+*Outcome:* All listed assertions landed, ported on parallel branches against shims that the real grading infrastructure replaced at merge (D27, D29). Graders always run locally (D25, D32), the default-grader selection skips families promptphoo lacks (D33), and grader references reuse configured provider instances (D34). `agent-rubric` needs an explicitly configured agentic grader (D26), and `pi` is out of scope because it needs Promptfoo's remote API (D25). The parity harness compares captured grader prompts byte for byte (D35).
 
 **Phase 5: rest of the CLI and eval flags**
 - Filters: first-n, pattern, range, prompts, providers, sample/seed, failing, errors-only, metadata.
@@ -153,11 +170,15 @@ Each phase ends with its parity-harness subset passing.
   - `generate dataset`/`assertions` are optional
 - Telemetry is a no-op.
 
+*Outcome:* All listed flags and commands landed, plus `logs`, `debug` and `feedback`. Resume, retry-errors and Ctrl+C pause replay the stored eval (D36, which replaced D29). `--filter-failing` follows Node's matching (D37), extension hooks run in Python (D38), and `--watch` polls files (D39). `list`, `show` and `delete` are checked against goldens from Node (D40, D41), and `export` and `import` write and read Node's files and rows (D42). `share` is registered but always fails, because cloud features are out of scope (D44). The utility commands are described in D45, `--suggest-prompts` in D46, and `generate dataset`/`assertions` in D47.
+
 **Phase 6: blobs and tracing (optional)**
 - Filesystem blob store with the same layout (`<configDir>/blobs/ab/cd/<sha>`) and the `blob_assets` / `blob_references` rows. Until then, behave as if `PROMPTFOO_INLINE_MEDIA=true` but still resolve `promptfoo://blob/` URIs when reading.
   - Done in `src/promptphoo/blobs/` (see D48, D49): the evaluator, EvalResult and import paths externalize media, `import` restores `blobAssets`, and `export --include-media` embeds them. tests/test_blobs_node.py checks files, rows, responses, exports and imports against Node.
 - An OTLP trace receiver and the trace-* assertions.
   - The receiver, the trace store and trace export are done in `src/promptphoo/tracing/` and `output/writer.py` (see D51, D52, D53). tests/test_tracing_receiver_node.py checks the provider-posted spans, the trace rows and `export` against Node.
+
+*Outcome:* Both halves landed. The blob store is a synchronous port of `src/blobs` (D48), and `import`/`export --include-media` carry blobs between the runtimes (D49, which replaced D43). Tracing has an OTLP receiver (D51), one trace store (D52), traces in exports (D53), the trace assertions (D54), external trace providers (D55), and promptfoo's own spans from an in-house tracer that stands in for the OpenTelemetry SDK (D56, D57).
 
 **Out of scope:** redteam, web UI and server, code-scan, optimizer, MCP, model-audit, JS and Ruby hooks, golang and ruby providers, codex/realtime/agents providers, cloud (`promptfoo://provider`).
 
@@ -175,3 +196,5 @@ Each phase ends with its parity-harness subset passing.
    - Run a Node eval, then `promptphoo list` / `show` / `export`.
    - Run Node migrations on a DB created by Python, and the reverse, and confirm both are no-ops.
 4. Live smoke test, gated on API keys: `examples/getting-started` and `examples/eval-g-eval` against OpenAI and Anthropic. Compare pass/fail with Node.
+
+*Outcome:* Items 1 to 3 are how the project is verified today, with `pytest -n auto` from the venv in place of `uv run` (CONTRIBUTING.md). The DB round-trips are automated in the interop suites, which run when `NODE_PROMPTFOO` is set. For item 4, a fully local run with Ollama models and a local grader (`examples/local-ollama/`) gave identical outputs and scores under both runtimes.
