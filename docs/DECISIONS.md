@@ -544,7 +544,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Exporters send `application/json` or `application/x-protobuf` with identity, gzip or deflate encoding. Node also decodes `br` and `zstd`, which this receiver answers with a 500. A JSON array where an id string is expected is converted by the JS string coercion upstream applies, which is not reproduced for every shape.
 - Implication: Run against Node's receiver (via `tools/otlp_node.mjs serve`), 36 hand-picked requests (routing, content types, encodings, malformed bodies, the size limit, logs) get the same status, headers and body from both, apart from `/debug/status` uptime. `tests/test_tracing_otlp_receiver.py` ports upstream's receiver tests, and `tests/test_tracing_protobuf.py` ports the protobuf tests and replays the golden file.
 - Modules: src/promptphoo/tracing/otlp_receiver.py, src/promptphoo/tracing/protobuf.py, src/promptphoo/jsvalues.py, src/promptphoo/cli_state.py, tools/otlp_node.mjs, tools/otlp_protobuf_golden.py, tests/fixtures/tracing/protobuf_golden.jsonl, tests/test_tracing_otlp_receiver.py, tests/test_tracing_protobuf.py
-- Commits: `COMMIT`
+- Commits: `3b43b7d`
 
 ## 52. One TraceStore writes Node's rows; the evaluator leases the shared receiver as upstream does
 - Decision:
@@ -569,7 +569,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Python file providers run in a worker thread (`python_hooks.call_async`), so a provider that POSTs to the in-loop receiver cannot deadlock it. Spans are read back only after the grace wait.
 - Implication: `tests/test_tracing_receiver_node.py` runs the same traced eval under both CLIs, skipped without NODE_PROMPTFOO. Its stdlib provider (`tests/fixtures/tracing/otlp_posting_provider.py`) exports OTLP/JSON and OTLP/protobuf spans to the eval's receiver. The provider-posted span rows and the trace rows match Node's. Tracing telemetry (`record('feature_used')`) is not ported.
 - Modules: src/promptphoo/tracing/store.py, src/promptphoo/tracing/sanitize_attributes.py, src/promptphoo/tracing/evaluator_tracing.py, src/promptphoo/evaluator/run.py, src/promptphoo/cli/import_.py, src/promptphoo/db/import_export.py, tests/test_tracing_store.py, tests/test_tracing_sanitize_attributes.py, tests/test_tracing_evaluator_tracing.py, tests/test_tracing_receiver_node.py, tests/fixtures/tracing/otlp_posting_provider.py
-- Commits: `COMMIT`
+- Commits: `3b43b7d`
 
 ## 53. `export` emits `traces` as upstream does, and trace parity compares them
 - Decision:
@@ -584,7 +584,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Within one trace, two spans with the same name path have the same attributes and status, so sorting them gives a stable order.
 - Implication: `tests/test_tracing_receiver_node.py` checks that Node's `export` of the Python-written eval equals Python's (and the reverse), apart from `exportedAt` and `nodeVersion`. It also checks that import followed by export in either runtime keeps `traces`. `tests/test_output_traces.py` ports upstream's trace cases from the output and JSON-export tests.
 - Modules: src/promptphoo/output/writer.py, tools/parity.py, tests/test_output_traces.py
-- Commits: `COMMIT`
+- Commits: `3b43b7d`
 
 ## 54. Trace assertions read the trace store through the assertion context; the evaluator gives each traced step a W3C trace context
 - Decision:
