@@ -349,6 +349,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Eval ids contain only ASCII letters, digits, `-` and `:`, so the casefold key orders them as ICU does.
 - Implication: A promptphoo `delete` followed within a moment by another write does not merge both into one signal, so a running Node viewer may miss the delete until its next refresh.
 - Modules: src/promptphoo/db/queries.py, src/promptphoo/models/eval.py
+- Commits: `89b55d0`
 
 ## 41. list/show/delete output is checked byte for byte against goldens recorded from Node
 - Decision:
@@ -361,3 +362,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Node 0.125.1 is the reference. Regenerate the goldens with the tool after an upstream bump.
 - Implication: Scripts that pipe an answer into `delete eval all` get the same result and exit code under both CLIs; only the terminal rendering of the prompt differs.
 - Modules: src/promptphoo/cli/list_.py, src/promptphoo/cli/show.py, src/promptphoo/cli/delete.py, tools/list_show_golden.py, tests/test_cli_list_show_delete.py, tests/fixtures/list_show/golden.json
+- Commits: `89b55d0`
