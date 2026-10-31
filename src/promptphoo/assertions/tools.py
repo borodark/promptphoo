@@ -330,7 +330,7 @@ async def maybe_load_tools_from_external_file(
 
 # --- openai.ts ---------------------------------------------------------------------------------
 
-_NOT_LINE_TERMINATOR = "[^\n\r  ]"
+_NOT_LINE_TERMINATOR = "[^\n\r\u2028\u2029]"
 _MCP_ERROR = re.compile(rf"MCP Tool Error \(([^)]+)\): ({_NOT_LINE_TERMINATOR}+)")
 _MCP_RESULT = re.compile(r"MCP Tool Result \(([^)]+)\):")
 
