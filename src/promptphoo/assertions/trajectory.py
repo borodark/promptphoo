@@ -437,6 +437,66 @@ def format_trajectory_args(args: Any) -> str:
         return js_string(args)
 
 
+MAX_JUDGE_SUMMARY_STEPS = 24
+JUDGE_SUMMARY_HEAD_STEPS = 12
+JUDGE_SUMMARY_TAIL_STEPS = 12
+
+
+def _has_same_status(left: dict[str, Any] | None, right: dict[str, Any] | None) -> bool:
+    return (left or {}).get("code") == (right or {}).get("code") and (left or {}).get(
+        "message"
+    ) == (right or {}).get("message")
+
+
+def _compact_judge_trajectory_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    compacted: list[dict[str, Any]] = []
+    for step in steps:
+        previous = compacted[-1] if compacted else None
+        if (
+            previous
+            and previous["type"] == step["type"]
+            and previous["name"] == step["name"]
+            and previous.get("spanName") == step.get("spanName")
+            and _has_same_status(previous.get("status"), step.get("status"))
+        ):
+            previous["collapsedCount"] = (previous.get("collapsedCount") or 1) + 1
+            continue
+        compacted.append(step)
+    return compacted
+
+
+def _truncate_judge_trajectory_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(steps) <= MAX_JUDGE_SUMMARY_STEPS:
+        return steps
+    return [
+        *steps[:JUDGE_SUMMARY_HEAD_STEPS],
+        {"omittedCount": len(steps) - MAX_JUDGE_SUMMARY_STEPS},
+        *steps[-JUDGE_SUMMARY_TAIL_STEPS:],
+    ]
+
+
+def summarize_trajectory_for_judge(trace: dict[str, Any]) -> str:
+    raw_steps: list[dict[str, Any]] = []
+    for index, step in enumerate(extract_trajectory_steps(trace)):
+        status = _get_trajectory_step_status(step)
+        entry: dict[str, Any] = {"index": index + 1, "type": step["type"], "name": step["name"]}
+        if step["spanName"] != step["name"]:
+            entry["spanName"] = step["spanName"]
+        if status:
+            entry["status"] = status
+        raw_steps.append(entry)
+    compacted = _compact_judge_trajectory_steps(raw_steps)
+    summary: dict[str, Any] = {}
+    if "traceId" in trace:
+        summary["traceId"] = trace["traceId"]
+    summary.update(
+        stepCount=len(raw_steps),
+        compactedStepCount=len(compacted),
+        steps=_truncate_judge_trajectory_steps(compacted),
+    )
+    return json_stringify(summary, 2)
+
+
 # --- trajectory.ts -----------------------------------------------------------------------------
 
 
@@ -872,11 +932,34 @@ def _resolve_goal_success_value(value: Any) -> dict[str, str]:
     )
 
 
-def handle_trajectory_goal_success(params: AssertionParams) -> GradingResult:
-    # Validate exactly as Node does before the model-graded step.
-    _get_trace_or_throw(params)
-    _resolve_goal_success_value(_value(params))
-    raise NotImplementedError("trajectory:goal-success requires model-graded assertions (Phase 4)")
+async def handle_trajectory_goal_success(params: AssertionParams) -> GradingResult:
+    from promptphoo.matchers.llm_grading import is_grader_failure, matches_trajectory_goal_success
+
+    trace = _get_trace_or_throw(params)
+    goal = _resolve_goal_success_value(_value(params))["goal"]
+    trajectory = summarize_trajectory_for_judge(trace)
+    result = await matches_trajectory_goal_success(
+        goal,
+        trajectory,
+        params.output_string,
+        (params.test or {}).get("options"),
+        (params.assertion_value_context or {}).get("vars"),
+        params.assertion,
+        params.provider_call_context,
+    )
+    if not params.inverse:
+        return result
+    if is_grader_failure(result):
+        return {**result, "assertion": params.assertion}
+    return {
+        **result,
+        "assertion": params.assertion,
+        "pass": not result["pass"],
+        "score": 0 if result["pass"] else 1,
+        "reason": f"Agent unexpectedly achieved the goal: {goal}"
+        if result["pass"]
+        else f"Agent did not achieve the forbidden goal: {goal}",
+    }
 
 
 HANDLERS: dict[str, Handler] = {

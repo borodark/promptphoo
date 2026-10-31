@@ -102,10 +102,10 @@ def euclidean_distance(vec_a: list[float], vec_b: list[float]) -> float:
     return math.sqrt(acc)
 
 
-def try_parse(content: str) -> Any:
+def try_parse(content: Any) -> Any:
     try:
         return js_json_parse(content)
-    except (ValueError, TypeError):
+    except Exception:
         pass
     return content
 
