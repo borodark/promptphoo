@@ -28,6 +28,7 @@ CACHE_FILE_NAME = "cache-py.json"
 _enabled = envars.get_env_bool("PROMPTFOO_CACHE_ENABLED", True)
 _enabled_override: ContextVar[bool | None] = ContextVar("cache_enabled", default=None)
 _namespace: ContextVar[str | None] = ContextVar("cache_namespace", default=None)
+_clear_generation = 0
 
 
 def get_cache_ttl_ms() -> int:
@@ -75,9 +76,11 @@ class Cache:
             await self.flush()
 
     async def clear(self) -> None:
+        global _clear_generation
         self._data.clear()
         self._dirty = True
         await self.flush()
+        _clear_generation += 1
 
     async def flush(self) -> None:
         if not self.path or not self._dirty:
@@ -103,6 +106,17 @@ class _NamespacedCache:
 
     async def delete(self, key: str) -> None:
         await self._cache.delete(f"{self._ns}:{key}")
+
+    async def clear(self) -> None:
+        """Clear only this namespace's keys (clearNamespacedCache in src/cache.ts)."""
+        global _clear_generation
+        prefix = f"keyv:{self._ns}:"
+        data = self._cache._data
+        for key in [k for k in data if k.startswith(prefix)]:
+            del data[key]
+        self._cache._dirty = True
+        await self._cache.flush()
+        _clear_generation += 1
 
 
 _instance: Cache | None = None
@@ -131,6 +145,11 @@ def get_cache() -> Cache | _NamespacedCache:
 def get_scoped_cache_key(key: str, namespace: str | None = None) -> str:
     namespace = _namespace.get() if namespace is None else namespace
     return f"{namespace}:{key}" if namespace else key
+
+
+def get_cache_clear_generation() -> int:
+    """Bumped whenever a cache is cleared, so in-process provider caches can invalidate."""
+    return _clear_generation
 
 
 def is_cache_enabled() -> bool:
