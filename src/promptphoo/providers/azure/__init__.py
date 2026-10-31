@@ -1,8 +1,8 @@
 """Azure OpenAI provider family. `create_provider` ports the `azure:`/`azureopenai:` factory in
 src/providers/registry.ts.
 
-Supported: chat (including "on your data" `data_sources`), completion and embedding(s).
-Responses arrives with the OpenAI Responses port. Assistants, Foundry agents, image, video,
+Supported: chat (including "on your data" `data_sources`), completion, embedding(s) and
+responses. Assistants, Foundry agents, image, video,
 moderation (Content Safety) and realtime are not supported by promptphoo.
 """
 
@@ -14,6 +14,7 @@ from promptphoo.providers.azure.chat import AzureChatCompletionProvider
 from promptphoo.providers.azure.completion import AzureCompletionProvider
 from promptphoo.providers.azure.embedding import AzureEmbeddingProvider
 from promptphoo.providers.azure.generic import AzureGenericProvider
+from promptphoo.providers.azure.responses import AzureResponsesProvider
 from promptphoo.providers.shared import model_name_from_provider_path
 
 __all__ = [
@@ -21,11 +22,13 @@ __all__ = [
     "AzureCompletionProvider",
     "AzureEmbeddingProvider",
     "AzureGenericProvider",
+    "AzureResponsesProvider",
     "create_provider",
 ]
 
 _SUPPORTED_HINT = (
-    "Use azure:chat:<deployment>, azure:completion:<deployment> or azure:embedding:<deployment>."
+    "Use azure:chat:<deployment>, azure:completion:<deployment>, azure:embedding:<deployment> "
+    "or azure:responses:<deployment>."
 )
 
 
@@ -82,11 +85,7 @@ def create_provider(provider_path: str, options: dict[str, Any] | None = None) -
         require_path_segment("completion", "a deployment name", "deployment")
         return AzureCompletionProvider(deployment_name, options)
     if model_type == "responses":
-        raise NotImplementedError(
-            f"The Azure Responses API provider ({provider_path}) is not ported yet; it builds on "
-            "the OpenAI Responses provider and arrives in Phase 3 wave 2b. Use "
-            "azure:chat:<deployment> meanwhile."
-        )
+        return AzureResponsesProvider(deployment_name or "gpt-4.1-2025-04-14", options)
     if model_type == "live":
         raise ValueError(
             "GPT-Live is available through openai:live:<model name>, not the Azure provider."
