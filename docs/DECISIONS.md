@@ -217,6 +217,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Cloud features are out of scope (PLAN_PORT.md). The registry only tracks the lifetime of long-lived provider resources, which no ported provider opens.
 - Assumption: No eval config relies on remote grading, which upstream enables only for redteam and cloud-linked runs.
 - Modules: src/promptphoo/matchers/providers.py, src/promptphoo/matchers/shared.py
+- Commits: `956e36a`
 
 ## 33. Default graders: unported families are skipped, Codex never selected, no env-scope bundle cache
 - Decision:
@@ -230,6 +231,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: When Mistral, xAI, Voyage or Content Safety are ported, they expose `get_mistral_providers(env)`, `MistralEmbeddingProvider({env})`, `get_xai_providers(env)`, `VoyageEmbeddingProvider(model, config, env)` and `AzureModerationProvider(model, {env})` at those paths, mirroring upstream. A port at another path has to update the loaders.
 - Implication: Until then, a user with only `MISTRAL_API_KEY` or `XAI_API_KEY` gets OpenAI graders (which fail without `OPENAI_API_KEY`), where upstream would use Mistral or xAI.
 - Modules: src/promptphoo/providers/defaults.py, src/promptphoo/providers/openai/defaults.py, src/promptphoo/providers/anthropic/defaults.py
+- Commits: `956e36a`
 
 ## 34. Grader references reuse configured providers; the final test shares provider instances
 - Decision:
@@ -238,3 +240,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - `--grader` and `defaultTest.options.provider` were already forwarded by `config/load.py` and `cli/eval.py`, and `get_grading_provider` reads the `defaultTest` fallback from `cli_state.config()`.
 - Rationale: Resolved graders are provider instances inside `options` and `assert`, and they hold clients and locks that `copy.deepcopy` cannot copy. Upstream likewise reattaches `test.provider` after its clone, because the clone loses functions.
 - Modules: src/promptphoo/grading_provider.py, src/promptphoo/assertions/index.py, src/promptphoo/evaluator/run.py
+- Commits: `956e36a`
