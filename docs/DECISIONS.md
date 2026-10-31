@@ -335,3 +335,45 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Fixtures that do not use a capture script ignore `PROMPTFOO_CAPTURE_PATH`. Upstream's smoke configs read it only from capture scripts.
 - Modules: tools/parity.py, tools/conversation_relevance_golden.mjs, src/promptphoo/matchers/deepeval.py, src/promptphoo/assertions/deepeval.py
 - Commits: `a3a1ffc`
+
+## 38. Extension hooks run in-process through transform; JavaScript extensions are rejected before the eval starts
+- Decision:
+  - `evaluator/extensions.py` ports `runExtensionHook`, `getExtensionHookName` and `restorePromptFunctions` (src/evaluatorHelpers.ts) and `runBeforeAllExtensions` / `synchronizeLegacyTransportHeaders` (src/evaluator.ts). Hooks go through `transform.transform(ext, ..., validate_return=False)`, so `file://hooks.py:fn` runs in-process with JSON-round-tripped arguments, as Node's `runPython` does, and a hook with no function name calls `get_transform`.
+  - Calling conventions, hook filtering and mutation rules are upstream's: a known hook name (`:beforeAll`) runs only for that hook as `fn(context, {hookName})`; any other name runs for every hook as `fn(hookName, context)`. beforeAll may replace the suite's prompts, providerPromptMap, tests, scenarios, defaultTest, nunjucksFilters, derivedMetrics and redteam (a key missing from the returned suite becomes undefined); beforeEach replaces the test; afterEach merges finite namedScores, metadata and response.metadata into the row before it is persisted, and a failing afterEach is logged and ignored; afterAll's return value is ignored.
+  - `run.py` calls beforeAll before the prompt columns are built, beforeEach per eval step (inside the per-step timeout), afterEach before `append_result`, and afterAll after `set_vars`, with results read back through `load_results()`.
+  - `check_extensions_supported` rejects `.js/.ts/.mjs/...` extensions when the eval starts, so an `:afterAll`-only JS hook does not fail after the whole eval has run. The CLI logs `ExtensionHookError` on one line and exits 1.
+  - The seeded providerPromptMap check compares by value only. Upstream also compares array identity, which a hook's JSON copy never shares, so the outcome is the same.
+- Rationale: Upstream's own Python hooks already see JSON copies, so reusing the transform path keeps the payloads, error wrapping (`Extension hook "<hook>" failed for <ext>: Transform failed ...`) and function-name parsing identical.
+- Assumption: Every hook context is JSON-serializable through `json_stringify` (providers through `to_json`). A hook that needs a live provider object cannot get one, as under Node's Python runner.
+- Implication: `python-prompt-with-extension.yaml` now passes parity, so its EXPECTED entry is gone.
+- Modules: src/promptphoo/evaluator/extensions.py, src/promptphoo/evaluator/run.py, src/promptphoo/cli/eval.py, tools/parity.py
+
+## 39. --watch polls file stamps instead of using chokidar or a watch library
+- Decision:
+  - `cli/watch.py` ports the doEval watch block and `resolveTestsWatchPaths` with its helpers (src/util/testCaseReader.ts). The watch list is built after the first run from the config paths, `file://` prompts and providers, and the tests (CLI `--tests` against the CWD, `--vars` against the config directory, else the config's tests and test sources), exactly as upstream builds it.
+  - The loop polls each file's `(mtime_ns, size)` every 0.5 s. A change, or a file that reappears after an atomic save, triggers a rerun; a deletion does not (chokidar's `change` with `atomic: true`). Paths matching chokidar's `ignored: /^\./` are skipped. Ctrl-C logs `Stopping watch mode...`.
+  - Each rerun is a fresh `asyncio.run(do_eval(...))` on a copy of the original command options. Upstream's recoverable errors (EvalRunError, ConfigResolutionError, rejected prompt suggestions) plus `ExtensionHookError` are logged and watching continues. Watch mode skips the pass-rate exit code, as upstream does.
+  - `do_eval` takes an optional `watch_state` dict that receives the resolved config, config paths and test sources.
+- Rationale: `watchfiles` and `watchdog` are not dependencies. Polling a handful of explicit files is cheap, and the list is fixed after the first run upstream too.
+- Assumption: Users watch a small set of files, so a 0.5 s poll is fast enough and costs nothing noticeable.
+- Implication: Upstream's quirk of watching a `file://prompt.py:fn` prompt as the literal path `prompt.py:fn` (which never changes) is kept.
+- Modules: src/promptphoo/cli/watch.py, src/promptphoo/cli/eval.py
+
+## 46. --suggest-prompts is ported; a rejected suggestion run exits 1 without the empty summary
+- Decision:
+  - `suggestions.py` ports `generatePrompts` (src/suggestions.ts), `maybeAddGeneratedPrompts` and `PromptSuggestionsRejectedError` (src/evaluator.ts) and `promptYesNo`. It uses the default `suggestionsProvider`, upstream's `SUGGEST_PROMPTS_SYSTEM_MESSAGE` payload, four concurrent calls, and keeps successful variants when others fail. `cli/eval.py` ports `resolveSuggestionOptions`, so `--suggest-prompts N` (1-50) enables suggestions by itself, and `evaluateOptions.generateSuggestions` / `suggestionsCount` from the config still work.
+  - When the user accepts no variant, the eval raises `PromptSuggestionsRejectedError`, which the CLI logs and exits 1. Upstream sets `process.exitCode = 1` and goes on to print the summary of the empty eval.
+  - The eval-flag audit against commander's options also changed: `--tag` now merges `commandLineOptions.tags` under the CLI tags (upstream `runtimeTagsForEval`), `--verbose` is accepted on `eval`, and `-w`, `-x` and `--suggest-prompts` have their help texts. Out-of-range numeric flags fail with click's usage error (exit 2) rather than upstream's "Invalid command options" (exit 1).
+- Rationale: The interactive question makes suggestions a terminal feature, so the empty summary after a refusal carries no information.
+- Modules: src/promptphoo/suggestions.py, src/promptphoo/cli/eval.py, src/promptphoo/evaluator/run.py
+
+## 47. generate dataset/assertions keep upstream's prompts by porting dedent over the raw template segments
+- Decision:
+  - `cli/generate.py` ports src/commands/generate/{dataset,assertions}.ts. `synthesis/dataset.py` and `synthesis/assertions.py` port src/testCase/synthesis.ts and src/assertions/synthesis.ts. The default provider is `get_default_providers()["synthesizeProvider"]`; `--provider` loads through `load_api_provider`.
+  - `synthesis.dedent` ports the npm dedent 1.7.2 tag. `tools/gen_synthesis_templates.py` copies each upstream ``dedent`...` `` literal's raw segments (escapes unprocessed, as `strings.raw`) into `synthesis/templates.py`, and the Python code supplies the interpolated values. dedent's quirks therefore carry over, such as turning the raw `\\b` of the Python examples into `\` plus a backspace.
+  - `tools/synthesis_golden.mjs` runs upstream's own prompt builders, cut out of the TS sources, with the real dedent and writes `tests/fixtures/synthesis_golden.json`. A manual run of both CLIs against the same fake `file://` Python provider gave byte-identical prompts, YAML and CSV output, and written configs.
+  - `resolve_configs` gained upstream's `type` argument (`config_type`), so dataset and assertion configs need no providers.
+  - The cache is always disabled, as upstream's `.option('--no-cache', ..., false)` makes commander default `cache` to false. No progress bar is drawn.
+- Rationale: Retyping the prompt texts by hand would drift from upstream in whitespace and escapes. Generated raw segments plus a dedent port stay exact and can be regenerated on an upstream sync.
+- Assumption: Upstream keeps writing these prompts as `dedent` template literals. A switch to plain strings would need the generator changed.
+- Modules: src/promptphoo/cli/generate.py, src/promptphoo/synthesis/__init__.py, src/promptphoo/synthesis/dataset.py, src/promptphoo/synthesis/assertions.py, src/promptphoo/synthesis/templates.py, src/promptphoo/config/load.py, tools/gen_synthesis_templates.py, tools/synthesis_golden.mjs
