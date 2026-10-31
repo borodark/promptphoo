@@ -179,7 +179,8 @@ def test_include_media_export_matches_across_runtimes(evals, tmp_path, writer):
     node_export, py_export = _normalized_export(a), _normalized_export(b)
     assert py_export == node_export
     assets = py_export["blobAssets"]
-    assert [(x["hash"][:8], x["mimeType"], x["sizeBytes"]) for x in assets] == [
+    # Order follows the eval's result rows, which a concurrent run writes in any order.
+    assert sorted((x["hash"][:8], x["mimeType"], x["sizeBytes"]) for x in assets) == [
         ("2626d48f", "image/png", 3172),
         ("7883b5ac", "audio/wav", 4044),
         ("c93d3514", "image/svg+xml", 61),
