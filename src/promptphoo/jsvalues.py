@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import math
+import re
+import secrets
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -53,8 +55,18 @@ def number_to_string(n: float | int) -> str:
         exp_digits = exp.lstrip("+-").lstrip("0") or "0"
         e = int(exp)
         if -7 < e < 21:
-            # V8 prints plain decimals in this range; repr may still use exponent form.
-            return format(n, "f").rstrip("0").rstrip(".")
+            # V8 prints plain decimals in this range; repr may still use exponent form. Shift
+            # repr's shortest round-trip digits rather than format(), which rounds to 6 places.
+            neg = mantissa.startswith("-")
+            digits = mantissa.lstrip("-").replace(".", "")
+            point = e + 1  # digits before the decimal point
+            if point <= 0:
+                body = "0." + "0" * -point + digits
+            elif point >= len(digits):
+                body = digits + "0" * (point - len(digits))
+            else:
+                body = digits[:point] + "." + digits[point:]
+            return ("-" if neg else "") + body
         return f"{mantissa}e{sign}{exp_digits}"
     return r
 
@@ -90,25 +102,39 @@ def js_string(value: Any) -> str:
     return str(value)
 
 
-def _prepare(value: Any) -> Any:
+# json.dumps formats floats with float.__repr__ even for subclasses, so a float whose repr is
+# not its JS form (1e-07 vs 1e-7, 1e-06 vs 0.000001) is swapped for a placeholder string that
+# json_stringify replaces with number_to_string's text after encoding.
+_NUM_MARK = f"\x00jsnum{secrets.token_hex(8)}_"
+
+
+def _prepare(value: Any, numbers: list[str] | None = None) -> Any:
     """Convert to a structure json.dumps renders the way JSON.stringify does."""
     if isinstance(value, bool) or value is None or isinstance(value, str | int):
         return value
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
             return None
-        return _JsNumber(value) if value.is_integer() and abs(value) < 1e21 else value
+        if value.is_integer() and abs(value) < 1e21:
+            return _JsNumber(value)
+        js = number_to_string(value)
+        if numbers is None or js == repr(value):
+            return value
+        numbers.append(js)
+        return f"{_NUM_MARK}{len(numbers) - 1}\x00"
     if isinstance(value, dict):
         # JSON.stringify drops undefined and function-valued properties.
         return {
-            str(k): _prepare(v) for k, v in value.items() if v is not UNDEFINED and not callable(v)
+            str(k): _prepare(v, numbers)
+            for k, v in value.items()
+            if v is not UNDEFINED and not callable(v)
         }
     if isinstance(value, list | tuple):
-        return [None if v is UNDEFINED or callable(v) else _prepare(v) for v in value]
+        return [None if v is UNDEFINED or callable(v) else _prepare(v, numbers) for v in value]
     if hasattr(value, "model_dump"):
-        return _prepare(value.model_dump(by_alias=True, exclude_none=False))
+        return _prepare(value.model_dump(by_alias=True, exclude_none=False), numbers)
     if hasattr(value, "to_json"):  # e.g. ApiProvider: JSON.stringify(provider) / toJSON()
-        return _prepare(value.to_json())
+        return _prepare(value.to_json(), numbers)
     return str(value)
 
 
@@ -123,9 +149,19 @@ def json_stringify(value: Any, indent: int | str | None = None) -> str:
     """JSON.stringify(value, null, indent). Returns 'undefined' for a bare undefined."""
     if value is UNDEFINED:
         return "undefined"
+    numbers: list[str] = []
+    prepared = _prepare(value, numbers)
     if indent in (None, 0, ""):
-        return json.dumps(_prepare(value), ensure_ascii=False, separators=(",", ":"))
-    return json.dumps(_prepare(value), ensure_ascii=False, indent=indent)
+        out = json.dumps(prepared, ensure_ascii=False, separators=(",", ":"))
+    else:
+        out = json.dumps(prepared, ensure_ascii=False, indent=indent)
+    if numbers:
+        out = re.sub(
+            '"' + re.escape(json.dumps(_NUM_MARK)[1:-1]) + r'(\d+)\\u0000"',
+            lambda m: numbers[int(m.group(1))],
+            out,
+        )
+    return out
 
 
 def is_truthy(value: Any) -> bool:
