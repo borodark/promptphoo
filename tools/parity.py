@@ -51,6 +51,7 @@ VOLATILE_KEYS = {
     "evaluationCreatedAt",
     "totalLatencyMs",
     "outputPath",
+    "traceId",
 }
 # Top-level keys describing the host / run rather than the results.
 VOLATILE_TOP = {"metadata", "shareableUrl"}
@@ -71,6 +72,14 @@ EXPECTED = {
     "tests-external.yaml": "test data, not a config: Node errors too",
     "invalid.yaml": "intentionally invalid: Node errors too",
     "file-provider-env-7079.yaml": "needs --env-file from its smoke test: Node errors too",
+}
+# Top-level output keys a fixture leaves out of the comparison, with the reason.
+IGNORED_TOP_KEYS = {
+    "trace-assertions.yaml": (
+        {"traces"},
+        "the exported `traces` hold promptfoo's own spans and random span ids; the trace "
+        "assertions grade only the target's spans, which match (D55)",
+    ),
 }
 
 
@@ -161,6 +170,11 @@ def _compare(config: Path, log: list[str]) -> str:
                 log.append("  " + line)
             return "FAIL"
 
+    ignored = IGNORED_TOP_KEYS.get(config.name, (set(), ""))[0]
+    node_data, py_data = (
+        {k: v for k, v in d.items() if k not in ignored} if isinstance(d, dict) else d
+        for d in (node_data, py_data)
+    )
     a = json.dumps(normalize(node_data), indent=2, sort_keys=True).splitlines()
     b = json.dumps(normalize(py_data), indent=2, sort_keys=True).splitlines()
     if a == b and node_code == py_code:

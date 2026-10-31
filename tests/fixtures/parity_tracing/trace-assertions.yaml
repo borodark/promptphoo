@@ -1,0 +1,33 @@
+description: trace assertions parity
+tracing:
+  enabled: true
+prompts:
+  - "Where is the Eiffel tower?"
+providers:
+  - id: file://span_writer.py
+    label: traced
+tests:
+  - assert:
+      - type: trace-span-count
+        value: {pattern: "tool.*", min: 2, max: 2}
+      - type: trace-span-count
+        value: {pattern: "llm.*", attributes: {gen_ai.request.model: fake-model}, max: 1}
+      - type: trace-span-duration
+        value: {pattern: "tool.*", max: 200}
+      - type: trace-span-duration
+        value: {pattern: "tool.*", max: 26, percentile: 50}
+      - type: trace-error-spans
+        value: {pattern: "tool.*", max_count: 1}
+      - type: trace-error-spans
+        value: {pattern: "tool.*", max_percentage: 60}
+      - type: trajectory:tool-used
+        value: [search, fetch]
+      - type: python
+        value: file://check_trace.py
+  - assert:
+      - type: trace-error-spans
+        value: {pattern: "tool.*", max_count: 0}
+      - type: trace-span-duration
+        value: {pattern: "agent.*", max: 50}
+      - type: trace-error-spans
+        value: {pattern: "*.fetch", max_percentage: 10}
