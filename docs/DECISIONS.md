@@ -192,4 +192,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Eval configs seldom set `stream` or `background` on Responses providers.
 - Implication: Azure Responses inherits these limits until streaming and polling are ported.
 - Modules: src/promptphoo/providers/openai/responses.py, src/promptphoo/providers/responses/stream.py
-- Commits: `9ef43b9`
+- Commits: `0b0c44b`
