@@ -10,33 +10,24 @@ scheduler importing the HTTP client.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Iterator
-from contextlib import contextmanager
-from contextvars import ContextVar
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from typing import Any, TypeVar
 
 T = TypeVar("T")
 
-# --- retryContext.ts --------------------------------------------------------------------------
+# --- retryContext.ts / errors.ts ------------------------------------------------------------
+# One retry-context ContextVar and one set of error predicates, owned by promptphoo.fetch, so
+# the scheduler's `maxRetries` scope reaches nested fetches.
 
-_fetch_retry_context: ContextVar[dict[str, int | None] | None] = ContextVar(
-    "fetch_retry_context", default=None
+from promptphoo.fetch import (  # noqa: E402
+    get_fetch_retry_context_max_retries as get_fetch_retry_context_max_retries,
 )
-
-
-@contextmanager
-def fetch_retry_context(max_retries: int | None) -> Iterator[None]:
-    """Scope in which nested fetches inherit the provider's configured `maxRetries`.
-
-    When `max_retries` is None the new scope deliberately shadows any outer provider context so
-    providers without an override fall back to defaults.
-    """
-    token = _fetch_retry_context.set({"maxRetries": max_retries})
-    try:
-        yield
-    finally:
-        _fetch_retry_context.reset(token)
+from promptphoo.fetch import with_fetch_retry_context as fetch_retry_context  # noqa: E402
+from promptphoo.fetch.errors import HttpRateLimitError  # noqa: E402
+from promptphoo.fetch.errors import (  # noqa: E402
+    is_transient_connection_error as is_transient_connection_error,
+)
 
 
 async def with_fetch_retry_context(max_retries: int | None, fn: Callable[[], Awaitable[T]]) -> T:
@@ -44,55 +35,10 @@ async def with_fetch_retry_context(max_retries: int | None, fn: Callable[[], Awa
         return await fn()
 
 
-def get_fetch_retry_context_max_retries() -> int | None:
-    """The active context's `maxRetries`, or None when none is set."""
-    store = _fetch_retry_context.get()
-    return store.get("maxRetries") if store else None
-
-
-# --- errors.ts (predicates only) --------------------------------------------------------------
-
-
-def _error_message(error: BaseException | None) -> str:
-    if error is None:
-        return ""
-    message = getattr(error, "message", None)
-    return message if isinstance(message, str) else str(error)
-
-
 def is_http_rate_limit_error(err: Any) -> bool:
-    """`err instanceof HttpRateLimitError`. Duck-typed on the error's name until fetch.py
-    ports the class; such errors carry `kind` ('rate_limit' | 'quota')."""
-    return isinstance(err, BaseException) and (
-        getattr(err, "name", None) == "HttpRateLimitError"
-        or type(err).__name__ == "HttpRateLimitError"
-    )
-
-
-def is_transient_connection_error(error: BaseException | None) -> bool:
-    if not error:
-        return False
-    # Check error.code first; system errors always set it.
-    code = getattr(error, "code", None)
-    if code in ("ECONNRESET", "EPIPE") or isinstance(error, (ConnectionResetError,
-                                                               BrokenPipeError)):  # fmt: skip
-        return True
-    message = _error_message(error).lower()
-    # EPROTO can wrap permanent TLS misconfigs. Exclude when paired with known permanent
-    # error phrases to avoid futile retries.
-    if "eproto" in message and (
-        "wrong version number" in message
-        or "self signed" in message
-        or "unable to verify" in message
-        or "unknown ca" in message
-        or "cert" in message
-    ):
-        return False
-    return (
-        "bad record mac" in message
-        or "eproto" in message
-        or "econnreset" in message
-        or "socket hang up" in message
+    """`err instanceof HttpRateLimitError`."""
+    return isinstance(err, HttpRateLimitError) or (
+        isinstance(err, BaseException) and getattr(err, "name", None) == "HttpRateLimitError"
     )
 
 

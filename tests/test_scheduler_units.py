@@ -528,3 +528,11 @@ def test_sleep_with_abort_respects_task_cancellation(monkeypatch):
         assert controller.signal._listeners == []
 
     fake.run(body)
+
+
+def test_scheduler_retry_context_reaches_fetch():
+    from promptphoo import fetch, fetch_context
+
+    with fetch_context.fetch_retry_context(0):
+        assert fetch.get_fetch_retry_context_max_retries() == 0
+    assert fetch.get_fetch_retry_context_max_retries() is None
