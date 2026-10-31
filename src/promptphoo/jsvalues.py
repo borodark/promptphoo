@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import math
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 
@@ -94,6 +95,8 @@ def _prepare(value: Any) -> Any:
         return [None if v is UNDEFINED or callable(v) else _prepare(v) for v in value]
     if hasattr(value, "model_dump"):
         return _prepare(value.model_dump(by_alias=True, exclude_none=False))
+    if hasattr(value, "to_json"):  # e.g. ApiProvider: JSON.stringify(provider) / toJSON()
+        return _prepare(value.to_json())
     return str(value)
 
 
@@ -122,3 +125,32 @@ def is_truthy(value: Any) -> bool:
     if isinstance(value, str):
         return value != ""
     return True
+
+
+def to_fixed(value: float, digits: int = 0) -> str:
+    """Number.prototype.toFixed: round half up on the exact binary value."""
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return number_to_string(value)
+    if abs(value) >= 1e21:
+        return number_to_string(value)
+    quantum = Decimal(1).scaleb(-digits)
+    d = Decimal(value).quantize(quantum, rounding=ROUND_HALF_UP)
+    text = f"{d:f}"
+    return text[1:] if value == 0 and text.startswith("-") else text
+
+
+def to_precision(value: float, precision: int) -> str:
+    """Number.prototype.toPrecision (round half up on the exact value)."""
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return number_to_string(value)
+    if value == 0:
+        return "0" if precision == 1 else "0." + "0" * (precision - 1)
+    d = Decimal(value)
+    exponent = d.adjusted()
+    rounded = d.quantize(Decimal(1).scaleb(exponent - precision + 1), rounding=ROUND_HALF_UP)
+    exponent = rounded.adjusted()
+    if exponent < -6 or exponent >= precision:
+        mantissa = f"{rounded.scaleb(-exponent).quantize(Decimal(1).scaleb(1 - precision)):f}"
+        return f"{mantissa}e{'+' if exponent >= 0 else '-'}{abs(exponent)}"
+    places = max(precision - 1 - exponent, 0)
+    return f"{rounded.quantize(Decimal(1).scaleb(-places)):f}"

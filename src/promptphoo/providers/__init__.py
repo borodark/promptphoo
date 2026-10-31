@@ -50,6 +50,24 @@ def is_provider_config_file_reference(path: str) -> bool:
     return path.startswith("file://") and path.endswith((".yaml", ".yml", ".json"))
 
 
+def canonicalize_provider_id(provider_id: str) -> str:
+    """Resolve relative file/exec/python provider paths so refs compare equal (providerRef.ts)."""
+    if provider_id.startswith("file://"):
+        file_path = provider_id[len("file://") :]
+        return provider_id if os.path.isabs(file_path) else f"file://{os.path.abspath(file_path)}"
+    for prefix in ("exec:", "python:", "golang:"):
+        if provider_id.startswith(prefix):
+            file_path = provider_id[len(prefix) :]
+            if "/" in file_path or "\\" in file_path:
+                return f"{prefix}{os.path.abspath(file_path)}"
+            return provider_id
+    if provider_id.endswith((".js", ".ts", ".mjs")) and (
+        "/" in provider_id or "\\" in provider_id
+    ):
+        return f"file://{os.path.abspath(provider_id)}"
+    return provider_id
+
+
 def normalize_provider_ref(provider: Any, index: int | None = None) -> dict[str, Any]:
     """Classify a provider reference without loading anything. Returns a descriptor dict with
     `kind` in named/file/function/options/map/unknown, `id`, and for loadable kinds

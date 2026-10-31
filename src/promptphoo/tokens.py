@@ -167,3 +167,81 @@ def accumulate_response_token_usage(
     if target.get("incurredTokenUsage") or reported.get("incurredTokenUsage") or cached:
         logical["incurredTokenUsage"] = incurred
     accumulate_token_usage(target, logical)
+
+
+def accumulate_assertion_token_usage(target: TokenUsage, update: TokenUsage | None) -> None:
+    if not update:
+        return
+    target["total"] = _add(target.get("total"), _accumulated_total(update))
+    for key in ("prompt", "completion", "cached", "numRequests"):
+        target[key] = _add(target.get(key), update.get(key))
+    if update.get("completionDetails"):
+        target["completionDetails"] = add_completion_details(
+            target.get("completionDetails"), update["completionDetails"]
+        )
+
+
+def accumulate_grading_request(
+    assertions: TokenUsage,
+    tokens_used: TokenUsage | None,
+    cached: bool | None = None,
+    fresh: bool | None = None,
+) -> None:
+    if not tokens_used:
+        if not cached:
+            assertions["numRequests"] = (assertions.get("numRequests") or 0) + 1
+        return
+    total = tokens_used.get("total")
+    if total is None:
+        total = (tokens_used.get("prompt") or 0) + (tokens_used.get("completion") or 0)
+    cached_tokens = tokens_used.get("cached") or 0
+    inferred = (
+        cached is None
+        and tokens_used.get("numRequests") == 0
+        and cached_tokens > 0
+        and total <= cached_tokens
+    )
+    if cached is True or inferred:
+        requests = 0
+    elif tokens_used.get("numRequests") == 0:
+        requests = 1 if (fresh is True or total > 0) else 0
+    else:
+        n = tokens_used.get("numRequests")
+        requests = n if n is not None else 1
+    accumulate_assertion_token_usage(assertions, {**tokens_used, "numRequests": requests})
+
+
+def accumulate_grading_token_usage(
+    target: TokenUsage, tokens_used: TokenUsage | None, cached: bool | None = None
+) -> None:
+    """Add a GradingResult's tokensUsed to a row's tokenUsage.assertions."""
+    used = tokens_used or {}
+    total = used.get("total")
+    if total is None:
+        total = (used.get("prompt") or 0) + (used.get("completion") or 0)
+    cached_tokens = used.get("cached") or 0
+    cached_response = cached is True or (
+        cached is None
+        and used.get("numRequests") == 0
+        and cached_tokens > 0
+        and total <= cached_tokens
+    )
+    logical = create_empty_assertions()
+    logical_used = (
+        {**used, "total": cached_tokens}
+        if cached_response and total == 0 and cached_tokens > 0
+        else tokens_used
+    )
+    accumulate_grading_request(
+        logical, logical_used, cached=False if cached_response else cached,
+        fresh=True if cached_response else None,
+    )  # fmt: skip
+    incurred = create_empty_assertions()
+    if not cached_response:
+        accumulate_grading_request(
+            incurred, used.get("incurredTokenUsage") or tokens_used, cached=cached
+        )
+    update: TokenUsage = {"assertions": logical}
+    if target.get("incurredTokenUsage") or used.get("incurredTokenUsage") or cached_response:
+        update["incurredTokenUsage"] = {"assertions": incurred}
+    accumulate_token_usage(target, update)

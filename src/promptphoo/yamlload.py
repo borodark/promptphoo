@@ -123,9 +123,23 @@ def _construct_yaml_map(loader: yaml.SafeLoader, node: yaml.MappingNode):
 _CoreLoader.add_constructor("tag:yaml.org,2002:map", _construct_yaml_map)
 
 
-def load_yaml(content: str) -> Any:
+class _JsonLoader(_CoreLoader):
+    """js-yaml `{json: true}`: duplicate keys are allowed and the last one wins."""
+
+
+def _construct_json_map(loader: yaml.SafeLoader, node: yaml.MappingNode):
+    data: dict[Any, Any] = {}
+    yield data
+    data.update(yaml.SafeLoader.construct_mapping(loader, node))
+
+
+_JsonLoader.add_constructor("tag:yaml.org,2002:map", _construct_json_map)
+
+
+def load_yaml(content: str, json: bool = False) -> Any:
     """Load one YAML document. Empty input returns None (JS undefined); >1 document raises."""
-    docs = list(yaml.load_all(content, Loader=_CoreLoader))  # noqa: S506 - SafeLoader subclass
+    loader = _JsonLoader if json else _CoreLoader
+    docs = list(yaml.load_all(content, Loader=loader))  # noqa: S506 - SafeLoader subclass
     if not docs:
         return None
     if len(docs) > 1:

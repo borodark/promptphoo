@@ -91,3 +91,40 @@ def call_sync(fn: Callable[..., Any], *args: Any) -> Any:
 
 async def _await(awaitable: Any) -> Any:
     return await awaitable
+
+
+class PythonScriptError(RuntimeError):
+    pass
+
+
+def _json_roundtrip(value: Any) -> Any:
+    import json
+
+    from promptphoo.jsvalues import json_stringify
+
+    return json.loads(json_stringify(value))
+
+
+async def run_python(path: str | Path, fn_name: str, args: list[Any]) -> Any:
+    """Call `fn_name` in the file at `path` the way Node's runPython does: arguments and result
+    pass through JSON, and failures are reported as 'Error running Python script: ...'."""
+    import traceback
+
+    try:
+        fn = load_function(path, fn_name)
+        return _json_roundtrip(await call_async(fn, *_json_roundtrip(args)))
+    except Exception as e:
+        raise PythonScriptError(
+            f"Error running Python script: {e}\nStack Trace: Python Traceback: "
+            f"{traceback.format_exc()}"
+        ) from e
+
+
+async def run_python_code(code: str, fn_name: str, args: list[Any]) -> Any:
+    """Run inline Python source (e.g. a `python` assertion body) and call `fn_name`."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="promptfoo-python-code-") as tmp:
+        path = Path(tmp) / "script.py"
+        path.write_text(code, encoding="utf-8")
+        return await run_python(path, fn_name, args)
