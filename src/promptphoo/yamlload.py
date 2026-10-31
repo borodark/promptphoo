@@ -14,9 +14,46 @@ from typing import Any
 
 import yaml
 
+_BREAKS = "\0 \t\r\n\x85  "
+
 
 class _CoreLoader(yaml.SafeLoader):
-    pass
+    def scan_plain(self) -> yaml.tokens.ScalarToken:
+        """PyYAML's scan_plain with the YAML 1.2 flow rule js-yaml follows: inside `{}` or `[]`
+        a plain scalar ends at `,[]{}` but not at `?`, so `{ q: What is it? }` is one string.
+        PyYAML (YAML 1.1) stops at `?` and then fails to parse the mapping."""
+        chunks: list[str] = []
+        start_mark = self.get_mark()
+        end_mark = start_mark
+        indent = self.indent + 1
+        spaces: list[str] = []
+        while True:
+            length = 0
+            if self.peek() == "#":
+                break
+            while True:
+                ch = self.peek(length)
+                if (
+                    ch in _BREAKS
+                    or (
+                        ch == ":"
+                        and self.peek(length + 1) in _BREAKS + (",[]{}" if self.flow_level else "")
+                    )
+                    or (self.flow_level and ch in ",[]{}")
+                ):
+                    break
+                length += 1
+            if length == 0:
+                break
+            self.allow_simple_key = False
+            chunks.extend(spaces)
+            chunks.append(self.prefix(length))
+            self.forward(length)
+            end_mark = self.get_mark()
+            spaces = self.scan_plain_spaces(indent, start_mark)
+            if not spaces or self.peek() == "#" or (not self.flow_level and self.column < indent):
+                break
+        return yaml.tokens.ScalarToken("".join(chunks), True, start_mark, end_mark)
 
 
 _CoreLoader.yaml_implicit_resolvers = {}

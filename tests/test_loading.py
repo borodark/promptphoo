@@ -34,6 +34,24 @@ def upstream_cwd(monkeypatch):
 # --- yaml / json ------------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # js-yaml (YAML 1.2) keeps `?` inside a flow-context plain scalar; PyYAML stops at it.
+        ("a: { q: What is it? }", {"a": {"q": "What is it?"}}),
+        ("a: { q: x?y }", {"a": {"q": "x?y"}}),
+        ("a: [Is it? yes]", {"a": ["Is it? yes"]}),
+        ("a: [a?, b]", {"a": ["a?", "b"]}),
+        ("a: {x: y?, z: w}", {"a": {"x": "y?", "z": "w"}}),
+        # The explicit-key indicator still works.
+        ("a: [? x : y]", {"a": [{"x": "y"}]}),
+        ("a: { ? k : v }", {"a": {"k": "v"}}),
+    ],
+)
+def test_yaml_question_mark_in_flow_scalars(text, expected):
+    assert load_yaml(text) == expected
+
+
 def test_yaml_core_schema():
     data = load_yaml("a: yes\nb: off\nc: 012\nd: 0o12\ne: 0x1F\nf: ~\ng: 1.5\nh: true\n1: x\n")
     assert data == {"a": "yes", "b": "off", "c": 12, "d": 10, "e": 31, "f": None, "g": 1.5,
