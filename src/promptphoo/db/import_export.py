@@ -6,8 +6,9 @@ src/models/evalResult.ts (`createManyFromEvaluateResult`), src/database/evalDele
 `addSpans`) that import needs. Rows are written exactly as drizzle writes them, so Node reads
 an eval that Python imported (and the reverse) without noticing.
 
-Blob storage is not ported yet (see docs/PLAN_PORT.md, Phase 6), so responses are stored as
-given; `promptfoo://blob/` references inside them stay as they are.
+Unless PROMPTFOO_INLINE_MEDIA is set, imported responses go through the blob extractor as in
+upstream: inline media is stored, and `promptfoo://blob/` references already in them are
+recorded against the new eval when the blob is registered.
 """
 
 from __future__ import annotations
@@ -141,9 +142,17 @@ def create_many_from_evaluate_result(
     Unlike createFromEvaluateResult, `promptId`, `error` and the other scalar columns come
     straight from each result (drizzle drops keys that are not columns).
     """
+    from promptphoo.blobs.extractor import extract_and_store_binary_data, is_blob_storage_enabled
+
     processed = []
     for result in results:
         response = result.get("response")
+        if is_blob_storage_enabled():
+            response = extract_and_store_binary_data(
+                response,
+                {"evalId": eval_id, "testIdx": result.get("testIdx"),
+                 "promptIdx": result.get("promptIdx")},
+            )  # fmt: skip
         processed.append(
             {**rs.serialize_result_provider_refs(result), "response": response or UNDEFINED}
         )

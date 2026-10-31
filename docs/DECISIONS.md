@@ -448,6 +448,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Phase 6 owns the filesystem blob store (docs/PLAN_PORT.md). Validating now means a corrupt portable export fails the same way in both runtimes and cannot delete the eval it was meant to replace.
 - Assumption: Until Phase 6, users who need media round-trips import with Node. The eval's `promptfoo://blob/` references are kept verbatim, so a later Phase 6 store (or Node) can resolve them.
 - Implication: Phase 6 replaces `import_blob_assets` with `storeBlob` plus `recordBlobReference(location='import')`, and fills `blobAssets` in `create_output_data` when `include_media` is set.
+- Note: Superseded by D49.
 - Modules: src/promptphoo/cli/import_.py, src/promptphoo/cli/export.py
 - Commits: `a4dfc5e`
 
@@ -494,3 +495,27 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Upstream keeps writing these prompts as `dedent` template literals. A switch to plain strings would need the generator changed.
 - Modules: src/promptphoo/cli/generate.py, src/promptphoo/synthesis/__init__.py, src/promptphoo/synthesis/dataset.py, src/promptphoo/synthesis/assertions.py, src/promptphoo/synthesis/templates.py, src/promptphoo/config/load.py, tools/gen_synthesis_templates.py, tools/synthesis_golden.mjs
 - Commits: `597e573`
+
+## 48. The blob store is a synchronous port of src/blobs, hooked in at upstream's call sites
+- Decision:
+  - `src/promptphoo/blobs/` ports constants.ts, types.ts, index.ts (`store_blob`, `get_blob_by_hash`, `record_blob_reference`, the share-authorization checks, `is_safe_inline_blob_mime_type`, the provider get/set/reset functions), filesystemProvider.ts, blobRefs.ts and extractor.ts. Files go to `<configDir>/blobs/ab/cd/<sha256>` with the same pretty-printed `.meta.json` sidecar, staged in a `mkdtemp` directory and published data first. Rows go to `blob_assets` and `blob_references` with drizzle's SQL, including `ON CONFLICT DO NOTHING` and the `CURRENT_TIMESTAMP` defaults.
+  - The API is synchronous, because the filesystem and sqlite3 are, and the store-once cache needs no pending-promise bookkeeping. Upstream runs `Promise.all` over `images[]`, `turns[]` and metadata arrays. Each callback reaches its cache entry or its store before the first await, so sequential iteration gives the same stores, locations and reference rows.
+  - The extractor runs where upstream runs it: in `_apply_response_outcome` after the transforms (the grader still sees the raw `audio`), in `EvalResult.create_from_evaluate_result`, and in `create_many_from_evaluate_result` unless `PROMPTFOO_INLINE_MEDIA` is set. `is_blob_storage_enabled` reads `PROMPTFOO_INLINE_MEDIA` through `get_env_bool`, so the config's `env:` layer applies as in Node. `PROMPTFOO_SHARE_INLINE_BLOBS` is share-only and is not read.
+  - Upstream's failure modes are kept. A store whose `blob_references` insert fails its foreign key (as with `eval --no-write`, where the eval row never exists) raises, and the test case becomes an error row. Node 0.125.1 does the same; promptphoo's message is sqlite3's `FOREIGN KEY constraint failed` instead of drizzle's `Failed query: ...`. The `b64_json` branch swallows every error, storage errors included, as upstream's try/catch does.
+  - The raw-SVG preview check replaces fast-xml-parser's `XMLValidator` with a non-namespaced expat parse plus the ported fxp parser's `svg` root check. The two agree on ordinary SVG, but an SVG using an undeclared entity such as `&nbsp;` passes fxp and fails expat, so it gets no preview blob.
+  - `remoteUpload.ts`, `shareUpload.ts` and `src/storage/` (the provider-side media store used by the video providers) are cloud or provider features and are not ported.
+  - `tests/conftest.py` resets the provider singleton after every test, because it caches its base path.
+- Rationale: A Python eval and a Node eval over the same config must leave byte-identical blob files and the same rows (tests/test_blobs_node.py checks this, along with the persisted responses). Keeping upstream's call sites and error paths keeps that true for the failure cases too.
+- Assumption: Node keeps creating the eval row before it runs. If upstream started persisting `blob_references` without an eval row, `--no-write` would stop failing in Node and this port would need the same change.
+- Implication: `promptfoo://blob/<hash>` URIs in Python-written results now resolve through the same store in both runtimes. The parity fixtures carry no media, so the parity summary is unchanged.
+- Modules: src/promptphoo/blobs/__init__.py, src/promptphoo/blobs/constants.py, src/promptphoo/blobs/types.py, src/promptphoo/blobs/blob_refs.py, src/promptphoo/blobs/filesystem_provider.py, src/promptphoo/blobs/extractor.py, src/promptphoo/evaluator/run.py, src/promptphoo/models/eval.py, src/promptphoo/db/import_export.py, tests/conftest.py, tests/test_blobs.py, tests/test_blobs_node.py, tests/fixtures/blobs/provider.py
+
+## 49. `import` stores embedded blobs and `export --include-media` embeds them, as upstream
+- Decision:
+  - `import` stores each validated, referenced `blobAssets` entry with `store_blob` before the `--force` delete. Its MIME type is sanitized to the inline-safe set, or `application/octet-stream` otherwise. The stored hash is re-checked. After the results are written, `record_blob_reference(location='import')` links each asset to the new eval and upgrades any reference the extractor recorded while it scanned the imported results. The validation and the error messages are as in D43.
+  - `create_output_data(..., include_media=True)` ports `exportBlobAssets`. It scans the results (without `metadata.blobUris` when PROMPTFOO_STRIP_RESPONSE_OUTPUT is on) and the traces with `collect_blob_hashes`, which returns an insertion-ordered dict so the assets come out in Node's order. It reads only share-authorized blobs (a reference with a kind, or one from an import), skips missing and oversized ones with a warning, and writes `blobAssets`. `write_output` passes the flag to the json and yaml/yml/txt writers only, as upstream does.
+- Rationale: These were the follow-ups D43 deferred to the blob store. With them, a media eval can move between the runtimes in either direction.
+- Assumption: The export format stays `{hash, mimeType, sizeBytes, data}` with standard base64.
+- Implication: An `--include-media` export written by either runtime from either runtime's DB is identical apart from exportedAt and nodeVersion. Importing it into either runtime gives the same blob files and rows. SVG previews come back as `application/octet-stream` in both runtimes, by upstream's design.
+- Note: Supersedes D43.
+- Modules: src/promptphoo/cli/import_.py, src/promptphoo/cli/export.py, src/promptphoo/output/writer.py, src/promptphoo/db/import_export.py, tests/test_import_export.py, tests/test_blobs_node.py

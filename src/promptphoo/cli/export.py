@@ -2,9 +2,9 @@
 (log-file lookup is shared with `logs`, in promptphoo.logfiles).
 
 `export eval` writes through `output.writer` (any `--output` format `eval -o` supports) or prints
-`createOutputData` as indented JSON. `--include-media` is accepted, but promptphoo has no blob
-store until Phase 6, so no `blobAssets` are embedded (see D43). `export logs` builds the same
-minimal tar inside a level-9 gzip stream that upstream hand-rolls.
+`createOutputData` as indented JSON. `--include-media` embeds the referenced blobs the eval has
+trusted provenance for as `blobAssets` (json and yaml outputs, see D49). `export logs` builds
+the same minimal tar inside a level-9 gzip stream that upstream hand-rolls.
 """
 
 from __future__ import annotations
@@ -43,10 +43,8 @@ def export_eval(eval_id: str, output: str | None = None, include_media: bool = F
         if not result:
             logger.error("No eval found with ID %s", eval_id)
             return 1
-        if include_media:
-            logger.debug("--include-media: no blob store in promptphoo yet; nothing to embed")
         if output:
-            write_output(output, result, None)
+            write_output(output, result, None, include_media)
             logger.info("Eval with ID %s has been successfully exported to %s.", eval_id, output)
         else:
             logger.info("%s", json_stringify(create_output_data(result, None, include_media), 2))

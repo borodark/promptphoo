@@ -16,6 +16,7 @@ import io
 import json
 import logging
 import os
+import sqlite3
 import tarfile
 from pathlib import Path
 
@@ -466,11 +467,88 @@ def _with_blob(data: dict, payload: bytes, *, hash_: str | None = None, size: in
     return data
 
 
-def test_import_valid_blob_assets_skipped_with_warning(config_dir, tmp_path, caplog_info):
-    data = _with_blob(_load(SAMPLE), b"image bytes")
+def test_import_stores_blob_assets_and_records_import_references(config_dir, tmp_path):
+    from promptphoo.blobs import get_blob_by_hash
+
+    payload = b"portable image from eval export"
+    data = _with_blob(_load(SAMPLE), payload)
     assert import_cli.import_eval(_write(tmp_path, "b.json", data)) == 0
-    assert any("Skipping 1 embedded media blob(s)" in m for m in _warnings(caplog_info))
-    assert _count("blob_assets") == 0
+    digest = hashlib.sha256(payload).hexdigest()
+    blob = get_blob_by_hash(digest)
+    assert blob.data == payload and blob.metadata["mimeType"] == "image/png"
+    assert (config_dir / "blobs" / digest[:2] / digest[2:4] / digest).read_bytes() == payload
+    assert _rows("SELECT blob_hash, eval_id, location, kind FROM blob_references") == [
+        (digest, data["evalId"], "import", None)
+    ]
+
+
+def test_import_blob_assets_referenced_only_by_traces(config_dir, tmp_path):
+    payload = b"portable trace image from eval export"
+    digest = hashlib.sha256(payload).hexdigest()
+    data = _with_blob(_load(SAMPLE), payload)
+    data["results"]["results"][0]["response"] = {"output": "no media"}
+    data["traces"] = [
+        {"traceId": "trace-media-import", "evaluationId": data["evalId"],
+         "testCaseId": "trace-media-case", "metadata": {"attachment": f"promptfoo://blob/{digest}"},
+         "spans": []}
+    ]  # fmt: skip
+    assert import_cli.import_eval(_write(tmp_path, "b.json", data)) == 0
+    assert _rows("SELECT blob_hash, location FROM blob_references") == [(digest, "import")]
+
+
+@pytest.mark.parametrize(
+    ("declared", "expected"),
+    [("text/html", "application/octet-stream"), ("image/svg+xml", "application/octet-stream"),
+     (" IMAGE/PNG ", "image/png"), ("audio/wav", "audio/wav")],
+)  # fmt: skip
+def test_import_sanitizes_blob_mime_types(config_dir, tmp_path, declared, expected):
+    data = _with_blob(_load(SAMPLE), b"<svg/> or <html>")
+    data["blobAssets"][0]["mimeType"] = declared
+    assert import_cli.import_eval(_write(tmp_path, "b.json", data)) == 0
+    assert _rows("SELECT mime_type FROM blob_assets") == [(expected,)]
+
+
+def test_import_reference_only_result_does_not_adopt_unregistered_file(config_dir, tmp_path):
+    from promptphoo.blobs import get_share_authorized_blob, store_blob
+    from promptphoo.output.writer import create_output_data
+
+    payload = b"unregistered file retained after failed import-store transaction"
+    digest = hashlib.sha256(payload).hexdigest()
+    with pytest.raises(sqlite3.IntegrityError):
+        store_blob(payload, "image/png", {"evalId": "missing-blob-import-eval"})
+    blob_path = config_dir / "blobs" / digest[:2] / digest[2:4] / digest
+    assert blob_path.read_bytes() == payload
+    data = _load(SAMPLE)
+    data["results"]["results"] = [data["results"]["results"][0]]
+    data["results"]["results"][0]["response"] = {"output": f"promptfoo://blob/{digest}"}
+    assert import_cli.import_eval(_write(tmp_path, "r.json", data)) == 0
+    assert _count("blob_assets") == 0 and _count("blob_references") == 0
+    assert get_share_authorized_blob(digest, data["evalId"]) is None
+    record = Eval.find_by_id(data["evalId"])
+    assert "blobAssets" not in create_output_data(record, None, include_media=True)
+
+
+def test_import_skips_blob_scan_without_embedded_assets(config_dir, monkeypatch):
+    def fail(*_a, **_k):
+        raise AssertionError("collect_blob_hashes should not run")
+
+    monkeypatch.setattr(import_cli, "collect_blob_hashes", fail)
+    assert import_cli.import_eval(str(SAMPLE)) == 0
+
+
+def test_import_force_keeps_existing_when_blob_store_fails(config_dir, tmp_path, monkeypatch,
+                                                         caplog_info):  # fmt: skip
+    sample = _load(SAMPLE)
+    assert import_cli.import_eval(str(SAMPLE)) == 0
+    replacement = _with_blob(_load(SAMPLE), b"valid replacement bytes")
+
+    def boom(*_a, **_k):
+        raise RuntimeError("embedded media storage failed")
+
+    monkeypatch.setattr(import_cli, "store_blob", boom)
+    assert import_cli.import_eval(_write(tmp_path, "r.json", replacement), force=True) == 1
+    assert _errors(caplog_info) == ["Failed to import eval: embedded media storage failed"]
+    assert len(_results(sample["evalId"])) == len(sample["results"]["results"])
 
 
 def test_import_rejects_blob_hash_mismatch(config_dir, tmp_path, caplog_info):
@@ -499,15 +577,17 @@ def test_import_ignores_unreferenced_and_malformed_blobs(config_dir, tmp_path, c
     ]
     assert import_cli.import_eval(_write(tmp_path, "b.json", data)) == 0
     assert _warnings(caplog_info) == ["Skipping malformed embedded blob during import"]
+    assert _count("blob_assets") == 0
+    assert not (config_dir / "blobs").exists() or not any((config_dir / "blobs").rglob("*e*"))
 
 
 def test_collect_blob_hashes_bounds():
     h = "A" * 64
     value = {"a": [{"hash": h}, f"x promptfoo://blob/{'b' * 64} y"], "deep": {"uri": "z"}}
-    assert import_cli.collect_blob_hashes(value) == {"a" * 64, "b" * 64}
-    assert import_cli.collect_blob_hashes(value, max_depth=1) == set()
+    assert list(import_cli.collect_blob_hashes(value)) == ["a" * 64, "b" * 64]
+    assert list(import_cli.collect_blob_hashes(value, max_depth=1)) == []
     long_text = "x" * 50 + f"promptfoo://blob/{'c' * 64}"
-    assert import_cli.collect_blob_hashes(long_text, max_string_length=10) == set()
+    assert list(import_cli.collect_blob_hashes(long_text, max_string_length=10)) == []
 
 
 # --- import: collisions ------------------------------------------------------------------------
