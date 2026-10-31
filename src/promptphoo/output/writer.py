@@ -218,6 +218,18 @@ def create_output_data(
     """createOutputData: the OutputFile written for json/yaml/txt outputs."""
     strip_flags = _strip_flags(eval_record)
     summary = create_output_summary(eval_record, strip_flags)
+    traces = None
+    try:
+        # TraceStore redacts sensitive attribute keys on reads by default.
+        from promptphoo.tracing.store import get_trace_store
+
+        traces = get_trace_store().get_traces_by_evaluation_sync(eval_record.id)
+    except Exception as error:
+        logger.warning(
+            "Failed to fetch traces for output %s; traces omitted from export: %s",
+            eval_record.id,
+            error,
+        )
     output: dict[str, Any] = {
         "evalId": eval_record.id,
         "results": summary,
@@ -233,7 +245,8 @@ def create_output_data(
         from promptphoo import sanitizer
 
         output["runtimeOptions"] = sanitizer.sanitize_runtime_options(runtime_options)
-    # Traces come from upstream's tracing store, which promptphoo does not have yet.
+    if traces:
+        output["traces"] = project_traces_for_output(traces, strip_flags)
     if include_media:
         blob_assets = export_blob_assets(
             eval_record.id,
@@ -244,6 +257,53 @@ def create_output_data(
         if blob_assets:
             output["blobAssets"] = blob_assets
     return output
+
+
+REQUEST_BODY_ATTRIBUTE = "promptfoo.request.body"
+RESPONSE_BODY_ATTRIBUTE = "promptfoo.response.body"
+
+
+def project_traces_for_output(
+    traces: list[dict[str, Any]], strip_flags: dict[str, bool]
+) -> list[dict[str, Any]]:
+    """projectTracesForOutput (src/models/evalResult.ts): PROMPTFOO_STRIP_* applied to traces.
+    Metadata (or just its `vars`) is dropped, and so are the request/response body span
+    attributes."""
+    strip_metadata = strip_flags["shouldStripMetadata"]
+    strip_prompt = strip_flags["shouldStripPromptText"]
+    strip_output = strip_flags["shouldStripResponseOutput"]
+    strip_vars = strip_flags["shouldStripTestVars"]
+    if not (strip_metadata or strip_prompt or strip_output or strip_vars):
+        return traces
+    projected_traces = []
+    for trace in traces:
+        projected = trace
+        if strip_metadata:
+            projected = {k: v for k, v in trace.items() if k != "metadata"}
+        elif strip_vars and isinstance(trace.get("metadata"), dict) and "vars" in trace["metadata"]:
+            metadata = {k: v for k, v in trace["metadata"].items() if k != "vars"}
+            projected = {k: v for k, v in trace.items() if k != "metadata"}
+            if metadata:
+                projected["metadata"] = metadata
+        if not strip_prompt and not strip_output:
+            projected_traces.append(projected)
+            continue
+        spans = []
+        for span in projected["spans"]:
+            if span.get("attributes") is None:  # `{}` is truthy in JS
+                spans.append(span)
+                continue
+            attributes = dict(span["attributes"])
+            if strip_prompt:
+                attributes.pop(REQUEST_BODY_ATTRIBUTE, None)
+            if strip_output:
+                attributes.pop(RESPONSE_BODY_ATTRIBUTE, None)
+            out = {k: v for k, v in span.items() if k != "attributes"}
+            if attributes:
+                out["attributes"] = attributes
+            spans.append(out)
+        projected_traces.append({**projected, "spans": spans})
+    return projected_traces
 
 
 def results_for_media_export_scan(results: Any, should_strip_response_output: bool) -> Any:

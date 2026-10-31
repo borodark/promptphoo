@@ -327,18 +327,30 @@ def prepare_traces(traces: Any) -> list[dict[str, Any]]:
 def import_traces(
     traces: list[dict[str, Any]], eval_id: str, generate_new_trace_ids: bool
 ) -> dict[str, str]:
-    from promptphoo.db import import_export as ie
+    from promptphoo.tracing.store import get_trace_store
 
+    trace_store = get_trace_store()
     used: set[str] = set()
     imported: dict[str, str] = {}
     for trace in traces:
+        # Trace ids are globally unique in the store; duplicates and ids already stored (for
+        # another eval) get a fresh id.
         trace_id = trace["traceId"]
-        if generate_new_trace_ids or trace_id in used or ie.trace_exists(trace_id):
+        if (
+            generate_new_trace_ids
+            or trace_id in used
+            or trace_store.get_trace_sync(trace_id) is not None
+        ):
             trace_id = uuid.uuid4().hex
         used.add(trace_id)
-        ie.create_trace(trace_id, eval_id, trace["testCaseId"], trace.get("metadata"))
+        trace_store.create_trace_sync({
+            "traceId": trace_id,
+            "evaluationId": eval_id,
+            "testCaseId": trace["testCaseId"],
+            "metadata": trace.get("metadata"),
+        })  # fmt: skip
         if trace["spans"]:
-            ie.add_spans(trace_id, trace["spans"])
+            trace_store.add_spans_sync(trace_id, trace["spans"])
         imported[trace["traceId"]] = trace_id
     return imported
 

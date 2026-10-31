@@ -45,7 +45,7 @@ def number_to_string(n: float | int) -> str:
     if n == 0:
         return "0"
     if n.is_integer() and abs(n) < 1e21:
-        return str(int(n))
+        return _integral_digits(n)
     r = repr(n)
     if "e" in r:
         mantissa, exp = r.split("e")
@@ -57,6 +57,18 @@ def number_to_string(n: float | int) -> str:
             return format(n, "f").rstrip("0").rstrip(".")
         return f"{mantissa}e{sign}{exp_digits}"
     return r
+
+
+def _integral_digits(n: float) -> str:
+    """An integral double below 1e21 as V8 prints it: the shortest round-trip digits, padded
+    with zeros (2**60 prints as 1152921504606847000, not its exact 1152921504606846976)."""
+    if abs(n) < 2**53:
+        return str(int(n))
+    mantissa, _, exp = repr(n).partition("e")
+    sign = "-" if mantissa.startswith("-") else ""
+    int_part, _, frac = mantissa.lstrip("-").partition(".")
+    digits = (int_part + frac).rstrip("0") or "0"
+    return sign + digits.ljust(int(exp or len(int_part) - 1) + 1, "0")
 
 
 def js_string(value: Any) -> str:
@@ -104,7 +116,7 @@ class _JsNumber(int):
     """An integral float that JSON.stringify prints without a fractional part."""
 
     def __new__(cls, value: float) -> _JsNumber:
-        return super().__new__(cls, int(value))
+        return super().__new__(cls, int(_integral_digits(value)))
 
 
 def json_stringify(value: Any, indent: int | str | None = None) -> str:
@@ -154,3 +166,20 @@ def to_precision(value: float, precision: int) -> str:
         return f"{mantissa}e{'+' if exponent >= 0 else '-'}{abs(exponent)}"
     places = max(precision - 1 - exponent, 0)
     return f"{rounded.quantize(Decimal(1).scaleb(-places)):f}"
+
+
+def node_base64_decode(data: str) -> bytes:
+    """Buffer.from(data, 'base64'): accepts url-safe letters, skips junk, stops at '='."""
+    import base64
+    import binascii
+    import re
+
+    cleaned = data.replace("-", "+").replace("_", "/")
+    cleaned = cleaned.split("=", 1)[0]
+    cleaned = re.sub(r"[^A-Za-z0-9+/]", "", cleaned)
+    if len(cleaned) % 4 == 1:
+        cleaned = cleaned[:-1]
+    try:
+        return base64.b64decode(cleaned + "=" * (-len(cleaned) % 4))
+    except binascii.Error:
+        return b""
