@@ -1,5 +1,5 @@
 """`promptfoo export eval <id|latest>` and `promptfoo export logs`. Ports src/commands/export.ts
-(plus `getLogDirectory`/`getLogFiles` from src/util/logs.ts).
+(log-file lookup is shared with `logs`, in promptphoo.logfiles).
 
 `export eval` writes through `output.writer` (any `--output` format `eval -o` supports) or prints
 `createOutputData` as indented JSON. `--include-media` is accepted, but promptphoo has no blob
@@ -18,9 +18,9 @@ from typing import Any
 
 import click
 
-from promptphoo import db, envars
+from promptphoo import db
 from promptphoo.jsvalues import json_stringify
-from promptphoo.paths import get_config_directory_path
+from promptphoo.logfiles import get_log_directory, get_log_files
 
 logger = logging.getLogger("promptphoo")
 
@@ -57,47 +57,6 @@ def export_eval(eval_id: str, output: str | None = None, include_media: bool = F
 
 
 # --- export logs ------------------------------------------------------------------------------
-
-
-def get_log_directory() -> str:
-    """getLogDirectory (src/util/logs.ts)."""
-    config_dir = get_config_directory_path(True)
-    custom = envars.get_env_string("PROMPTFOO_LOG_DIR")
-    return os.path.abspath(custom) if custom else os.path.join(config_dir, "logs")
-
-
-def get_log_files(kind: str = "all") -> list[dict[str, Any]]:
-    """getLogFiles (src/util/logs.ts): promptfoo-*.log files, newest first."""
-    log_dir = get_log_directory()
-    if not os.path.isdir(log_dir):
-        return []
-    try:
-        names = os.listdir(log_dir)
-    except OSError as error:
-        logger.error("Error reading log directory: %s", _js_error(error))
-        return []
-    files = []
-    for name in names:
-        if not name.startswith("promptfoo-") or not name.endswith(".log"):
-            continue
-        if kind != "all" and f"-{kind}-" not in name:
-            continue
-        path = os.path.join(log_dir, name)
-        try:
-            stats = os.stat(path)
-        except OSError:
-            continue
-        files.append(
-            {
-                "name": name,
-                "path": path,
-                "mtime": stats.st_mtime,
-                "type": "error" if "-error-" in name else "debug",
-                "size": stats.st_size,
-            }
-        )
-    # Array#sort is stable; mtime compared at millisecond precision like Date#getTime.
-    return sorted(files, key=lambda f: -int(f["mtime"] * 1000))
 
 
 def _octal(value: int, width: int) -> bytes:
@@ -187,7 +146,7 @@ def export_logs(count: str | None = None, output: str | None = None) -> int:
         if not output_path.endswith(".gz"):
             output_path += ".gz"
         logger.info("Collecting %d log file(s)...", len(log_files))
-        create_log_archive([f["path"] for f in log_files], output_path)
+        create_log_archive([f.path for f in log_files], output_path)
         logger.info("Log files have been collected in: %s", output_path)
         logger.info("You can now share this file for debugging purposes.")
         return 0

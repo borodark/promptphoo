@@ -18,6 +18,7 @@ from typing import Any
 from promptphoo import cli_state, envars
 from promptphoo.files import glob_sync, maybe_load_from_external_file
 from promptphoo.jsvalues import is_truthy, js_string, json_stringify
+from promptphoo.promptfoo_command import promptfoo_command
 from promptphoo.refs import dereference
 from promptphoo.templating import read_filters, render_env_only_in_object
 from promptphoo.testcases import (
@@ -45,25 +46,55 @@ class ConfigResolutionError(Exception):
 
 
 @cache
+def _config_schema() -> dict[str, Any]:
+    return json.loads(
+        (resources.files("promptphoo") / "_data" / "config-schema.json").read_text("utf-8")
+    )
+
+
+@cache
 def _config_validator() -> Any:
     import jsonschema
 
-    schema = json.loads(
-        (resources.files("promptphoo") / "_data" / "config-schema.json").read_text("utf-8")
-    )
-    return jsonschema.Draft7Validator(schema)
+    return jsonschema.Draft7Validator(_config_schema())
+
+
+CONFIG_PROVIDER_INPUT_ERROR = (
+    "Exactly one of 'targets' or 'providers' must be provided, but not both"
+)
+
+
+def config_schema_issues(config: Any, allow_missing_providers: bool = False) -> list[Any]:
+    """zod-style issues for `config` against the vendored UnifiedConfig schema.
+
+    The root `not: {required: [providers, targets]}` is reported as upstream's refine message,
+    which zod only checks once the object itself parsed without aborting issues.
+    """
+    from promptphoo.config.zod_errors import Issue, collect_issues
+
+    errors = [
+        e
+        for e in _config_validator().iter_errors(config)
+        if not (str(e.validator) == "not" and not list(e.absolute_path))
+    ]
+    issues = collect_issues(errors, _config_schema())
+    if isinstance(config, dict) and not any(i.aborts for i in issues):
+        count = sum(config.get(k) is not None for k in ("providers", "targets"))
+        if count > 1 or (count == 0 and not allow_missing_providers):
+            issues.append(Issue([], CONFIG_PROVIDER_INPUT_ERROR, False))
+    return issues
 
 
 def validate_config(config: dict[str, Any], config_path: str) -> list[str]:
-    """Return schema errors for a declarative config and log them as a warning."""
-    errors = sorted(_config_validator().iter_errors(config), key=lambda e: list(e.path))
-    messages = [f"  {'.'.join(map(str, e.path)) or '(root)'}: {e.message}" for e in errors]
-    providers, targets = config.get("providers"), config.get("targets")
-    if (providers is None) == (targets is None) and not config.get("redteam"):
-        messages.append("  Exactly one of 'targets' or 'providers' must be provided, but not both")
-    if messages:
-        logger.warning("Invalid configuration file %s:\n%s", config_path, "\n".join(messages))
-    return messages
+    """Log schema errors for a declarative config as a warning, formatted like z.prettifyError."""
+    from promptphoo.config.zod_errors import prettify_issues
+
+    issues = config_schema_issues(config, allow_missing_providers=bool(config.get("redteam")))
+    if not issues:
+        return []
+    text = prettify_issues(issues)
+    logger.warning("Invalid configuration file %s:\n%s", config_path, text)
+    return text.split("\n")
 
 
 # --- reading ----------------------------------------------------------------------------------
@@ -645,8 +676,9 @@ async def _resolve_loaded_config(
                 "⚠️  No promptfooconfig found\n\n"
                 f"Searched in {os.getcwd()} for promptfooconfig.{{"
                 + ", ".join(DEFAULT_CONFIG_EXTENSIONS)
-                + "}\n\nTry running with:\n\n  promptfoo eval -c path/to/promptfooconfig.yaml\n\n"
-                "Or create a config with:\n\n  promptfoo init"
+                + "}\n\nTry running with:\n\n"
+                f"{promptfoo_command('')} eval -c path/to/promptfooconfig.yaml\n\n"
+                f"Or create a config with:\n\n{promptfoo_command('init')}"
             ),
             log_level="warn",
         )

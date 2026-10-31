@@ -76,4 +76,11 @@ def main(argv: list[str] | None = None) -> None:
     env_paths = env_paths_from_argv(args)
     if env_paths:
         setup_env(env_paths)
-    build_cli(args).main(args=args, prog_name="promptfoo")
+    from promptphoo import logfiles
+
+    logfiles.initialize_run_logging()
+    try:
+        build_cli(args).main(args=args, prog_name="promptfoo")
+    finally:
+        logfiles.print_error_information()
+        logfiles.close_run_logging()
