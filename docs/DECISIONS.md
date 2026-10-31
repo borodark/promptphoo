@@ -209,6 +209,68 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Modules: src/promptphoo/providers/azure, src/promptphoo/providers/function_callbacks.py, src/promptphoo/evaluator/run.py, tools/gen_azure_tables.mjs
 - Commits: `48aa106`
 
+## 25. LLM-judge matchers always grade locally; Pi and JS rubric prompts raise
+- Decision:
+  - `matches_llm_rubric` never takes upstream's remote-grading branch. Upstream only uses it when the config has a `redteam` section, and redteam is out of scope. The grader is the configured provider or the default `llmRubricProvider`/`gradingJsonProvider`.
+  - The `pi` assertion (`matches_pi_score`) raises NotImplementedError, because it needs Promptfoo's remote Pi scoring API.
+  - A `rubricPrompt: file://*.js` raises a clear not-supported error. Other file types are read as raw text and rendered, as upstream does.
+  - `GEVAL_PROMPT_STEPS` and `GEVAL_PROMPT_EVALUATE` live in `matchers/llm_grading.py`. Upstream defines them in `src/prompts/index.ts`, which the vendored grading prompts JSON does not cover. The text was copied from the upstream template literals, and a test compares it with the upstream file.
+  - Rendered grading prompts are compared with real Nunjucks output: `tools/gen_grading_render_cases.py` writes the cases, and `tools/grading_render_golden.js` renders them through a copy of upstream's `renderLlmRubricPrompt`.
+  - `finalize_graded_assertion` (upstream `ragDefaults.ts`) is in `assertions/modelgraded.py`. `trajectory:goal-success` stays in `assertions/trajectory.py`, next to the other trajectory assertions.
+- Rationale: Drop-in behaviour for every non-redteam config, and loud errors instead of silently different grading.
+- Assumption: Configs with a `redteam` section are not run through promptphoo.
+- Implication: When the RAG branch lands, it may carry its own copy of `ragDefaults.ts`. Keep one copy and import it from both modules.
+- Modules: src/promptphoo/matchers/rubric.py, src/promptphoo/matchers/llm_grading.py, src/promptphoo/assertions/modelgraded.py, src/promptphoo/assertions/trajectory.py, tools/grading_render_golden.js, tools/gen_grading_render_cases.py
+- Commits: `3a9c8f9`
+
+## 26. agent-rubric needs an explicitly configured agentic grader
+- Decision:
+  - `matches_agent_rubric` uses only `grading.provider`. When none is set, upstream falls back to the Codex SDK default (`getCodexDefaultProviders().llmRubricProvider`). promptphoo has no Codex provider, so it raises upstream's "requires an agentic grading provider" error instead.
+  - `is_agentic_provider` is ported as upstream's id-prefix list. `is_agent_workspace` always returns false, because promptphoo never creates copy_working_dir workspaces, so the grader is never pointed at the target's `workingDir`.
+- Rationale: Coding-agent providers are out of scope (plan). An error is safer than grading with a plain model, which upstream also refuses to do.
+- Assumption: Users who need agent-rubric bring a Python provider whose id names an agentic runtime, or wait for those providers to be ported.
+- Modules: src/promptphoo/matchers/agent.py, src/promptphoo/assertions/modelgraded.py
+- Commits: `3a9c8f9`
+
+## 27. RAG and similarity assertions run against shimmed grading infrastructure
+- Decision:
+  - `matchers/providers.py`, `matchers/shared.py`, `providers/defaults.py` and the package `matchers/__init__.py` are minimal shims with the shared-contract names, each headed `# SHIM: replaced by the grading-infrastructure branch at merge`. The defaults shim builds only upstream's OpenAI branch (`text-embedding-3-large`, `gpt-6-sol`, `omni-moderation-latest`, a Responses web-search grader). `call_grading_provider` only checks the abort signal; it does no rate limiting, queueing or tracing spans.
+  - `matchers/rubric.py` is shimmed the same way with only `load_rubric_prompt` and `render_llm_rubric_prompt`, because the RAG and search-rubric matchers need them and rubric.ts belongs to the llm-rubric branch.
+  - `assertions/rag_defaults.py` (ragDefaults.ts) is owned here and also carries `is_grader_failure` from llmGrading.ts, so that `finalize_graded_assertion` and `apply_rag_inverse` have no dependency on the llm-rubric branch. `assertions/context_utils.py` ports contextUtils.ts, with `get_transform_error_message` reading the `__cause__` that `transform()` chains.
+  - Handler and matcher invariants raise with Node's `Invariant failed: ` prefix, which is the text upstream users see. `assertions/base.invariant` omits that prefix and is left alone.
+  - Grader prompts are checked byte for byte against real Nunjucks renders (`tools/rag_prompts_golden.js` writes `tests/fixtures/rag_prompts_golden.json`).
+- Rationale: The grading-infrastructure branch runs in parallel. Shims with identical names let this branch test end to end, and at merge the other branch's files replace them.
+- Assumption: The other branch exports these exact names and signatures, and ports `isGraderFailure` with the same `metadata.graderError === true` rule. If its `rubric.py` uses different names, the RAG and search matchers' imports must follow it.
+- Implication: Once the shims are replaced, drop the duplicate `is_grader_failure` in rag_defaults.py if llm_grading exports one.
+- Modules: src/promptphoo/matchers, src/promptphoo/providers/defaults.py, src/promptphoo/assertions/rag_defaults.py, src/promptphoo/assertions/context_utils.py, src/promptphoo/assertions/modelgraded_rag.py, tools/rag_prompts_golden.js
+- Note: at merge the shims were replaced by the grading-infrastructure branch's modules (D32–D34); the RAG matchers now call the real `call_grading_provider`, so their `invoke` callbacks accept the optional `on_response_headers` argument.
+- Commits: `336d4e7`
+
+## 28. Similarity, moderation and classifier paths that depend on unported upstream code
+- Decision:
+  - `matches_similarity` has no remote-grading branch. Upstream sends cosine `similar` to promptfoo's cloud grader under a `redteam` config; redteam is out of scope, so grading is always local.
+  - `matches_moderation` keeps upstream's Replicate fallback (`replicate:moderation:meta/llama-guard-4-12b` when only `REPLICATE_API_KEY`/`REPLICATE_API_TOKEN` is set). There is no Replicate provider, so that path fails loudly with the provider loader's error rather than switching to another moderator.
+  - `classifier` works with any provider that has `call_classification_api(text)`, such as a Python provider (`file://x.py` defining `call_classification_api`). The HuggingFace classification provider is not required. Classification and moderation calls pass only upstream's positional text arguments; the abort-signal `options` argument upstream adds under an evaluator context is not forwarded, because the Python provider methods do not take it.
+  - search-rubric's last-resort `load_web_search_provider` keeps upstream's candidate order and model ids. Candidates whose provider family is not ported (perplexity, xai) are skipped like any load failure.
+- Rationale: Port upstream's branches as written, and fail loudly where a dependency is missing instead of changing which provider grades.
+- Assumption: Eval users of moderation have an OpenAI key or configure the grader explicitly.
+- Modules: src/promptphoo/matchers/similarity.py, src/promptphoo/matchers/moderation.py, src/promptphoo/matchers/classification.py, src/promptphoo/providers/web_search_utils.py
+- Commits: `336d4e7`
+
+## 29. The select-best / max-score pass mutates stored EvalResult records; resume and cancellation paths wait for Phase 5
+- Decision:
+  - The comparison pass (upstream `processComparisonAssertions` and the helpers around it in `src/evaluator.ts`) lives in `evaluator/comparison.py` as a `ComparisonPass` bound to the `Evaluator`. `run.py` calls `prepare_row` before each `append_result` (upstream `persistEvalRow`: snapshot the live grader, store its sanitized form in `testCase`) and `process` after every step has run, before prompts are appended for the last time.
+  - The pass works on the store's own `EvalResult` objects, as upstream works on its `EvalResult` models: `store.results` when not persisted, `read_results_by_test_idx` (no ORDER BY) when persisted, and `save_result` writes the mutated row back. `EvaluationStore` gained those three members, and `EvalResult.save()` ports upstream's update-by-id (insert when not yet persisted).
+  - Prompt metrics and evaluator stats are adjusted by the ported `updateComparisonStats` / `updateComparisonResultCounts` and `updateAssertionMetrics`, including the cached-target `numRequests` probe count.
+  - `runCompareAssertion` is in `assertions/index.py` like upstream. Validation errors are upstream's: a select-best failure (one prompt, non-string value, grader exception) turns every comparable row into an ERROR with the generic "Error grading select-best (...)" reason and a saved `__promptfoo.comparisonError`; a max-score failure (one output, no other assertion) aborts the eval. select-best inside an assert-set is skipped, as upstream.
+  - Not ported yet: the `cliState.resume` skip of completed comparisons, retry-errors filtering, rows that failed to persist (`readFailedResultsByTestIdx`), JSONL final-result tracking, grading cancellation (`markComparisonRowsAborted`) and progress-bar updates. The resume-time grader restoration (`restoreComparisonProvider`, redaction checks) is ported but only runs for results of the current run.
+  - Shims marked `# SHIM: replaced by the grading-infrastructure branch at merge`: `matchers/__init__.py`, `matchers/shared.py`, `matchers/providers.py`, `matchers/rubric.py` and `providers/defaults.py`, holding only what `matchers/comparison.py` needs.
+- Rationale: Mutating the stored records keeps upstream's control flow and its persisted-update path line for line, so a later resume port only fills in the skipped branches.
+- Assumption: Persisted rows reach the comparison in SQLite's order for `WHERE eval_id = ? AND test_idx = ?`, which uses the `(eval_id, test_idx, success)` index, so failing rows come before passing ones rather than in prompt order. Node runs the same query on the same schema and was observed to agree (parity PASS on `tests/fixtures/parity_comparison/`). Only the order of texts in the grader prompt depends on it.
+- Implication: The grading-infrastructure branch's versions of the shim modules win at merge; `matchers/comparison.py` imports them lazily by the contract names.
+- Modules: src/promptphoo/evaluator/comparison.py, src/promptphoo/evaluator/run.py, src/promptphoo/models/eval.py, src/promptphoo/matchers/comparison.py, src/promptphoo/assertions/index.py
+- Commits: `9af5f6e`
+
 ## 31. OpenAI-compatible families: a data table for pure routing wrappers, a small subclass for the rest
 - Decision:
   - The `providers/compatible/` package ports the upstream providers that subclass or wrap the OpenAI chat, completion and embedding providers.
@@ -264,39 +326,3 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Resolved graders are provider instances inside `options` and `assert`, and they hold clients and locks that `copy.deepcopy` cannot copy. Upstream likewise reattaches `test.provider` after its clone, because the clone loses functions.
 - Modules: src/promptphoo/grading_provider.py, src/promptphoo/assertions/index.py, src/promptphoo/evaluator/run.py
 - Commits: `956e36a`
-
-## 25. LLM-judge matchers always grade locally; Pi and JS rubric prompts raise
-- Decision:
-  - `matches_llm_rubric` never takes upstream's remote-grading branch. Upstream only uses it when the config has a `redteam` section, and redteam is out of scope. The grader is the configured provider or the default `llmRubricProvider`/`gradingJsonProvider`.
-  - The `pi` assertion (`matches_pi_score`) raises NotImplementedError, because it needs Promptfoo's remote Pi scoring API.
-  - A `rubricPrompt: file://*.js` raises a clear not-supported error. Other file types are read as raw text and rendered, as upstream does.
-  - `GEVAL_PROMPT_STEPS` and `GEVAL_PROMPT_EVALUATE` live in `matchers/llm_grading.py`. Upstream defines them in `src/prompts/index.ts`, which the vendored grading prompts JSON does not cover. The text was copied from the upstream template literals, and a test compares it with the upstream file.
-  - Rendered grading prompts are compared with real Nunjucks output: `tools/gen_grading_render_cases.py` writes the cases, and `tools/grading_render_golden.js` renders them through a copy of upstream's `renderLlmRubricPrompt`.
-  - `finalize_graded_assertion` (upstream `ragDefaults.ts`) is in `assertions/modelgraded.py`. `trajectory:goal-success` stays in `assertions/trajectory.py`, next to the other trajectory assertions.
-- Rationale: Drop-in behaviour for every non-redteam config, and loud errors instead of silently different grading.
-- Assumption: Configs with a `redteam` section are not run through promptphoo.
-- Implication: When the RAG branch lands, it may carry its own copy of `ragDefaults.ts`. Keep one copy and import it from both modules.
-- Modules: src/promptphoo/matchers/rubric.py, src/promptphoo/matchers/llm_grading.py, src/promptphoo/assertions/modelgraded.py, src/promptphoo/assertions/trajectory.py, tools/grading_render_golden.js, tools/gen_grading_render_cases.py
-- Commits: `3a9c8f9`
-
-## 26. agent-rubric needs an explicitly configured agentic grader
-- Decision:
-  - `matches_agent_rubric` uses only `grading.provider`. When none is set, upstream falls back to the Codex SDK default (`getCodexDefaultProviders().llmRubricProvider`). promptphoo has no Codex provider, so it raises upstream's "requires an agentic grading provider" error instead.
-  - `is_agentic_provider` is ported as upstream's id-prefix list. `is_agent_workspace` always returns false, because promptphoo never creates copy_working_dir workspaces, so the grader is never pointed at the target's `workingDir`.
-- Rationale: Coding-agent providers are out of scope (plan). An error is safer than grading with a plain model, which upstream also refuses to do.
-- Assumption: Users who need agent-rubric bring a Python provider whose id names an agentic runtime, or wait for those providers to be ported.
-- Modules: src/promptphoo/matchers/agent.py, src/promptphoo/assertions/modelgraded.py
-- Commits: `3a9c8f9`
-
-## 29. The select-best / max-score pass mutates stored EvalResult records; resume and cancellation paths wait for Phase 5
-- Decision:
-  - The comparison pass (upstream `processComparisonAssertions` and the helpers around it in `src/evaluator.ts`) lives in `evaluator/comparison.py` as a `ComparisonPass` bound to the `Evaluator`. `run.py` calls `prepare_row` before each `append_result` (upstream `persistEvalRow`: snapshot the live grader, store its sanitized form in `testCase`) and `process` after every step has run, before prompts are appended for the last time.
-  - The pass works on the store's own `EvalResult` objects, as upstream works on its `EvalResult` models: `store.results` when not persisted, `read_results_by_test_idx` (no ORDER BY) when persisted, and `save_result` writes the mutated row back. `EvaluationStore` gained those three members, and `EvalResult.save()` ports upstream's update-by-id (insert when not yet persisted).
-  - Prompt metrics and evaluator stats are adjusted by the ported `updateComparisonStats` / `updateComparisonResultCounts` and `updateAssertionMetrics`, including the cached-target `numRequests` probe count.
-  - `runCompareAssertion` is in `assertions/index.py` like upstream. Validation errors are upstream's: a select-best failure (one prompt, non-string value, grader exception) turns every comparable row into an ERROR with the generic "Error grading select-best (...)" reason and a saved `__promptfoo.comparisonError`; a max-score failure (one output, no other assertion) aborts the eval. select-best inside an assert-set is skipped, as upstream.
-  - Not ported yet: the `cliState.resume` skip of completed comparisons, retry-errors filtering, rows that failed to persist (`readFailedResultsByTestIdx`), JSONL final-result tracking, grading cancellation (`markComparisonRowsAborted`) and progress-bar updates. The resume-time grader restoration (`restoreComparisonProvider`, redaction checks) is ported but only runs for results of the current run.
-  - Shims marked `# SHIM: replaced by the grading-infrastructure branch at merge`: `matchers/__init__.py`, `matchers/shared.py`, `matchers/providers.py`, `matchers/rubric.py` and `providers/defaults.py`, holding only what `matchers/comparison.py` needs.
-- Rationale: Mutating the stored records keeps upstream's control flow and its persisted-update path line for line, so a later resume port only fills in the skipped branches.
-- Assumption: Persisted rows reach the comparison in SQLite's order for `WHERE eval_id = ? AND test_idx = ?`, which uses the `(eval_id, test_idx, success)` index, so failing rows come before passing ones rather than in prompt order. Node runs the same query on the same schema and was observed to agree (parity PASS on `tests/fixtures/parity_comparison/`). Only the order of texts in the grader prompt depends on it.
-- Implication: The grading-infrastructure branch's versions of the shim modules win at merge; `matchers/comparison.py` imports them lazily by the contract names.
-- Modules: src/promptphoo/evaluator/comparison.py, src/promptphoo/evaluator/run.py, src/promptphoo/models/eval.py, src/promptphoo/matchers/comparison.py, src/promptphoo/assertions/index.py

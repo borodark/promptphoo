@@ -10,27 +10,9 @@ from __future__ import annotations
 from typing import Any
 
 from promptphoo.assertions.base import AssertionParams, GradingResult, Handler, invariant
+from promptphoo.assertions.rag_defaults import finalize_graded_assertion
 from promptphoo.jsvalues import is_truthy, json_stringify
 from promptphoo.tokens import accumulate_token_usage, create_empty_token_usage
-
-
-def finalize_graded_assertion(
-    resp: dict[str, Any],
-    assertion: dict[str, Any],
-    inverse: bool,
-    attach_assertion: bool = False,
-) -> GradingResult:
-    from promptphoo.matchers.llm_grading import is_grader_failure
-    from promptphoo.matchers.shared import invert_score
-
-    # Grader failures must remain failures under negation.
-    if is_grader_failure(resp):
-        return {**resp, "assertion": assertion}
-    score = invert_score(resp.get("score")) if inverse else resp.get("score")
-    out = {**resp, "pass": resp.get("pass") != inverse, "score": score}
-    if attach_assertion:
-        out["assertion"] = assertion
-    return out
 
 
 def _stringify_object_rubric_prompt(params: AssertionParams) -> dict[str, Any] | None:
