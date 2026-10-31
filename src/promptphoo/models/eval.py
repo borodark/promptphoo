@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import random
 import uuid
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -228,6 +229,41 @@ class EvalResult:
                 )  # fmt: skip
         db.update_signal_file(self.eval_id)
 
+    @staticmethod
+    def get_completed_index_pairs(eval_id: str, exclude_errors: bool = False) -> set[str]:
+        """EvalResult.getCompletedIndexPairs: `testIdx:promptIdx` keys of saved results. Retry
+        mode excludes ERROR rows so that they run again."""
+        conn = db.get_db()
+        sql = "SELECT test_idx, prompt_idx FROM eval_results WHERE eval_id = ?"
+        params: tuple[Any, ...] = (eval_id,)
+        if exclude_errors:
+            sql += " AND failure_reason != ?"
+            params = (eval_id, ResultFailureReason.ERROR)
+        rows = conn.execute(sql, params).fetchall()
+        return {f"{_col(r, 'test_idx', 0)}:{_col(r, 'prompt_idx', 1)}" for r in rows}
+
+    @staticmethod
+    def find_many_by_eval_id_batched(eval_id: str, batch_size: int = 100) -> Iterator[list]:
+        """findManyByEvalIdBatched: batches by testIdx so that a test's results stay together."""
+        conn = db.get_db()
+        conn.row_factory = _row_factory
+        offset = 0
+        while True:
+            nxt = conn.execute(
+                "SELECT test_idx FROM eval_results WHERE eval_id = ? AND test_idx >= ? "
+                "ORDER BY test_idx LIMIT 1",
+                (eval_id, offset),
+            ).fetchone()
+            if nxt is None:
+                break
+            offset = nxt["test_idx"]
+            rows = conn.execute(
+                "SELECT * FROM eval_results WHERE eval_id = ? AND test_idx >= ? AND test_idx < ?",
+                (eval_id, offset, offset + batch_size),
+            ).fetchall()
+            yield [EvalResult.from_db_row(r) for r in rows]
+            offset += batch_size
+
     def to_evaluate_result(self, strip_flags: dict[str, bool] | None = None) -> dict[str, Any]:
         flags = strip_flags or rs.get_strip_flags()
         strip_output = flags["shouldStripResponseOutput"]
@@ -356,6 +392,11 @@ class Eval:
         self.evaluation_duration_ms: int | None = None
         self.old_results = old_results
         self._results_loaded = False
+        # Rows whose INSERT failed, kept so the comparison pass still grades the full output
+        # set (recordResultPersistenceFailure / getFailedResultsByTestIdx).
+        self.result_persistence_failed = False
+        self._failed_results: dict[str, dict[str, Any]] = {}
+        self._failed_eval_results: dict[str, EvalResult] = {}
 
     # --- creation -------------------------------------------------------------------------
 
@@ -509,6 +550,51 @@ class Eval:
     async def save_result(self, result: EvalResult) -> None:
         result.save()
 
+    async def read_completed_index_pairs(self, exclude_errors: bool = False) -> set[str]:
+        return EvalResult.get_completed_index_pairs(self.id, exclude_errors)
+
+    def record_result_persistence_failure(self, row: dict[str, Any]) -> None:
+        self.result_persistence_failed = True
+        key = f"{row['testIdx']}:{row['promptIdx']}"
+        self._failed_results[key] = row
+        # Drop a cached reconstruction so the next comparison rehydrates from this raw row.
+        self._failed_eval_results.pop(key, None)
+
+    def has_result_persistence_failure(self, result: Any) -> bool:
+        if isinstance(result, dict):
+            key = f"{result['testIdx']}:{result['promptIdx']}"
+        else:
+            key = f"{result.test_idx}:{result.prompt_idx}"
+        return key in self._failed_results
+
+    async def read_failed_results_by_test_idx(self, test_idx: int) -> list[EvalResult]:
+        """getFailedResultsByTestIdx: in-memory EvalResults for rows that failed to persist,
+        cached so select-best and max-score build on the same instance."""
+        out: list[EvalResult] = []
+        for key, row in self._failed_results.items():
+            if row["testIdx"] != test_idx:
+                continue
+            result = self._failed_eval_results.get(key)
+            if result is None:
+                result = EvalResult.create_from_evaluate_result(self.id, row, persist=False)
+                self._failed_eval_results[key] = result
+            out.append(result)
+        return out
+
+    def fetch_results_batched(self, batch_size: int = 100) -> Iterator[list[EvalResult]]:
+        if not self.persisted:
+            for offset in range(0, len(self.results), batch_size):
+                yield self.results[offset : offset + batch_size]
+            return
+        yield from EvalResult.find_many_by_eval_id_batched(self.id, batch_size)
+
+    def use_old_results(self) -> bool:
+        return self.version() < 4
+
+    def clear_results(self) -> None:
+        self.results = []
+        self._results_loaded = False
+
     def set_vars(self, vars_: list[str]) -> None:
         self.vars = vars_
 
@@ -646,3 +732,9 @@ class Eval:
 
 def _row_factory(cursor: Any, row: tuple[Any, ...]) -> dict[str, Any]:
     return {col[0]: row[i] for i, col in enumerate(cursor.description)}
+
+
+def _col(row: Any, name: str, index: int) -> Any:
+    """A column from a row under either row factory (this module sets `_row_factory` on the
+    shared connection)."""
+    return row[name] if isinstance(row, dict) else row[index]

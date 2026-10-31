@@ -67,9 +67,15 @@ class EvaluationStore(Protocol):
     persisted: bool
     results: list[Any]  # in-memory EvalResult records when not persisted
 
+    result_persistence_failed: bool
+
     async def append_prompts(self, prompts: list[dict[str, Any]]) -> None: ...
     async def append_result(self, row: dict[str, Any]) -> None: ...
     async def read_results_by_test_idx(self, test_idx: int) -> list[Any]: ...
+    async def read_completed_index_pairs(self, exclude_errors: bool = False) -> set[str]: ...
+    async def read_failed_results_by_test_idx(self, test_idx: int) -> list[Any]: ...
+    def record_result_persistence_failure(self, row: dict[str, Any]) -> None: ...
+    def has_result_persistence_failure(self, result: Any) -> bool: ...
     async def save_result(self, result: Any) -> None: ...
     def set_vars(self, vars_: list[str]) -> None: ...
     def set_duration_ms(self, ms: int) -> None: ...
@@ -198,6 +204,153 @@ def _session_id(response: dict[str, Any], vars_: dict[str, Any]) -> str | None:
         if value not in (None, ""):
             return value if isinstance(value, str) else json_stringify(value)
     return None
+
+
+# --- resume: saved prompt columns -----------------------------------------------------------
+
+
+def _invariant(condition: Any, message: str) -> None:
+    """util/invariant"""
+    if not condition:
+        raise RuntimeError(f"Invariant failed: {message}")
+
+
+def _defined(value: Any) -> Any:
+    return None if value is UNDEFINED else value
+
+
+def backfill_named_score_weights(metrics: dict[str, Any]) -> None:
+    """backfillNamedScoreWeights: metrics saved before weights existed count each assertion
+    once."""
+    weights = metrics.get("namedScoreWeights") or {}
+    metrics["namedScoreWeights"] = weights
+    for name, count in (metrics.get("namedScoresCount") or {}).items():
+        if name not in weights:
+            weights[name] = count
+
+
+def matches_saved_prompt_layout(
+    prompts: list[dict[str, Any]], saved: list[dict[str, Any]], allow_template_difference: bool
+) -> bool:
+    from promptphoo.jsonutil import js_deep_equal
+
+    if len(prompts) != len(saved):
+        return False
+
+    def same(key: str, a: dict[str, Any], b: dict[str, Any]) -> bool:
+        return js_deep_equal(_defined(a.get(key)), _defined(b.get(key)))
+
+    for prompt, old in zip(prompts, saved, strict=True):
+        if (
+            not same("provider", prompt, old)
+            or not same("label", prompt, old)
+            or not same("raw", prompt, old)
+            or not (same("template", prompt, old) or allow_template_difference)
+            or not same("config", prompt, old)
+        ):
+            return False
+    return True
+
+
+def can_restore_saved_text(prompts: list[dict[str, Any]], saved: list[dict[str, Any]]) -> bool:
+    """canRestoreSavedText: saved text snapshots replay unless they overlap a callable prompt."""
+    if not any(p.get("function") for p in prompts):
+        return True
+    text_raw: set[Any] = set()
+    callable_raw: set[Any] = set()
+    callable_labels: set[Any] = set()
+    for prompt in prompts:
+        if prompt.get("function"):
+            callable_raw.add(prompt.get("raw"))
+            callable_labels.add(prompt.get("label"))
+        else:
+            text_raw.add(prompt.get("raw"))
+    return all(
+        s.get("raw") not in callable_raw
+        and s.get("label") not in callable_labels
+        and s.get("raw") in text_raw
+        for s in saved
+    )
+
+
+def prompt_identity_candidates(prompts: list[dict[str, Any]]) -> dict[str, dict[Any, None]]:
+    """promptIdentityCandidates: generated id + raw + label -> the authored ids sharing it."""
+    identities: dict[str, dict[Any, None]] = {}
+    for prompt in prompts:
+        key = json_stringify([generate_id_from_prompt(prompt), prompt.get("raw"),
+                              prompt.get("label")])  # fmt: skip
+        identities.setdefault(key, {})[prompt.get("id")] = None
+    return identities
+
+
+async def filter_completed_resume_steps(steps: list[Any], store: EvaluationStore) -> None:
+    """filterCompletedResumeSteps: drop the (testIdx, promptIdx) pairs already saved."""
+    if not cli_state.resume or not store.persisted:
+        return
+    try:
+        completed = await store.read_completed_index_pairs(exclude_errors=cli_state.retry_mode)
+        original = len(steps)
+        steps[:] = [s for s in steps if f"{s.test_idx}:{s.prompt_idx}" not in completed]
+        skipped = original - len(steps)
+        if skipped > 0:
+            logger.info("Resuming: skipping %d previously completed cases", skipped)
+    except Exception as err:
+        logger.warning("Resume: failed to load completed results. Running full evaluation. %s", err)
+
+
+def is_grading_abort(error: BaseException, signal: Any) -> bool:
+    from promptphoo.fetch.errors import is_abort_error
+
+    return bool(
+        signal is not None
+        and signal.aborted
+        and (is_abort_error(error) or error is signal.reason
+             or isinstance(error, asyncio.CancelledError))
+    )  # fmt: skip
+
+
+async def await_with_abort(awaitable: Any, signal: Any) -> Any:
+    """Run `awaitable` as a task that is cancelled when `signal` aborts, raising the abort
+    reason. Stands in for upstream's AbortSignal plumbing through provider calls."""
+    if signal is None:
+        return await awaitable
+    if signal.aborted:
+        if asyncio.iscoroutine(awaitable):
+            awaitable.close()  # never started
+        signal.throw_if_aborted()
+    task = asyncio.ensure_future(awaitable)
+
+    def on_abort() -> None:
+        task.cancel()
+
+    signal.add_listener(on_abort)
+    try:
+        return await task
+    except asyncio.CancelledError:
+        if signal.aborted and task.cancelled():
+            raise signal.reason from None
+        raise
+    finally:
+        signal.remove_listener(on_abort)
+
+
+def combine_signals(*signals: Any) -> Any:
+    """AbortSignal.any"""
+    from promptphoo.scheduler.cancellation import AbortController
+
+    present = [s for s in signals if s is not None]
+    if not present:
+        return None
+    if len(present) == 1:
+        return present[0]
+    controller = AbortController()
+    for s in present:
+        if s.aborted:
+            controller.abort(s.reason)
+            return controller.signal
+    for s in present:
+        s.add_listener(lambda s=s: controller.abort(s.reason))
+    return controller.signal
 
 
 # --- run options ----------------------------------------------------------------------------
@@ -641,6 +794,9 @@ class Evaluator:
         self.stats = EvalStats()
         self.conversations: dict[str, list[Any]] = {}
         self.registers: dict[str, Any] = {}
+        self.retry_error_result_ids: set[str] = set(
+            (cli_state.retry_error_result_ids or []) if cli_state.retry_mode else []
+        )
         from promptphoo.evaluator.comparison import ComparisonPass
 
         self.comparison = ComparisonPass(self)
@@ -688,19 +844,23 @@ class Evaluator:
             json_stringify({"previous": data["previous"], "current": data["current"]}),
         ))  # fmt: skip
 
+    def _allowed_prompts(self, provider: ApiProvider) -> Any:
+        """getProviderPromptOverride(...) ?? provider.prompts"""
+        prompt_map = self.test_suite.get("providerPromptMap") or {}
+        allowed = None
+        if provider.label and provider.label in prompt_map:
+            allowed = prompt_map[provider.label]
+        elif provider.id() in prompt_map:
+            allowed = prompt_map[provider.id()]
+        return provider.prompts if allowed is None else allowed
+
     def _build_prompt_columns(self) -> tuple[list[dict], list[tuple[ApiProvider, list]]]:
+        """buildLivePromptColumns"""
         prompts: list[dict[str, Any]] = []
         columns_by_provider: list[tuple[ApiProvider, list[tuple[int, dict]]]] = []
-        prompt_map = self.test_suite.get("providerPromptMap") or {}
         for provider in self.test_suite["providers"]:
             key = get_provider_identifier(provider)
-            allowed = None
-            if provider.label and provider.label in prompt_map:
-                allowed = prompt_map[provider.label]
-            elif provider.id() in prompt_map:
-                allowed = prompt_map[provider.id()]
-            if allowed is None:
-                allowed = provider.prompts
+            allowed = self._allowed_prompts(provider)
             columns: list[tuple[int, dict[str, Any]]] = []
             for prompt in self.test_suite["prompts"]:
                 if not is_allowed_prompt(prompt, allowed):
@@ -716,6 +876,136 @@ class Evaluator:
                 prompts.append(completed)
             columns_by_provider.append((provider, columns))
         return prompts, columns_by_provider
+
+    def _build_completed_prompts(
+        self, restore_prompt_columns: bool, tests: list[dict[str, Any]]
+    ) -> tuple[list[dict], list[tuple[ApiProvider, list]]]:
+        """buildCompletedPrompts: on resume, restore the saved columns (and their metrics) so
+        result indices keep pointing at the same column. The extension-hook recovery path is
+        not ported (extensions are not supported)."""
+        suite, store = self.test_suite, self.store
+        providers: list[ApiProvider] = suite["providers"]
+        provider_indices: dict[str, int] = {}
+        for index, provider in enumerate(providers):
+            provider_indices[get_provider_identifier(provider)] = index
+        can_restore_text = not restore_prompt_columns or can_restore_saved_text(
+            suite["prompts"], store.prompts
+        )
+        prompts, columns_by_provider = self._build_prompt_columns()
+        matches_saved_layout = matches_saved_prompt_layout(
+            prompts, store.prompts, restore_prompt_columns and can_restore_text
+        )
+        restored_prompts: list[dict[str, Any]] = []
+        if restore_prompt_columns:
+            for saved in store.prompts:
+                metrics = (
+                    copy.deepcopy(saved["metrics"])
+                    if saved.get("metrics")
+                    else create_default_prompt_metrics()
+                )
+                backfill_named_score_weights(metrics)
+                restored_prompts.append({**saved, "metrics": metrics})
+        if restore_prompt_columns and matches_saved_layout:
+            # Keep positional ids and each saved column's own metrics, even when provider or
+            # prompt identifiers are duplicated.
+            columns_by_provider = [
+                (provider, [(idx, {**prompt, "template": store.prompts[idx].get("template")})
+                            for idx, prompt in columns])
+                for provider, columns in columns_by_provider
+            ]  # fmt: skip
+            return restored_prompts, columns_by_provider
+
+        if restore_prompt_columns and can_restore_text and len(provider_indices) == len(providers):
+            return restored_prompts, self._restore_columns_by_identity(
+                restored_prompts, provider_indices, tests
+            )
+
+        if cli_state.resume and store.persisted and store.prompts:
+            # Resume completion uses column indices. Compare definitions, not generated ids.
+            _invariant(
+                matches_saved_layout,
+                "Cannot resume evaluation because the saved provider/prompt columns differ. "
+                "Start a new evaluation instead.",
+            )
+            # Explicit retry configs keep their current definitions; metrics belong to the
+            # saved column positions.
+            for index, prompt in enumerate(prompts):
+                metrics = store.prompts[index].get("metrics")
+                if metrics:
+                    prompt["metrics"] = copy.deepcopy(metrics)
+                    backfill_named_score_weights(prompt["metrics"])
+        return prompts, columns_by_provider
+
+    def _restore_columns_by_identity(
+        self,
+        restored_prompts: list[dict[str, Any]],
+        provider_indices: dict[str, int],
+        tests: list[dict[str, Any]],
+    ) -> list[tuple[ApiProvider, list]]:
+        """Recover only the saved columns with an unambiguous match in the current config."""
+        suite = self.test_suite
+        providers: list[ApiProvider] = suite["providers"]
+        identities = prompt_identity_candidates(suite["prompts"])
+        all_ids: dict[Any, None] = {}
+        for ids in identities.values():
+            all_ids.update(ids)
+        default = get_default_test(suite) or {}
+        filters = [
+            {
+                "prompts": t.get("prompts") if t.get("prompts") is not None
+                else default.get("prompts"),
+                "providers": t.get("providers") if t.get("providers") is not None
+                else default.get("providers"),
+            }
+            for t in tests
+        ]  # fmt: skip
+
+        def identity_filters(ids: dict[Any, None]) -> list[dict[str, Any]]:
+            return [
+                f for f in filters
+                if any(i and is_allowed_prompt({"raw": "", "label": i, "id": i}, f["prompts"])
+                       for i in ids)
+            ]  # fmt: skip
+
+        ambiguous = {
+            key: identity_filters(ids) if len(ids) > 1 else [] for key, ids in identities.items()
+        }
+        unknown = identity_filters(all_ids)
+        restored: list[tuple[ApiProvider, list]] = [(p, []) for p in providers]
+        reordered = (
+            "Cannot resume evaluation because saved providers are missing or reordered. "
+            "Start a new evaluation instead."
+        )
+        previous = -1
+        for prompt_idx, prompt in enumerate(restored_prompts):
+            provider_index = provider_indices.get(prompt.get("provider") or "", -1)
+            _invariant(
+                provider_index >= 0
+                and provider_index >= previous
+                and get_provider_identifier(providers[provider_index]) == prompt.get("provider"),
+                reordered,
+            )
+            previous = provider_index
+            provider = providers[provider_index]
+            key = json_stringify([prompt.get("id"), prompt.get("raw"), prompt.get("label")])
+            ids = identities.get(key)
+            runtime_prompt = {**prompt, "id": next(iter(ids)) if ids and len(ids) == 1 else None}
+            _invariant(
+                is_allowed_prompt(runtime_prompt, self._allowed_prompts(provider)),
+                "Cannot resume evaluation because provider prompt selectors exclude saved "
+                "columns. Start a new evaluation instead.",
+            )
+            _invariant(
+                all(
+                    not is_provider_allowed(provider, f["providers"])
+                    or is_allowed_prompt(runtime_prompt, f["prompts"])
+                    for f in ambiguous.get(key, unknown)
+                ),
+                "Cannot resume evaluation because saved prompt IDs cannot be matched to test "
+                "filters. Start a new evaluation instead.",
+            )
+            restored[provider_index][1].append((prompt_idx, runtime_prompt))
+        return restored
 
     async def _build_run_options(
         self, tests: list[dict[str, Any]], columns_by_provider: list
@@ -893,9 +1183,18 @@ class Evaluator:
         if suite.get("derivedMetrics"):
             logger.warning("derivedMetrics are not supported yet; they will be skipped")
 
+        # The caller's cancellation and the CLI pause (Ctrl+C) both stop the run.
+        abort_signal = combine_signals(options.get("abortSignal"), options.get("pauseSignal"))
+        restore_prompt_columns = bool(
+            options.get("restorePromptColumns")
+            and cli_state.resume
+            and self.store.persisted
+            and self.store.prompts
+        )
+
         tests = build_tests_from_suite(suite)
         tests = filter_by_range(tests, options.get("filterRange"))
-        prompts, columns_by_provider = self._build_prompt_columns()
+        prompts, columns_by_provider = self._build_completed_prompts(restore_prompt_columns, tests)
         await self.store.append_prompts(prompts)
         from promptphoo.providers.azure.warnings import maybe_emit_azure_openai_warning
 
@@ -912,11 +1211,20 @@ class Evaluator:
         steps = await self._build_run_options(tests, columns_by_provider)
         from promptphoo.evaluator.comparison import (
             build_repeat_cache_context_by_test_idx,
+            get_comparison_providers,
+            get_result_index_key,
             mark_comparison_rows,
         )
 
         rows_with_select_best, rows_with_max_score = mark_comparison_rows(steps)
+        if cli_state.resume and self.store.persisted:
+            for step in steps:
+                if step.test_idx in rows_with_select_best:
+                    self.comparison.comparison_providers[get_result_index_key(step)] = (
+                        get_comparison_providers(step.test)
+                    )
         repeat_cache_context_by_test_idx = build_repeat_cache_context_by_test_idx(steps)
+        await filter_completed_resume_steps(steps, self.store)
 
         uses_conversation = any(prompt_uses_conversation_variable(p) for p in prompts)
         if concurrency > 1:
@@ -951,9 +1259,11 @@ class Evaluator:
             idx = index_of[id(step)]
             try:
                 if timeout_ms and timeout_ms > 0:
-                    rows = await asyncio.wait_for(run_eval(step), timeout_ms / 1000)
+                    call = asyncio.wait_for(run_eval(step), timeout_ms / 1000)
                 else:
-                    rows = await run_eval(step)
+                    call = run_eval(step)
+                # A paused or cancelled step is not saved, so resume runs it again.
+                rows = await await_with_abort(call, abort_signal)
             except TimeoutError as e:
                 rows = [self._timeout_row(step, timeout_ms, e)]
             processed.add(idx)
@@ -965,31 +1275,58 @@ class Evaluator:
                 try:
                     await self.store.append_result(row)
                 except Exception as e:
+                    self.store.record_result_persistence_failure(row)
                     logger.error("[Evaluator] Error saving result: %s", e)
                 metrics = prompts[row["promptIdx"]]["metrics"]
                 self._update_metrics(metrics, row)
                 if progress:
                     progress(state["complete"], len(steps), idx, step, metrics)
 
-        for step in serial:
-            await process(step)
-        semaphore = asyncio.Semaphore(concurrency)
-
-        async def limited(step: RunEvalOptions) -> None:
-            async with semaphore:
+        try:
+            for step in serial:
                 await process(step)
+            semaphore = asyncio.Semaphore(concurrency)
 
-        await asyncio.gather(*(limited(s) for s in concurrent))
+            async def limited(step: RunEvalOptions) -> None:
+                async with semaphore:
+                    await process(step)
 
-        await self.comparison.process(
-            prompts, repeat_cache_context_by_test_idx, rows_with_select_best, rows_with_max_score
-        )
+            outcomes = await asyncio.gather(
+                *(limited(s) for s in concurrent), return_exceptions=True
+            )
+            for outcome in outcomes:
+                if isinstance(outcome, BaseException):
+                    raise outcome
+            if abort_signal is not None:
+                abort_signal.throw_if_aborted()
+        except BaseException:
+            if abort_signal is None or not abort_signal.aborted:
+                raise
+            return await self._save_interrupted_eval(prompts, all_vars)
+
+        if not await self.comparison.process(
+            prompts,
+            repeat_cache_context_by_test_idx,
+            rows_with_select_best,
+            rows_with_max_score,
+            abort_signal,
+        ):
+            return await self._save_interrupted_eval(prompts, all_vars)
 
         await self.store.append_prompts(prompts)
         self.store.set_vars(list(all_vars))
         self.store.set_duration_ms(round((time.time() - start) * 1000))
         if self.store.persisted:
             await self.store.save()
+        return self.store
+
+    async def _save_interrupted_eval(
+        self, prompts: list[dict[str, Any]], all_vars: dict[str, None]
+    ) -> EvaluationStore:
+        """saveInterruptedEval: keep the rows and metrics so far; the eval stays resumable."""
+        logger.info("Evaluation interrupted, saving progress...")
+        self.store.set_vars(list(all_vars))
+        await self.store.append_prompts(prompts)
         return self.store
 
     def _timeout_row(self, step: RunEvalOptions, timeout_ms: int, error: Exception) -> dict:
