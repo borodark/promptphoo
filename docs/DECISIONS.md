@@ -270,6 +270,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Implication: The grading-infrastructure branch's versions of the shim modules win at merge; `matchers/comparison.py` imports them lazily by the contract names.
 - Modules: src/promptphoo/evaluator/comparison.py, src/promptphoo/evaluator/run.py, src/promptphoo/models/eval.py, src/promptphoo/matchers/comparison.py, src/promptphoo/assertions/index.py
 - Commits: `9af5f6e`
+- Note: Superseded by D36.
 
 ## 31. OpenAI-compatible families: a data table for pure routing wrappers, a small subclass for the rest
 - Decision:
@@ -335,3 +336,42 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Fixtures that do not use a capture script ignore `PROMPTFOO_CAPTURE_PATH`. Upstream's smoke configs read it only from capture scripts.
 - Modules: tools/parity.py, tools/conversation_relevance_golden.mjs, src/promptphoo/matchers/deepeval.py, src/promptphoo/assertions/deepeval.py
 - Commits: `a3a1ffc`
+
+## 36. Resume, retry-errors and Ctrl+C pause replay the stored eval; the comparison pass finishes its Phase 5 branches
+- Note: Supersedes D29.
+- Decision:
+  - `eval --resume [evalId]`, `eval --retry-errors` and `retry <evalId>` port `src/commands/eval.ts`, `src/node/doEval.ts`, `src/commands/retry.ts` and the resume branches of `src/evaluator.ts`. They read and write the same `evals` / `eval_results` rows as Node, so either CLI can resume or retry an eval written by the other. This was checked by hand in both directions for pause then resume, retry-errors and `retry`.
+  - A resume replays the stored eval:
+    - It uses the saved config and the persisted `runtimeOptions`: repeat, cache, maxConcurrency, delay, filterRange and the provider filter. CLI filters, `--grader`, `--var` and `--tag` are ignored with upstream's warnings or errors.
+    - Steps whose `(testIdx, promptIdx)` pair is already stored are skipped (`Eval.read_completed_index_pairs`). Retry mode excludes ERROR rows from that set.
+    - Saved prompt columns and metrics are restored (`restorePromptColumns`, `buildCompletedPrompts`, `backfillNamedScoreWeights`). If the columns no longer match, the run raises upstream's "Cannot resume evaluation because the saved provider/prompt columns differ" invariant.
+  - Retry deletes the old ERROR rows only after the re-run succeeds (chunked by 500), then calls `recalculate_prompt_metrics` and rewrites any JSONL `outputPath`. If a result failed to persist, the old rows are kept and the retry fails with the recovery hint.
+  - Pause: when the CLI writes to the DB, the first SIGINT aborts a `pauseSignal` (`scheduler/cancellation.py`). In-flight steps are cancelled through `await_with_abort`, completed rows are kept, and the eval is saved with upstream's "Evaluation paused. ID: …" and resume hint, exit 0. A second SIGINT, or 10 s without finishing, calls `os._exit(130)`.
+  - The comparison pass now has the branches D29 left out:
+    - It skips completed comparisons on resume.
+    - It filters `cliState._retryErrorResultIds` (`cli_state.retry_error_result_ids`) out of the rows it compares.
+    - Rows that failed to persist join the comparison through `readFailedResultsByTestIdx` and are never saved.
+    - Grading cancellation calls `markComparisonRowsAborted`, which saves `Aborted: <reason>` and a `__promptfoo.comparisonError` so a later resume restores and regrades the verdict.
+- Rationale: Node's resume state lives entirely in the database, so porting the DB-backed paths line for line is what lets the two CLIs resume each other's runs.
+- Assumption: `asyncio` task cancellation is an acceptable stand-in for upstream's AbortSignal plumbing: provider calls stop at the next await, as Node's do when the signal reaches them.
+- Implication: Not ported:
+  - Extension-hook prompt recovery (`preparePromptRecovery`).
+  - `--share` after retry.
+  - Streaming JSONL writers that append during a resume. Python writes JSONL once, at the end.
+  - Progress-bar updates and the repeat-stability summary.
+  - Deferring in-flight grading until the pause completes. Python cancels it too, and the rows are marked aborted.
+  - The `isEvalTimedOut` continue-after-timeout path. On `maxEvalTimeMs`, Python marks the comparison rows aborted and re-raises.
+- Modules: src/promptphoo/cli/eval.py, src/promptphoo/cli/retry.py, src/promptphoo/cli_state.py, src/promptphoo/evaluator/run.py, src/promptphoo/evaluator/comparison.py, src/promptphoo/models/eval.py
+- Commits: this commit
+
+## 37. --filter-failing reads either a results JSON file or a stored eval id and matches by vars and provider
+- Decision:
+  - `filters.filter_tests_by_results` ports `src/util/eval/filterTests.ts` and `src/util/comparison.ts`:
+    - A path ending in `.json` is read as a results file. Anything else is looked up as an eval id and summarized with `to_evaluate_summary`.
+    - Results match tests by `js_deep_equal` on vars after the runtime vars (`_`-prefixed keys and `sessionId`) are dropped, plus the provider identifier when the test names one. `defaultTest.vars` are merged first, and the unmerged vars are tried as a fallback.
+    - Runtime vars from the matching result are restored onto the test. A result with runtime vars is preferred.
+    - Runtime-generated tests that match no suite test are extracted from `testCase`, without its provider, and deduplicated.
+  - `--filter-failing` selects `!success`, `--filter-failing-only` selects ASSERT failures and `--filter-errors-only` selects ERROR rows. Failing-only and errors-only together take the union. The metadata filter also applies to extracted tests, and the empty-result warning is upstream's.
+- Rationale: The same rules as Node mean the same selection from the same eval. This was checked against Node for all three flags and their union, from both a DB id and a JSON file.
+- Modules: src/promptphoo/filters.py, src/promptphoo/cli/eval.py
+- Commits: this commit

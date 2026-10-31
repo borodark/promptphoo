@@ -4,18 +4,22 @@ processComparisonAssertions / processSelectBestAssertions / processMaxScoreAsser
 of src/evaluator.ts, plus updateAssertionMetrics.
 
 Results here are the store's EvalResult records (models/eval.py). They are mutated in place and,
-when the eval is persisted, written back through `store.save_result` as upstream does. Resume,
-retry-errors and grading cancellation are not ported yet (see D29).
+when the eval is persisted, written back through `store.save_result` as upstream does. On
+resume, completed comparisons are skipped; on retry-errors, the old ERROR rows are left out of
+the comparison; rows that failed to persist are merged back in; and a cancelled comparison marks
+its pending rows as aborted (markComparisonRowsAborted). See D29 and D36.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 import re
+import traceback
 from typing import TYPE_CHECKING, Any
 
-from promptphoo import cache
+from promptphoo import cache, cli_state
 from promptphoo.jsonutil import js_deep_equal, js_json_parse
 from promptphoo.providers import canonicalize_provider_id
 from promptphoo.providers.base import is_api_provider
@@ -250,6 +254,29 @@ def set_comparison_error(result: Any, state: dict[str, Any] | None = None) -> No
         result["metadata"] = new_metadata
     else:
         result.metadata = new_metadata
+
+
+def apply_grading_error(result: Any, error: BaseException | None, abort_signal: Any) -> None:
+    """applyGradingError, for an EvalResult record."""
+    from promptphoo.evaluator.run import is_grading_abort
+
+    if error is not None and is_grading_abort(error, abort_signal):
+        short_message = str(error)
+        logger.debug(
+            "Assertion grading aborted (promptIdx=%s, testIdx=%s): %s",
+            result.prompt_idx, result.test_idx, short_message,
+        )  # fmt: skip
+        result.error = f"{ABORTED_GRADING_PREFIX}{short_message}"
+    else:
+        full_message = (
+            "".join(traceback.format_exception(error)) if error is not None else "undefined"
+        )
+        logger.error("Assertion grading failed during eval: %s", full_message)
+        result.error = full_message
+    result.failure_reason = _ERROR
+    result.success = False
+    result.score = 0
+    result.named_scores = {}
 
 
 # --- grader references ----------------------------------------------------------------------
@@ -528,26 +555,108 @@ class ComparisonPass:
         repeat_cache_context_by_test_idx: dict[int, Any],
         rows_with_select_best: dict[int, None],
         rows_with_max_score: dict[int, None],
-    ) -> None:
-        """processComparisonAssertions (without grading cancellation)."""
+        abort_signal: Any = None,
+    ) -> bool:
+        """processComparisonAssertions. Returns False when grading was cancelled, after the
+        rows still waiting for a comparison are marked aborted."""
+        from promptphoo.evaluator.run import is_grading_abort
+        from promptphoo.scheduler.cancellation import AbortError, AbortSignal
+
         compare_rows_count = len(rows_with_select_best) + len(rows_with_max_score)
-        compare_count = 0
-        for test_idx in list(rows_with_select_best):
-            compare_count += 1
-            await self._process_select_best_for_test(
-                compare_count, compare_rows_count, prompts, repeat_cache_context_by_test_idx,
-                test_idx,
+        pending_select_best = dict(rows_with_select_best)
+        pending_max_score = dict(rows_with_max_score)
+        try:
+            compare_count = 0
+            for test_idx in list(pending_select_best):
+                if abort_signal is not None:
+                    abort_signal.throw_if_aborted()
+                compare_count += 1
+                await self._process_select_best_for_test(
+                    compare_count, compare_rows_count, prompts, repeat_cache_context_by_test_idx,
+                    test_idx, abort_signal,
+                )  # fmt: skip
+                del pending_select_best[test_idx]
+            if pending_max_score:
+                logger.info("Processing %d max-score assertions...", len(pending_max_score))
+            for test_idx in list(pending_max_score):
+                if abort_signal is not None:
+                    abort_signal.throw_if_aborted()
+                compare_count += 1
+                await self._process_max_score_for_test(prompts, test_idx)
+                del pending_max_score[test_idx]
+            if abort_signal is not None:
+                abort_signal.throw_if_aborted()
+        except asyncio.CancelledError:
+            # The Python port enforces maxEvalTimeMs by cancelling the run, where upstream
+            # aborts its deadline signal. Record the interrupted comparisons, then stop.
+            reason = abort_signal.reason if abort_signal is not None and abort_signal.aborted \
+                else AbortError()  # fmt: skip
+            await self.mark_comparison_rows_aborted(
+                {**pending_select_best, **pending_max_score}, prompts, reason,
+                AbortSignal.abort(reason),
             )  # fmt: skip
-        if rows_with_max_score:
-            logger.info("Processing %d max-score assertions...", len(rows_with_max_score))
-        for test_idx in list(rows_with_max_score):
-            compare_count += 1
-            await self._process_max_score_for_test(prompts, test_idx)
+            raise
+        except Exception as error:
+            if not is_grading_abort(error, abort_signal):
+                raise
+            await self.mark_comparison_rows_aborted(
+                {**pending_select_best, **pending_max_score}, prompts, error, abort_signal
+            )
+            return False
+        return True
+
+    async def mark_comparison_rows_aborted(
+        self,
+        test_indexes: dict[int, None],
+        prompts: list[dict[str, Any]],
+        error: BaseException | None,
+        abort_signal: Any = None,
+    ) -> None:
+        """markComparisonRowsAborted: rows whose comparison never ran become ERRORs with an
+        `Aborted:` reason, keeping their prior verdict in __promptfoo.comparisonError so a
+        resume can restore it."""
+        for test_idx in test_indexes:
+            for result in await self.get_results_to_compare(test_idx):
+                if result.failure_reason == _ERROR:
+                    continue
+                previous = {"success": result.success, "score": result.score,
+                            "failureReason": result.failure_reason}  # fmt: skip
+                state = {**previous}
+                if result.error is not None:
+                    state["error"] = result.error
+                set_comparison_error(result, state)
+                completed_named_scores = result.named_scores
+                apply_grading_error(result, error, abort_signal)
+                # Earlier per-row assertions finished before the comparison was interrupted.
+                result.named_scores = completed_named_scores
+                self.update_comparison_result_counts(
+                    result, previous, _metrics(prompts, result.prompt_idx)
+                )
+                await self._save(result)
+
+    async def _save(self, result: Any) -> None:
+        if self.store.persisted and not self.store.has_result_persistence_failure(result):
+            await self.store.save_result(result)
 
     async def get_results_to_compare(self, test_idx: int) -> list[Any]:
         if self.store.persisted:
-            return await self.store.read_results_by_test_idx(test_idx)
-        return [r for r in self.store.results if r.test_idx == test_idx]
+            base = await self.store.read_results_by_test_idx(test_idx)
+        else:
+            base = [r for r in self.store.results if r.test_idx == test_idx]
+        # Retry keeps old errors until new results are saved. Compare only their replacements.
+        retry_ids = self.ev.retry_error_result_ids
+        if retry_ids:
+            base = [r for r in base if not (isinstance(r.id, str) and r.id in retry_ids)]
+        if not self.store.result_persistence_failed:
+            return base
+        # A row that failed to persist is missing from the database, so it would be left out
+        # of the comparison and keep its pre-comparison grading. Merge it back in.
+        failed = await self.store.read_failed_results_by_test_idx(test_idx)
+        if not failed:
+            return base
+        seen = {get_result_index_key(r) for r in base}
+        merged = [*base, *(r for r in failed if get_result_index_key(r) not in seen)]
+        return sorted(merged, key=lambda r: r.prompt_idx)
 
     def _comparison_call_api_context(
         self, first: Any, repeat_cache_context: Any | None
@@ -575,13 +684,20 @@ class ComparisonPass:
         prompts: list[dict[str, Any]],
         repeat_cache_context_by_test_idx: dict[int, Any],
         test_idx: int,
+        abort_signal: Any = None,
     ) -> None:
         from promptphoo.assertions.index import run_compare_assertion
-        from promptphoo.evaluator.run import get_repeat_cache_namespace
+        from promptphoo.evaluator.run import (
+            await_with_abort,
+            get_repeat_cache_namespace,
+            is_grading_abort,
+        )
 
         results = await self.get_results_to_compare(test_idx)
         if not results:
             logger.warning("Expected results to be found for test index %s", test_idx)
+            return
+        if cli_state.resume and all(has_completed_comparison(r, "select-best") for r in results):
             return
         first = results[0]
         saved_test = first.test_case or {}
@@ -614,14 +730,20 @@ class ComparisonPass:
                 else None
             )
             with cache.with_cache_namespace(namespace):
-                grading_results = await with_provider_call_execution_context(
-                    {"abortSignal": None, "rateLimitRegistry": self.ev.rate_limit_registry},
-                    lambda: run_compare_assertion(
-                        comparison_test_case, compare_assertion, outputs,
-                        self._comparison_call_api_context(first, repeat_ctx),
+                grading_results = await await_with_abort(
+                    with_provider_call_execution_context(
+                        {"abortSignal": abort_signal,
+                         "rateLimitRegistry": self.ev.rate_limit_registry},
+                        lambda: run_compare_assertion(
+                            comparison_test_case, compare_assertion, outputs,
+                            self._comparison_call_api_context(first, repeat_ctx),
+                        ),
                     ),
+                    abort_signal,
                 )  # fmt: skip
         except Exception as error:
+            if is_grading_abort(error, abort_signal):
+                raise
             grader_id = comparison_provider_id(
                 assertion.get("provider")
                 if assertion.get("provider") is not None
@@ -659,8 +781,7 @@ class ComparisonPass:
                 self.update_comparison_result_counts(
                     result, previous, _metrics(prompts, result.prompt_idx)
                 )
-                if self.store.persisted:
-                    await self.store.save_result(result)
+                await self._save(result)
 
         for index, grading_result in enumerate(grading_results):
             await self._apply_select_best(
@@ -677,6 +798,8 @@ class ComparisonPass:
         results = await self.get_results_to_compare(test_idx)
         if not results:
             logger.warning("Expected results to be found for test index %s", test_idx)
+            return
+        if cli_state.resume and all(has_completed_comparison(r, "max-score") for r in results):
             return
         assertion = next(
             (a for a in (results[0].test_case or {}).get("assert") or []
@@ -745,8 +868,7 @@ class ComparisonPass:
                     metrics["tokenUsage"]["numRequests"] = (
                         metrics["tokenUsage"].get("numRequests") or 0
                     ) + 1
-        if self.store.persisted:
-            await self.store.save_result(result)
+        await self._save(result)
 
     def _restore_comparison_result(self, result: Any, metrics: dict[str, Any] | None) -> bool:
         if result.failure_reason == _ERROR:

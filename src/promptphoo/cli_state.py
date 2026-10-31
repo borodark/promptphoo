@@ -24,7 +24,10 @@ _max_concurrency: ContextVar[int | None] = ContextVar("max_concurrency", default
 # Unscoped flags, mirroring the plain properties on the Node cliState object.
 remote: bool = False
 resume: bool = False
+# Retry mode is resume mode that also re-runs ERROR results (getCompletedIndexPairs excludes
+# them). `retry_error_result_ids` holds the ERROR rows to delete once the retry succeeds.
 retry_mode: bool = False
+retry_error_result_ids: list[str] | None = None
 
 
 def base_path() -> str | None:
