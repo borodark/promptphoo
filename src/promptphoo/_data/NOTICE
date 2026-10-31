@@ -1,0 +1,8 @@
+The files in this directory are copied unchanged from promptfoo v0.125.1
+(https://github.com/promptfoo/promptfoo), or generated from it by running its
+own code under Node (see tools/gen_*). They remain:
+
+  Copyright (c) Promptfoo 2025, MIT License.
+
+grading_prompts.json also contains prompts that promptfoo adopted from RAGAS
+(Apache License 2.0). See the NOTICE file and LICENSES/ at the repository root.

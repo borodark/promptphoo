@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Fully local eval: Ollama models under test, a local grader and local embeddings.
+#   ollama pull qwen3:4b qwen3:8b gpt-oss:20b nomic-embed-text
+#   promptfoo eval -c examples/local-ollama/promptfooconfig.yaml
+description: Local Ollama smoke test (model-graded and embedding assertions)
+
+prompts:
+  - 'Answer in one sentence: {{question}}'
+
+providers:
+  - id: ollama:chat:qwen3:4b
+    label: qwen3-4b
+    config:
+      # With think: false this qwen3:4b build writes its reasoning into the answer; thinking on
+      # keeps it in a separate field, which showThinking: false then leaves out.
+      think: true
+      showThinking: false
+      temperature: 0
+      seed: 42
+  - id: ollama:chat:gpt-oss:20b
+    label: gpt-oss-20b
+    config:
+      think: low
+      showThinking: false
+      temperature: 0
+      seed: 42
+
+defaultTest:
+  options:
+    provider:
+      text:
+        id: ollama:chat:qwen3:8b
+        config:
+          think: false
+          temperature: 0
+          seed: 42
+      embedding: ollama:embeddings:nomic-embed-text
+
+tests:
+  - vars:
+      question: What is the capital of France?
+    assert:
+      - type: icontains
+        value: Paris
+      - type: llm-rubric
+        value: Gives a correct answer in a single sentence
+      - type: similar
+        value: The capital of France is Paris.
+        threshold: 0.7
+
+  - vars:
+      question: How many legs does a spider have?
+    assert:
+      - type: contains-any
+        value: ['8', eight]
+      - type: factuality
+        value: Spiders have eight legs.
+
+  - vars:
+      question: Why is the sky blue?
+    assert:
+      - type: llm-rubric
+        value: Mentions that shorter (blue) wavelengths of sunlight are scattered more by the atmosphere
+      - type: answer-relevance
+        threshold: 0.6
+
+  - vars:
+      question: Name a prime number between 20 and 30.
+    assert:
+      - type: regex
+        value: '\b(23|29)\b'
+      - type: g-eval
+        value: The answer names a number that is actually prime and lies between 20 and 30
+        threshold: 0.7

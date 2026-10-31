@@ -1,4 +1,4 @@
-"""`conversation-relevance` assertion, ported from DeepEval. Ports
+"""`conversation-relevance` assertion, ported from DeepEval (Apache-2.0; see NOTICE). Ports
 src/external/assertions/deepeval.ts (handleConversationRelevance)."""
 
 from __future__ import annotations

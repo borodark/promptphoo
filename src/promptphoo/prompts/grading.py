@@ -2,7 +2,8 @@
 
 The texts are vendored as `_data/grading_prompts.json`, produced by evaluating the upstream
 modules under Node (`tools/gen_grading_prompts.sh`), so dedent and JSON.stringify output is
-byte-identical. Chat prompts (DEFAULT_GRADING_PROMPT, ...) are JSON strings, as upstream.
+byte-identical. The ANSWER_RELEVANCY / CONTEXT_* prompts come from RAGAS (Apache-2.0; see
+NOTICE). Chat prompts (DEFAULT_GRADING_PROMPT, ...) are JSON strings, as upstream.
 """
 
 from __future__ import annotations

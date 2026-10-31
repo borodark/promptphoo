@@ -1,0 +1,24 @@
+# Translator's Foreword
+
+Some tools change what a team believes it can check. Before them, a prompt was something one tweaked, read a few outputs from, and hoped about. After them, a prompt was something one tested. promptfoo is one of those tools, and this repository is an attempt to say so in another language.
+
+It began modestly, as the good ones do. The first commit landed on the last day of March 2023 — one day short of April Fools', which is either a coincidence or the first test case. It held a README, an evaluator of fifty-seven lines, and a module called `apiCaller.ts`, and it described itself as "a CLI tool that facilitates prompt editing and evaluation." Its author, Ian Webster, had been leading LLM engineering at Discord, home of the chatbot Clyde, where AI products reached two hundred million users. It is hard to change a prompt for two hundred million people by squinting at a few replies. Somebody had to write the test runner.
+
+Michael D'Angelo, who had scaled machine learning to a hundred million people at Smile Identity, joined as co-founder and, by the plain count of the history, became its most prolific committer. Around them gathered nearly four hundred contributors, and between them they gave evaluation the shape of a test suite: prompts, providers and cases written down in a file; assertions that pass or fail; results that can be stored, compared and run again tomorrow. They built a vocabulary of checks, from string equality to rubric-graded judgment, and the discipline to make even the model-graded ones explicit about their prompts and thresholds. None of this was obvious when they began. It looks obvious now, which is what good design looks like afterwards.
+
+The code keeps its sense of humour in the examples, where models are asked, with complete seriousness, to tweet about bananas, and in one case to write about "time-traveling characters who only eat historical versions of bananas." It keeps its realism elsewhere. Somewhere in the source is a list that begins `'I am not able to', 'I am really sorry', 'I am sorry'` — the collected ways a language model declines. It is the most honest data structure in the field. It crossed into Python intact, apologies and all.
+
+promptphoo is a port, and it means to be one. The name is pronounced exactly like the original, which is the point: the same sound, a different spelling. It reads the same configuration files, accepts the same flags, writes to the same database, and should produce the same results — so faithfully that a Python team can adopt the tool without adopting a second runtime, and can stop halfway through an evaluation in one language and finish it in the other. Where Python lets hooks and providers run inside the evaluator's own process, that is the only freedom taken. Everything else is borrowed.
+
+The original served as its own examiner. Each behaviour was checked against the Node implementation: the same configurations run through both, outputs compared after normalizing what is legitimately random, the databases each runtime writes read back by the other. Where the translation still departs, the departure is written down in `docs/DECISIONS.md`, one entry per choice, so that no difference is silent. A port that hides its differences is worse than none.
+
+The debts run further. The RAG and conversation-relevance assertions carry prompts that promptfoo adopted from RAGAS and DeepEval. The templating follows Nunjucks closely enough that Jinja2 had to be taught to behave like it, which is a compliment to both. The schema follows drizzle's migrations exactly, because it belongs to upstream and must stay theirs. Ollama made it possible to run the whole path — targets, graders and embeddings — on one modest graphics card, where two runtimes, written in two languages, graded the same answers the same way.
+
+In March 2026 promptfoo agreed to join OpenAI, and its authors wrote that it would remain open source and MIT-licensed. That sentence is the reason this translation can exist at all.
+
+The work was done with the help of AI coding agents, which read the TypeScript, wrote the Python, and were held to the Node implementation at every step. That help was considerable. The responsibility is not shared.
+
+If promptfoo serves your needs, use promptfoo. It is the original, it is maintained by the people who understand it best, and it does a great deal this port does not attempt: the web viewer, red-teaming, cloud sharing, and much else. promptphoo exists for the narrower case where Python is the place one has to stand. The translator's foreword is not the place to argue that the case is common. It is the place to say: the original was worth translating, its authors deserve the credit for what works here, and whatever errors the translation contains are mine alone.
+
+— I.O.
+Detroit, 2026

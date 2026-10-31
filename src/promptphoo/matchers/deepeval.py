@@ -1,10 +1,10 @@
-"""Conversation relevancy matcher, ported from DeepEval. Ports
+"""Conversation relevancy matcher, ported from DeepEval (Apache-2.0; see NOTICE). Ports
 src/external/matchers/deepeval.ts (matchesConversationRelevance) and
 src/external/matchers/conversationRelevancyTemplate.ts (ConversationRelevancyTemplate).
 
 The template texts are upstream's JS template literals, byte for byte (including the trailing
 spaces on some lines); tests/fixtures/conversation_relevance_golden.json holds the output of
-the upstream module under Node (tools/conversation_relevance_golden.sh).
+the upstream module under Node (tools/conversation_relevance_golden.mjs).
 """
 
 from __future__ import annotations

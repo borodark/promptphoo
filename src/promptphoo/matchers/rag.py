@@ -1,5 +1,7 @@
-"""RAG matchers (RAGAS-style). Ports src/matchers/rag.ts: matchesAnswerRelevance,
-matchesContextRecall, matchesContextRelevance and matchesContextFaithfulness."""
+"""RAG matchers (RAGAS-style; the prompts are RAGAS's, Apache-2.0, see NOTICE).
+
+Ports src/matchers/rag.ts: matchesAnswerRelevance, matchesContextRecall,
+matchesContextRelevance and matchesContextFaithfulness."""
 
 from __future__ import annotations
 
