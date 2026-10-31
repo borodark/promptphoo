@@ -28,6 +28,12 @@ from promptphoo.jsonutil import js_json_parse
 from promptphoo.jsvalues import UNDEFINED, json_stringify
 from promptphoo.providers import canonicalize_provider_id, load_api_provider
 from promptphoo.providers.base import ApiProvider, is_api_provider
+from promptphoo.scheduler import RateLimitRegistry, create_provider_rate_limit_options
+from promptphoo.scheduler.cancellation import sleep_with_abort
+from promptphoo.scheduler.provider_call_execution_context import (
+    with_provider_call_execution_context,
+)
+from promptphoo.scheduler.rate_limit_registry import sanitize_provider_id_for_log
 from promptphoo.templating import template_references_variable
 from promptphoo.tokens import (
     accumulate_grading_token_usage,
@@ -206,6 +212,7 @@ class RunEvalOptions:
     delay: float = 0
     filters: dict[str, Any] | None = None
     repeat_group_id: str | None = None
+    rate_limit_registry: RateLimitRegistry | None = None
 
 
 def _provider_setup(provider: ApiProvider) -> dict[str, Any]:
@@ -308,7 +315,9 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
                 context["bustCache"] = True
             if step.eval_id:
                 context["evaluationId"] = step.eval_id
-            response = await active.call_api(rendered_prompt, context)
+            response = await _call_active_provider(
+                active, rendered_prompt, context, step.rate_limit_registry
+            )
             if not isinstance(response, dict):
                 raise TypeError(f"Provider returned {type(response).__name__}, expected a dict")
         latency_ms = round((time.monotonic() - start) * 1000)
@@ -337,7 +346,7 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
             and provider.delay
             and provider.delay > 0
         ):
-            await asyncio.sleep(provider.delay / 1000)
+            await sleep_with_abort(provider.delay)
 
         persisted_vars = _omit_runtime_vars(vars_)
         ret: dict[str, Any] = {
@@ -417,6 +426,48 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
         return [row]
 
 
+async def _call_active_provider(
+    active_provider: ApiProvider,
+    rendered_prompt: str,
+    call_api_context: dict[str, Any],
+    rate_limit_registry: RateLimitRegistry | None,
+    abort_signal: Any = None,
+) -> dict[str, Any]:
+    """callActiveProvider: route the target call through the eval's rate-limit registry, which
+    queues it per rate-limit key, learns quota from response headers, adapts concurrency and
+    retries rate-limited or transient failures."""
+    logger.debug("Provider type: %s", sanitize_provider_id_for_log(active_provider.id()))
+
+    async def call_api(on_response_headers: Any = None) -> dict[str, Any]:
+        call_api_options = (
+            {
+                **({"abortSignal": abort_signal} if abort_signal else {}),
+                **({"onResponseHeaders": on_response_headers} if on_response_headers else {}),
+            }
+            if abort_signal or on_response_headers
+            else None
+        )
+        return await with_provider_call_execution_context(
+            {
+                "abortSignal": abort_signal,
+                "rateLimitRegistry": rate_limit_registry,
+                "rateLimitProvider": active_provider,
+            },
+            lambda: active_provider.call_api(rendered_prompt, call_api_context, call_api_options),
+        )
+
+    if rate_limit_registry:
+        response = await rate_limit_registry.execute(
+            active_provider, call_api, create_provider_rate_limit_options(abort_signal)
+        )
+    else:
+        response = await call_api()
+    if isinstance(response, dict):
+        logger.debug("Provider response properties: %s", ", ".join(response))
+        logger.debug("Provider response cached property explicitly: %s", response.get("cached"))
+    return response
+
+
 def _context_prompt(prompt: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
     """The prompt as Node's call context shows it: `config` sits before `template`."""
     out: dict[str, Any] = {}
@@ -486,15 +537,18 @@ async def _apply_response_outcome(
         raise ValueError("Response output should not be null")
 
     assertion_response = {**processed, "providerTransformedOutput": provider_transformed_output}
-    check = await run_assertions(
-        prompt=rendered_prompt,
-        provider=provider,
-        provider_response=assertion_response,
-        test=test,
-        vars=vars_,
-        latency_ms=response.get("latencyMs") if response.get("latencyMs") is not None
-        else latency_ms,
-        assert_scoring_function=test.get("assertScoringFunction"),
+    check = await with_provider_call_execution_context(
+        {"abortSignal": None, "rateLimitRegistry": step.rate_limit_registry},
+        lambda: run_assertions(
+            prompt=rendered_prompt,
+            provider=provider,
+            provider_response=assertion_response,
+            test=test,
+            vars=vars_,
+            latency_ms=response.get("latencyMs") if response.get("latencyMs") is not None
+            else latency_ms,
+            assert_scoring_function=test.get("assertScoringFunction"),
+        ),
     )  # fmt: skip
     if not check["pass"]:
         ret["error"] = check.get("reason")
@@ -581,6 +635,49 @@ class Evaluator:
         self.conversations: dict[str, list[Any]] = {}
         self.registers: dict[str, Any] = {}
 
+        # Create rate limit registry for adaptive concurrency control
+        self.rate_limit_registry: RateLimitRegistry | None = RateLimitRegistry(
+            {"maxConcurrency": options.get("maxConcurrency") or DEFAULT_MAX_CONCURRENCY}
+        )
+
+        # Add debug logging for rate limit events
+        self.rate_limit_registry.on(
+            "ratelimit:hit",
+            lambda data: logger.debug(
+                "[Scheduler] Rate limit hit for %s %s",
+                data["rateLimitKey"],
+                json_stringify(
+                    {
+                        "retryAfterMs": data.get("retryAfterMs"),
+                        "resetAt": data.get("resetAt"),
+                        "concurrencyChange": data.get("concurrencyChange"),
+                    }
+                ),
+            ),
+        )
+        self.rate_limit_registry.on(
+            "ratelimit:learned",
+            lambda data: logger.debug(
+                "[Scheduler] Learned rate limits for %s %s",
+                data["rateLimitKey"],
+                json_stringify(
+                    {"requestLimit": data.get("requestLimit"), "tokenLimit": data.get("tokenLimit")}
+                ),
+            ),
+        )
+        self.rate_limit_registry.on(
+            "concurrency:decreased",
+            lambda data: logger.debug(
+                "[Scheduler] Concurrency decreased for %s %s",
+                data["rateLimitKey"],
+                json_stringify({"previous": data["previous"], "current": data["current"]}),
+            ),
+        )
+        self.rate_limit_registry.on("concurrency:increased", lambda data: logger.debug(
+            "[Scheduler] Concurrency increased for %s %s", data["rateLimitKey"],
+            json_stringify({"previous": data["previous"], "current": data["current"]}),
+        ))  # fmt: skip
+
     def _build_prompt_columns(self) -> tuple[list[dict], list[tuple[ApiProvider, list]]]:
         prompts: list[dict[str, Any]] = []
         columns_by_provider: list[tuple[ApiProvider, list[tuple[int, dict]]]] = []
@@ -661,6 +758,7 @@ class Evaluator:
                                     delay=options.get("delay") or 0,
                                     filters=suite.get("nunjucksFilters"),
                                     repeat_group_id=group,
+                                    rate_limit_registry=self.rate_limit_registry,
                                 )
                             )  # fmt: skip
                     test_idx += 1
@@ -744,11 +842,35 @@ class Evaluator:
                         return await asyncio.wait_for(self._run(time.time()), max_ms / 1000)
                     return await self._run(time.time())
                 finally:
+                    self._dispose_rate_limit_registry()
                     for provider in suite["providers"]:
                         try:
                             await provider.cleanup()
                         except Exception as e:
                             logger.warning("Provider cleanup failed: %s", e)
+
+    def _dispose_rate_limit_registry(self) -> None:
+        # Log rate limit metrics for debugging before cleanup
+        if self.rate_limit_registry:
+            for key, m in self.rate_limit_registry.get_metrics().items():
+                if m["totalRequests"] > 0:
+                    logger.debug(
+                        "[Scheduler] Final metrics for %s %s",
+                        sanitize_provider_id_for_log(key),
+                        json_stringify({
+                            "totalRequests": m["totalRequests"],
+                            "completedRequests": m["completedRequests"],
+                            "failedRequests": m["failedRequests"],
+                            "rateLimitHits": m["rateLimitHits"],
+                            "retriedRequests": m["retriedRequests"],
+                            "avgLatencyMs": round(m["avgLatencyMs"]),
+                            "p50LatencyMs": round(m["p50LatencyMs"]),
+                            "p99LatencyMs": round(m["p99LatencyMs"]),
+                        }),
+                    )  # fmt: skip
+        # Clean up rate limit registry resources
+        if self.rate_limit_registry:
+            self.rate_limit_registry.dispose()
 
     async def _run(self, start: float) -> EvaluationStore:
         suite, options = self.test_suite, self.options
