@@ -284,7 +284,10 @@ async def run_assertions(
 
     metric_vars = vars if vars is not None else (test.get("vars") or {})
     concurrency = max(
-        1, envars.get_env_int("PROMPTFOO_ASSERTIONS_MAX_CONCURRENCY", DEFAULT_ASSERTIONS_MAX_CONCURRENCY)
+        1,
+        envars.get_env_int(
+            "PROMPTFOO_ASSERTIONS_MAX_CONCURRENCY", DEFAULT_ASSERTIONS_MAX_CONCURRENCY
+        ),
     )
     semaphore = asyncio.Semaphore(concurrency)
 

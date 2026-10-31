@@ -61,9 +61,7 @@ def canonicalize_provider_id(provider_id: str) -> str:
             if "/" in file_path or "\\" in file_path:
                 return f"{prefix}{os.path.abspath(file_path)}"
             return provider_id
-    if provider_id.endswith((".js", ".ts", ".mjs")) and (
-        "/" in provider_id or "\\" in provider_id
-    ):
+    if provider_id.endswith((".js", ".ts", ".mjs")) and ("/" in provider_id or "\\" in provider_id):
         return f"file://{os.path.abspath(provider_id)}"
     return provider_id
 

@@ -82,9 +82,13 @@ def _contains(p: AssertionParams, mode: str, ignore_case: bool = False) -> Gradi
         else:
             missing = [v for v in value if not includes(v)]
             matches = not missing
-            expectation = f"all of [{joined}]. Missing: [{', '.join(js_string(v) for v in missing)}]"
+            expectation = (
+                f"all of [{joined}]. Missing: [{', '.join(js_string(v) for v in missing)}]"
+            )
     passed = matches != p.inverse
-    return result(p, passed, f"Expected output to {'not ' if p.inverse else ''}contain {expectation}")
+    return result(
+        p, passed, f"Expected output to {'not ' if p.inverse else ''}contain {expectation}"
+    )
 
 
 def handle_starts_with(p: AssertionParams) -> GradingResult:
@@ -170,8 +174,8 @@ def handle_contains_json(p: AssertionParams) -> GradingResult:
                 f"JSON does not conform to the provided schema. Errors: "
                 f"{errors_text(validate.errors)}"
             )
-    return {"pass": passed, "score": 1 if passed else 0,
-            "reason": "Assertion passed" if passed else message, "assertion": p.assertion}  # fmt: skip
+    reason = "Assertion passed" if passed else message
+    return {"pass": passed, "score": 1 if passed else 0, "reason": reason, "assertion": p.assertion}
 
 
 def _js_number(value: Any) -> float:
@@ -214,6 +218,7 @@ def handle_word_count(p: AssertionParams) -> GradingResult:
                     else f"Word count {count} is not between {n(lo)} and {n(hi)}"
                 )
         elif lo is None:
+            assert hi is not None
             base = count <= hi
             passed = not base if inverse else base
             if not passed:
@@ -293,6 +298,7 @@ def handle_finish_reason(p: AssertionParams) -> GradingResult:
     if not actual:
         passed = p.inverse
         return result(p, passed, "Provider did not supply stop/finish reason")
+    assert isinstance(value, str)
     passed = (value.lower() == actual.lower()) != p.inverse
     return result(
         p,
@@ -303,9 +309,7 @@ def handle_finish_reason(p: AssertionParams) -> GradingResult:
 
 def _perplexity(log_probs: list[float] | None, kind: str) -> float:
     if not log_probs:
-        raise ValueError(
-            f"{kind} assertion does not support providers that do not return logProbs"
-        )
+        raise ValueError(f"{kind} assertion does not support providers that do not return logProbs")
     return math.exp(-(sum(log_probs) / len(log_probs)))
 
 

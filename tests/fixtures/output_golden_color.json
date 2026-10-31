@@ -1,0 +1,545 @@
+{
+  "yaml": [
+    {
+      "input": {
+        "a": 1,
+        "b": "two",
+        "c": true,
+        "d": null,
+        "e": 1.5,
+        "f": [
+          1,
+          2,
+          {
+            "g": "h"
+          }
+        ],
+        "i": {},
+        "j": []
+      },
+      "output": "a: 1\nb: two\nc: true\nd: null\ne: 1.5\nf:\n  - 1\n  - 2\n  - g: h\ni: {}\nj: []\n"
+    },
+    {
+      "input": {
+        "s": [
+          "yes",
+          "no",
+          "on",
+          "off",
+          "y",
+          "N",
+          "~",
+          "null",
+          "",
+          " ",
+          "123",
+          "0x1F",
+          "1_000",
+          "1:20",
+          "1.5",
+          ".inf",
+          "2024-01-01",
+          "2024-01-01T10:00:00Z",
+          "<<",
+          "=",
+          "-",
+          "- a",
+          ": x",
+          "a: b",
+          "a #b",
+          "#c",
+          "it's",
+          "\"q\"",
+          "@x",
+          "`b`",
+          "%p",
+          "!t",
+          "&a",
+          "*a",
+          "|",
+          ">",
+          "[x]",
+          "{y}",
+          "a,b",
+          "tab\there",
+          "nbsp x",
+          "line\nbreak",
+          "trailing\n",
+          "two\n\n",
+          "\n",
+          " leading",
+          "trailing ",
+          "---",
+          "--- x",
+          "...",
+          "ünïcödé",
+          "日本語",
+          "emoji 😀",
+          "ctrl\u0001x",
+          "del",
+          "bom﻿",
+          "true",
+          "False",
+          "NULL",
+          "+1",
+          "-1",
+          "1e3",
+          "1.0e+3",
+          ".5",
+          "0o17",
+          "0b101",
+          "017",
+          "+.inf",
+          ".NaN"
+        ]
+      },
+      "output": "s:\n  - 'yes'\n  - 'no'\n  - 'on'\n  - 'off'\n  - 'y'\n  - 'N'\n  - '~'\n  - 'null'\n  - ''\n  - \" \"\n  - '123'\n  - '0x1F'\n  - '1_000'\n  - '1:20'\n  - '1.5'\n  - '.inf'\n  - '2024-01-01'\n  - '2024-01-01T10:00:00Z'\n  - '<<'\n  - '='\n  - '-'\n  - '- a'\n  - ': x'\n  - 'a: b'\n  - 'a #b'\n  - '#c'\n  - it's\n  - '\"q\"'\n  - '@x'\n  - '`b`'\n  - '%p'\n  - '!t'\n  - '&a'\n  - '*a'\n  - '|'\n  - '>'\n  - '[x]'\n  - '{y}'\n  - a,b\n  - \"tab\\there\"\n  - \"nbsp\\_x\"\n  - |-\n    line\n    break\n  - |\n    trailing\n  - |+\n    two\n\n  - \"\\n\"\n  - ' leading'\n  - 'trailing '\n  - ---\n  - --- x\n  - ...\n  - ünïcödé\n  - 日本語\n  - emoji 😀\n  - \"ctrl\\x01x\"\n  - \"del\\x7F\"\n  - \"bom\\uFEFF\"\n  - 'true'\n  - 'False'\n  - 'NULL'\n  - '+1'\n  - '-1'\n  - '1e3'\n  - '1.0e+3'\n  - '.5'\n  - '0o17'\n  - '0b101'\n  - '017'\n  - '+.inf'\n  - '.NaN'\n"
+    },
+    {
+      "input": {
+        "long": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "nested": {
+          "deeper": {
+            "longer": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word"
+          }
+        },
+        "multi": "first line\nsecond line\n\n  indented line\nlast",
+        "multiLong": "short\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x \nend\n",
+        "nolongspace": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "keyWith": {
+          "123": 4,
+          "key: colon": 1,
+          "- dash": 2,
+          "yes": 3,
+          "with space": 5,
+          "": 6
+        }
+      },
+      "output": "long: >-\n  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor\n  incididunt ut labore et dolore magna aliqua.\nnested:\n  deeper:\n    longer: >-\n      word word word word word word word word word word word word word word word\n      word word word word word word word word word word word word word word word\n      word word word word word word word word word word\nmulti: |-\n  first line\n  second line\n\n    indented line\n  last\nmultiLong: >\n  short\n\n  x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x\n  x x x x x x x x x x x x x x x x x x x x x \n\n  end\nnolongspace: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nkeyWith:\n  '123': 4\n  'key: colon': 1\n  '- dash': 2\n  'yes': 3\n  with space: 5\n  '': 6\n"
+    },
+    {
+      "input": {
+        "numbers": [
+          0,
+          1e+21,
+          1e-7,
+          0.1,
+          123456789012,
+          -5,
+          3.14159,
+          1e+100,
+          9007199254740991
+        ]
+      },
+      "output": "numbers:\n  - 0\n  - 1.e+21\n  - 1.e-7\n  - 0.1\n  - 123456789012\n  - -5\n  - 3.14159\n  - 1.e+100\n  - 9007199254740991\n"
+    },
+    {
+      "input": {
+        "ref1": {
+          "a": 1
+        },
+        "ref2": {
+          "a": 1
+        },
+        "list": [
+          {
+            "a": 1
+          }
+        ]
+      },
+      "output": "ref1: &ref_0\n  a: 1\nref2: *ref_0\nlist:\n  - *ref_0\n"
+    },
+    {
+      "input": [
+        {
+          "a": 1,
+          "b": [
+            1,
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        "x",
+        [],
+        {}
+      ],
+      "output": "- a: 1\n  b:\n    - 1\n    - - 2\n      - 3\n- x\n- []\n- {}\n"
+    },
+    {
+      "input": "just a string",
+      "output": "just a string\n"
+    },
+    {
+      "input": {
+        "emptyList": [],
+        "emptyObj": {},
+        "listOfEmpty": [
+          [],
+          {}
+        ],
+        "nul": [
+          null,
+          null
+        ]
+      },
+      "output": "emptyList: []\nemptyObj: {}\nlistOfEmpty:\n  - []\n  - {}\nnul:\n  - null\n  - null\n"
+    }
+  ],
+  "xml": [
+    {
+      "input": {
+        "promptfoo": {
+          "evalId": "eval-1",
+          "results": {
+            "a": "1",
+            "list": [
+              "x",
+              "y"
+            ],
+            "obj": {
+              "k": "<&>\"'"
+            }
+          },
+          "config": {},
+          "shareableUrl": ""
+        }
+      },
+      "output": "<promptfoo>\n  <evalId>eval-1</evalId>\n  <results>\n    <a>1</a>\n    <list>x</list>\n    <list>y</list>\n    <obj>\n      <k>&lt;&amp;&gt;&quot;&apos;</k>\n    </obj>\n  </results>\n  <config></config>\n  <shareableUrl></shareableUrl>\n</promptfoo>\n"
+    },
+    {
+      "input": {
+        "?xml": {
+          "@_version": "1.0",
+          "@_encoding": "UTF-8"
+        },
+        "testsuites": {
+          "@_errors": 1,
+          "@_name": "promptfoo",
+          "@_time": "4.25",
+          "testsuite": [
+            {
+              "@_name": "[echo] prompt 1",
+              "@_tests": 2,
+              "testcase": [
+                {
+                  "@_name": "test 1",
+                  "@_time": "1.25",
+                  "@_classname": "[echo] prompt 1"
+                },
+                {
+                  "@_name": "test 2 <&>",
+                  "@_time": "0",
+                  "failure": {
+                    "#text": "Score: 0\nReason: Assertion failed",
+                    "@_message": "Assertion failed",
+                    "@_type": "assertion"
+                  },
+                  "@_classname": "c"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "output": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites errors=\"1\" name=\"promptfoo\" time=\"4.25\">\n  <testsuite name=\"[echo] prompt 1\" tests=\"2\">\n    <testcase name=\"test 1\" time=\"1.25\" classname=\"[echo] prompt 1\"></testcase>\n    <testcase name=\"test 2 &lt;&amp;&gt;\" time=\"0\" classname=\"c\">\n      <failure message=\"Assertion failed\" type=\"assertion\">Score: 0\nReason: Assertion failed</failure>\n    </testcase>\n  </testsuite>\n</testsuites>\n"
+    },
+    {
+      "input": {
+        "root": {
+          "empty": "",
+          "nested": [
+            {
+              "a": "1"
+            },
+            {
+              "b": {
+                "c": ""
+              }
+            }
+          ],
+          "arr": [
+            [
+              "p",
+              "q"
+            ]
+          ],
+          "t": "true",
+          "@_flag": "true"
+        }
+      },
+      "output": "<root flag>\n  <empty></empty>\n  <nested>\n    <a>1</a>\n  </nested>\n  <nested>\n    <b>\n      <c></c>\n    </b>\n  </nested>\n  <arr>\n    <0>p</0>\n    <1>q</1>\n  </arr>\n  <t>true</t>\n</root>\n"
+    }
+  ],
+  "csv": [
+    {
+      "input": [
+        [
+          "a",
+          "b,c",
+          "d\"e",
+          "f\ng",
+          "h\ri",
+          "",
+          "x"
+        ],
+        [
+          1,
+          2.5,
+          true,
+          false,
+          null,
+          null,
+          "z"
+        ]
+      ],
+      "output": "a,\"b,c\",\"d\"\"e\",\"f\ng\",\"h\ri\",,x\n1,2.5,1,,,,z\n"
+    },
+    {
+      "input": [
+        [
+          "'=1",
+          " lead",
+          "trail ",
+          "",
+          "é"
+        ]
+      ],
+      "output": "'=1, lead,trail ,,é\n"
+    }
+  ],
+  "table": [
+    {
+      "input": {
+        "head": {
+          "vars": [
+            "var1",
+            "var2"
+          ],
+          "prompts": [
+            {
+              "provider": "test-provider",
+              "label": "test-label"
+            }
+          ]
+        },
+        "body": [
+          {
+            "vars": [
+              "value1",
+              "value2"
+            ],
+            "outputs": [
+              {
+                "pass": true,
+                "text": "passing test"
+              }
+            ]
+          },
+          {
+            "vars": [
+              "value3",
+              "value4"
+            ],
+            "outputs": [
+              {
+                "pass": false,
+                "text": "failing test",
+                "failureReason": 1
+              }
+            ]
+          },
+          {
+            "vars": [
+              "v5",
+              ""
+            ],
+            "outputs": [
+              {
+                "pass": false,
+                "text": "error test---more",
+                "failureReason": 2
+              }
+            ]
+          }
+        ]
+      },
+      "output": "\u001b[90m┌────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m var1                                   \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m var2                                   \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [test-provider] test-label             \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m value1                                 \u001b[90m│\u001b[39m value2                                 \u001b[90m│\u001b[39m \u001b[32m[PASS] \u001b[39mpassing test                    \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m value3                                 \u001b[90m│\u001b[39m value4                                 \u001b[90m│\u001b[39m \u001b[31m[FAIL] \u001b[39m\u001b[31m\u001b[1mfailing test\u001b[22m\u001b[39m                    \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v5                                     \u001b[90m│\u001b[39m                                        \u001b[90m│\u001b[39m \u001b[31m[ERROR] \u001b[39m\u001b[31m\u001b[1merror test\u001b[22m\u001b[39m---more              \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────┘\u001b[39m"
+    },
+    {
+      "input": {
+        "head": {
+          "vars": [
+            "question"
+          ],
+          "prompts": [
+            {
+              "provider": "openai:gpt",
+              "label": "Answer: {{question}}"
+            },
+            {
+              "provider": "echo",
+              "label": "p2"
+            }
+          ]
+        },
+        "body": [
+          {
+            "vars": [
+              "What is the capital of France and why is it so famous among travellers around the world? Please explain in detail."
+            ],
+            "outputs": [
+              {
+                "pass": true,
+                "text": "Paris is the capital.\nIt is famous for the Eiffel Tower, museums, cafes and a supercalifragilisticexpialidociousword-that-is-too-long-to-fit-in-a-column-of-forty."
+              },
+              {
+                "pass": false,
+                "text": "Expected output to contain \"Berlin\"---\nParis",
+                "failureReason": 1
+              }
+            ]
+          },
+          {
+            "vars": [
+              "日本語のテキスト 😀"
+            ],
+            "outputs": [
+              {
+                "pass": true,
+                "text": ""
+              },
+              {
+                "pass": false,
+                "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                "failureReason": 2
+              }
+            ]
+          }
+        ]
+      },
+      "output": "\u001b[90m┌────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m question                               \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [openai:gpt] Answer: {{question}}      \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [echo] p2                              \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m What is the capital of France and why  \u001b[90m│\u001b[39m \u001b[32m[PASS] \u001b[39mParis is the capital.           \u001b[90m│\u001b[39m \u001b[31m[FAIL] \u001b[39m\u001b[31m\u001b[1mExpected output to contain\u001b[22m\u001b[39m      \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m is it so famous among travellers       \u001b[90m│\u001b[39m It is famous for the Eiffel Tower,     \u001b[90m│\u001b[39m \u001b[31m\u001b[1m\"Berlin\"\u001b[22m\u001b[39m---                            \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m around the world? Please explain in    \u001b[90m│\u001b[39m museums, cafes and a                   \u001b[90m│\u001b[39m Paris                                  \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m detail.                                \u001b[90m│\u001b[39m supercalifragilisticexpialidociouswor… \u001b[90m│\u001b[39m                                        \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 日本語のテキスト 😀                    \u001b[90m│\u001b[39m \u001b[32m[PASS] \u001b[39m                                \u001b[90m│\u001b[39m \u001b[31m[ERROR]\u001b[39m                                \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                        \u001b[90m│\u001b[39m                                        \u001b[90m│\u001b[39m \u001b[31m\u001b[39m\u001b[31m\u001b[1mxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u001b[22m\u001b[39m… \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────┘\u001b[39m"
+    },
+    {
+      "input": {
+        "head": {
+          "vars": [],
+          "prompts": [
+            {
+              "provider": "p",
+              "label": "only head"
+            }
+          ]
+        },
+        "body": []
+      },
+      "output": "\u001b[90m┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [p] only head                                                                                                          \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\u001b[39m"
+    }
+  ],
+  "tableSmall": [
+    {
+      "input": {
+        "head": {
+          "vars": [
+            "var1",
+            "var2"
+          ],
+          "prompts": [
+            {
+              "provider": "test-provider",
+              "label": "test-label"
+            }
+          ]
+        },
+        "body": [
+          {
+            "vars": [
+              "value1",
+              "value2"
+            ],
+            "outputs": [
+              {
+                "pass": true,
+                "text": "passing test"
+              }
+            ]
+          },
+          {
+            "vars": [
+              "value3",
+              "value4"
+            ],
+            "outputs": [
+              {
+                "pass": false,
+                "text": "failing test",
+                "failureReason": 1
+              }
+            ]
+          },
+          {
+            "vars": [
+              "v5",
+              ""
+            ],
+            "outputs": [
+              {
+                "pass": false,
+                "text": "error test---more",
+                "failureReason": 2
+              }
+            ]
+          }
+        ]
+      },
+      "output": "\u001b[90m┌────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m var1                                   \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m var2                                   \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [t...                                  \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m va...                                  \u001b[90m│\u001b[39m va...                                  \u001b[90m│\u001b[39m \u001b[32m[PASS] \u001b[39mpa...                           \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────┘\u001b[39m"
+    }
+  ],
+  "wrapTable": [
+    {
+      "input": {
+        "rows": [
+          {
+            "col1": "value1",
+            "col2": "value2"
+          },
+          {
+            "col1": "value3",
+            "col2": "value4"
+          }
+        ],
+        "widths": null
+      },
+      "output": "\u001b[90m┌────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m col1                                                       \u001b[39m\u001b[90m│\u001b[39m\u001b[31m col2                                                       \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m value1                                                     \u001b[90m│\u001b[39m value2                                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m value3                                                     \u001b[90m│\u001b[39m value4                                                     \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────────────────────────┘\u001b[39m"
+    },
+    {
+      "input": {
+        "rows": [
+          {
+            "col1": "a long value that wraps",
+            "col2": "b",
+            "col3": "c"
+          }
+        ],
+        "widths": {
+          "col1": 10,
+          "col3": 15
+        }
+      },
+      "output": "\u001b[90m┌──────────\u001b[39m\u001b[90m┬────────────────────────────────────────\u001b[39m\u001b[90m┬───────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m col1     \u001b[39m\u001b[90m│\u001b[39m\u001b[31m col2                                   \u001b[39m\u001b[90m│\u001b[39m\u001b[31m col3          \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├──────────\u001b[39m\u001b[90m┼────────────────────────────────────────\u001b[39m\u001b[90m┼───────────────┤\u001b[39m\n\u001b[90m│\u001b[39m a long   \u001b[90m│\u001b[39m b                                      \u001b[90m│\u001b[39m c             \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m value    \u001b[90m│\u001b[39m                                        \u001b[90m│\u001b[39m               \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m that     \u001b[90m│\u001b[39m                                        \u001b[90m│\u001b[39m               \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m wraps    \u001b[90m│\u001b[39m                                        \u001b[90m│\u001b[39m               \u001b[90m│\u001b[39m\n\u001b[90m└──────────\u001b[39m\u001b[90m┴────────────────────────────────────────\u001b[39m\u001b[90m┴───────────────┘\u001b[39m"
+    },
+    {
+      "input": {
+        "rows": [
+          {
+            "name": "John",
+            "age": 30
+          }
+        ],
+        "widths": null
+      },
+      "output": "\u001b[90m┌────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m name                                                       \u001b[39m\u001b[90m│\u001b[39m\u001b[31m age                                                        \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m John                                                       \u001b[90m│\u001b[39m 30                                                         \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────────────────────────┘\u001b[39m"
+    }
+  ]
+}

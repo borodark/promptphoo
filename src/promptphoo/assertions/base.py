@@ -56,7 +56,9 @@ def coerce_string(value: Any) -> str:
     return value if isinstance(value, str) else json_stringify(value)
 
 
-def result(params: AssertionParams, passed: bool, reason_on_fail: str, **extra: Any) -> GradingResult:
+def result(
+    params: AssertionParams, passed: bool, reason_on_fail: str, **extra: Any
+) -> GradingResult:
     """The common `{pass, score: pass ? 1 : 0, reason, assertion}` shape."""
     return {
         "pass": passed,

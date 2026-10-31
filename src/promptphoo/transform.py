@@ -50,8 +50,10 @@ def get_transform_label(t: Any) -> str:
         return INLINE_STRING_LABEL
     if callable(t):
         name = getattr(t, "__name__", "")
-        return f"{INLINE_FUNCTION_LABEL}: {name}" if name and name != "<lambda>" else (
-            INLINE_FUNCTION_LABEL
+        return (
+            f"{INLINE_FUNCTION_LABEL}: {name}"
+            if name and name != "<lambda>"
+            else (INLINE_FUNCTION_LABEL)
         )
     if t.startswith("file://"):
         return FILE_TRANSFORM_LABEL
