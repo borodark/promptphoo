@@ -8,12 +8,13 @@ first using Ajv's keyword evaluation order, and render Ajv's messages.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any
+from typing import Any, cast
 
 import jsonschema
 from jsonschema import Draft7Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
 
+from promptphoo.jsonutil import js_deep_equal
 from promptphoo.jsvalues import json_stringify, number_to_string
 
 # Ajv v8 draft-07 rule order: type, then untyped keywords, then the per-type groups.
@@ -62,7 +63,7 @@ def _instance_path(error: ValidationError) -> str:
 
 
 def _message(error: ValidationError) -> str:
-    v, value = error.validator, error.validator_value
+    v, value = cast(str, error.validator), cast(Any, error.validator_value)
     if v == "type":
         return f"must be {','.join(value) if isinstance(value, list) else value}"
     if v == "required":
@@ -88,7 +89,8 @@ def _message(error: ValidationError) -> str:
     if v == "multipleOf":
         return f"must be multiple of {number_to_string(value)}"
     if v == "uniqueItems":
-        return "must NOT have duplicate items"
+        i, j = _duplicate_indices(error)
+        return f"must NOT have duplicate items (items ## {j} and {i} are identical)"
     if v == "anyOf":
         return "must match a schema in anyOf"
     if v == "oneOf":
@@ -106,6 +108,76 @@ def _message(error: ValidationError) -> str:
     return error.message
 
 
+_SCALAR_TYPES = {"string", "number", "integer", "boolean", "null"}
+
+
+def _duplicate_indices(error: ValidationError) -> tuple[int, int]:
+    """Ajv's uniqueItems scan: a value map for scalar `items.type`, else a pairwise scan."""
+    data = error.instance if isinstance(error.instance, list) else []
+    items = error.schema.get("items") if isinstance(error.schema, dict) else None
+    item_type = items.get("type") if isinstance(items, dict) else None
+    types = set(item_type) if isinstance(item_type, list) else {item_type}
+    if item_type is not None and types <= _SCALAR_TYPES:
+        seen: dict[str, int] = {}
+        for i in range(len(data) - 1, -1, -1):
+            key = json_stringify(data[i])
+            if key in seen:
+                return i, seen[key]
+            seen[key] = i
+    else:
+        for i in range(len(data) - 1, -1, -1):
+            for j in range(i - 1, -1, -1):
+                if js_deep_equal(data[i], data[j]):
+                    return i, j
+    return 0, 0
+
+
+def _schema_path(error: ValidationError) -> str:
+    return "#/" + "/".join(
+        str(p).replace("~", "~0").replace("/", "~1") for p in error.absolute_schema_path
+    )
+
+
+def _params(error: ValidationError) -> dict[str, Any]:
+    v, value = cast(str, error.validator), cast(Any, error.validator_value)
+    if v == "type":
+        return {"type": value}
+    if v == "required":
+        return {"missingProperty": error.message.split("'")[1] if "'" in error.message else ""}
+    if v == "additionalProperties":
+        extra = error.message.split("'")
+        return {"additionalProperty": extra[1] if len(extra) > 1 else ""}
+    if v == "enum":
+        return {"allowedValues": value}
+    if v == "const":
+        return {"allowedValue": value}
+    ops = {"maximum": "<=", "minimum": ">=", "exclusiveMaximum": "<", "exclusiveMinimum": ">"}
+    if v in ops:
+        return {"comparison": ops[v], "limit": value}
+    if v in ("maxLength", "minLength", "maxItems", "minItems", "maxProperties", "minProperties"):
+        return {"limit": value}
+    if v == "pattern":
+        return {"pattern": value}
+    if v == "format":
+        return {"format": value}
+    if v == "multipleOf":
+        return {"multipleOf": value}
+    if v == "uniqueItems":
+        i, j = _duplicate_indices(error)
+        return {"i": i, "j": j}
+    if v == "oneOf":
+        return {"passingSchemas": None}
+    if v == "contains":
+        return {"minContains": 1}
+    if v == "dependencies":
+        quoted = error.message.split("'")
+        if len(quoted) >= 4:
+            deps = (value or {}).get(quoted[3]) or []
+            return {"property": quoted[3], "missingProperty": quoted[1],
+                    "depsCount": len(deps), "deps": ", ".join(deps)}  # fmt: skip
+    return {}
+
+
 def _ajv_errors(error: ValidationError) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if error.validator in ("anyOf", "oneOf") and error.context:
@@ -118,8 +190,8 @@ def _ajv_errors(error: ValidationError) -> list[dict[str, Any]]:
         for branch in sorted(by_branch):
             out.extend(_ajv_errors(by_branch[branch]))
     out.append(
-        {"instancePath": _instance_path(error), "keyword": error.validator,
-         "message": _message(error)}
+        {"instancePath": _instance_path(error), "schemaPath": _schema_path(error),
+         "keyword": error.validator, "params": _params(error), "message": _message(error)}
     )  # fmt: skip
     return out
 
