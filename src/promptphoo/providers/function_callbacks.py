@@ -151,3 +151,104 @@ async def execute_provider_function_callback(
     except Exception as error:
         logger.error("%sError executing function '%s': %s", prefix, function_name, error)
         raise
+
+
+class FunctionCallbackHandler:
+    """Ports FunctionCallbackHandler: run `functionToolCallbacks` for function calls in the
+    various provider formats, falling back to the JSON-stringified call. The MCP client path is
+    not ported (promptphoo has no MCP client)."""
+
+    def __init__(self) -> None:
+        self.loaded_callbacks: dict[str, Callable[..., Any]] = {}
+
+    @staticmethod
+    def _extract_function_info(call: Any) -> dict[str, Any] | None:
+        if not isinstance(call, dict):
+            return None
+        if call.get("name") and isinstance(call["name"], str):
+            return {"name": call["name"], "arguments": call.get("arguments")}
+        function = call.get("function")
+        if call.get("type") == "function" and isinstance(function, dict) and function.get("name"):
+            return {"name": function["name"], "arguments": function.get("arguments")}
+        return None
+
+    def _load_external_function(self, file_ref: str) -> Callable[..., Any]:
+        try:
+            return load_callback_from_file_url(file_ref)
+        except Exception as error:
+            raise RuntimeError(f"Failed to load function from {file_ref}: {error}") from error
+
+    async def _execute_callback(
+        self, function_name: str, args: Any, callbacks: dict[str, Any], context: Any = None
+    ) -> str:
+        callback = self.loaded_callbacks.get(function_name)
+        if callback is None:
+            callback_config = callbacks.get(function_name)
+            if isinstance(callback_config, str):
+                if callback_config.startswith("file://"):
+                    callback = self._load_external_function(callback_config)
+                else:
+                    raise UnsupportedCallbackError(
+                        "Inline JavaScript function callbacks are not supported by promptphoo "
+                        f"(function '{function_name}'). Use a Python file reference instead: "
+                        "file://callbacks.py:function_name"
+                    )
+            elif callable(callback_config):
+                callback = callback_config
+            else:
+                raise ValueError(f"Invalid callback configuration for {function_name}")
+            self.loaded_callbacks[function_name] = callback
+        # JS ignores surplus arguments; Python callbacks only get `context` when there is one.
+        result = await (
+            python_hooks.call_async(callback, args)
+            if context is None
+            else python_hooks.call_async(callback, args, context)
+        )
+        return result if isinstance(result, str) else json_stringify(result)
+
+    async def process_call(
+        self, call: Any, callbacks: dict[str, Any] | None = None, context: Any = None
+    ) -> dict[str, Any]:
+        """`{output, isError}` for one call."""
+        info = self._extract_function_info(call)
+        original = call if isinstance(call, str) else json_stringify(call)
+        if not info or not callbacks or not callbacks.get(info["name"]):
+            return {"output": original, "isError": False}
+        try:
+            arguments = info["arguments"] or "{}"
+            output = await self._execute_callback(info["name"], arguments, callbacks, context)
+            return {"output": output, "isError": False}
+        except Exception as error:
+            if isinstance(error, CallbackPathTraversalError) or isinstance(
+                error.__cause__, CallbackPathTraversalError
+            ):
+                logger.warning("[FunctionCallback] Rejected callback '%s': %s", info["name"], error)
+            else:
+                logger.debug("Function callback failed for %s: %s", info["name"], error)
+            return {"output": original, "isError": True}
+
+    async def process_calls(
+        self, calls: Any, callbacks: dict[str, Any] | None = None, context: Any = None
+    ) -> Any:
+        """Callback output for a call (or the `\\n`-joined outputs for a list). Without a
+        successful callback: the stringified call (single) or the original list."""
+        if not calls:
+            return calls
+        is_list = isinstance(calls, list)
+        calls_list = calls if is_list else [calls]
+        results = [await self.process_call(c, callbacks, context) for c in calls_list]
+        has_success = any(
+            not r["isError"] and r["output"] != json_stringify(calls_list[i])
+            for i, r in enumerate(results)
+        )
+        if has_success:
+            outputs = [r["output"] for r in results]
+            if not is_list and len(outputs) == 1:
+                return outputs[0]
+            return "\n".join(outputs) if all(isinstance(o, str) for o in outputs) else outputs
+        if not is_list and len(results) == 1:
+            return results[0]["output"]
+        return calls
+
+    def clear_cache(self) -> None:
+        self.loaded_callbacks = {}

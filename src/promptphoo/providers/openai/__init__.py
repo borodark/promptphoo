@@ -1,9 +1,9 @@
 """OpenAI provider family. `create_provider` ports the `openai:` factory in
 src/providers/registry.ts.
 
-Supported: chat, completion, embedding(s), moderation and bare `openai:<model>` ids that route
-to them. Responses arrives in a later wave; assistants, realtime, image, tts, transcription,
-video, live, decisions, agents and codex are not supported by promptphoo.
+Supported: chat, completion, embedding(s), moderation, responses and bare `openai:<model>` ids
+that route to them. Assistants, realtime, image, tts, transcription, video, live, decisions,
+agents and codex are not supported by promptphoo.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from promptphoo.providers.openai.generic import (
     resolve_openai_api_url,
 )
 from promptphoo.providers.openai.moderation import OpenAiModerationProvider
-from promptphoo.providers.openai.tables import OPENAI_RESPONSES_MODEL_NAMES
+from promptphoo.providers.openai.responses import OpenAiResponsesProvider
 from promptphoo.providers.openai.util import (
     OPENAI_DAYBREAK_ALIASES,
     OPENAI_REALTIME_MODELS,
@@ -39,6 +39,7 @@ __all__ = [
     "OpenAiEmbeddingProvider",
     "OpenAiGenericProvider",
     "OpenAiModerationProvider",
+    "OpenAiResponsesProvider",
     "create_provider",
     "has_header_override",
     "resolve_openai_api_url",
@@ -60,13 +61,6 @@ def _unsupported(provider_path: str, kind: str) -> ValueError:
         f"OpenAI {kind} providers are not supported by promptphoo ({provider_path}). "
         "Use openai:chat:<model>, openai:completion:<model>, openai:embedding:<model> or "
         "openai:moderation:<model>."
-    )
-
-
-def _responses_not_implemented(provider_path: str) -> NotImplementedError:
-    return NotImplementedError(
-        f"The OpenAI Responses API provider ({provider_path}) is not ported yet; it arrives in "
-        "Phase 3 wave 2. Use openai:chat:<model> meanwhile."
     )
 
 
@@ -113,7 +107,7 @@ def get_effective_openai_api_model(
         should_default_to_openai_responses(model_type)
         or model_type in chat_names
         or model_type in completion_names
-        or model_type in OPENAI_RESPONSES_MODEL_NAMES
+        or model_type in OpenAiResponsesProvider.OPENAI_RESPONSES_MODEL_NAMES
         or model_type in OPENAI_TTS_MODEL_NAMES
         or retired_route in ("chat", "responses", "tts")
         or (
@@ -193,7 +187,7 @@ def create_provider(provider_path: str, options: dict[str, Any]) -> Any:
     if model_type == "realtime":
         raise _unsupported(provider_path, "Realtime")
     if model_type == "responses":
-        raise _responses_not_implemented(provider_path)
+        return OpenAiResponsesProvider(model_name or configured_model or "gpt-6-sol", options)
     if model_type == "decisions":
         raise _unsupported(provider_path, "Decisions")
     if model_type == "transcription":
@@ -206,7 +200,7 @@ def create_provider(provider_path: str, options: dict[str, Any]) -> Any:
         model_type in OPENAI_DAYBREAK_ALIASES
         and is_openai_first_party_api_url(resolve_openai_api_url(config, env))
     ):
-        raise _responses_not_implemented(provider_path)
+        return OpenAiResponsesProvider(model_type, options)
     if model_type in OpenAiChatCompletionProvider.OPENAI_CHAT_MODEL_NAMES:
         return OpenAiChatCompletionProvider(model_type, options)
     if model_type in OpenAiCompletionProvider.OPENAI_COMPLETION_MODEL_NAMES:
@@ -217,8 +211,8 @@ def create_provider(provider_path: str, options: dict[str, Any]) -> Any:
         raise _unsupported(provider_path, "transcription")
     if model_type in OPENAI_REALTIME_MODEL_NAMES:
         raise _unsupported(provider_path, "Realtime")
-    if model_type in OPENAI_RESPONSES_MODEL_NAMES:
-        raise _responses_not_implemented(provider_path)
+    if model_type in OpenAiResponsesProvider.OPENAI_RESPONSES_MODEL_NAMES:
+        return OpenAiResponsesProvider(model_type, options)
     # Retired IDs reach here only for custom OpenAI-compatible gateways that still serve them.
     route = get_retired_openai_model_route(model_type)
     if route == "chat":
@@ -226,7 +220,7 @@ def create_provider(provider_path: str, options: dict[str, Any]) -> Any:
     if route == "moderation":
         return OpenAiModerationProvider(model_type, options)
     if route == "responses":
-        raise _responses_not_implemented(provider_path)
+        return OpenAiResponsesProvider(model_type, options)
     if route in ("tts", "realtime"):
         raise _unsupported(provider_path, "text-to-speech" if route == "tts" else "Realtime")
     if model_type in ("agents", "assistant", "image", "video"):
