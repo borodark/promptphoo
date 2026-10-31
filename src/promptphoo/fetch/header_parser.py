@@ -1,0 +1,258 @@
+"""Rate-limit header parsing. Ports src/scheduler/headerParser.ts.
+
+The fetch layer needs `parseRateLimitHeaders` for Retry-After / reset handling. It lives here
+rather than under `scheduler/` so the transport does not depend on the scheduler package.
+"""
+
+from __future__ import annotations
+
+import email.utils
+import math
+import re
+import time
+from datetime import UTC, datetime
+from typing import TypedDict
+
+__all__ = [
+    "ParsedRateLimitHeaders",
+    "date_now",
+    "date_parse",
+    "parse_int",
+    "parse_rate_limit_headers",
+    "parse_retry_after",
+]
+
+
+class ParsedRateLimitHeaders(TypedDict, total=False):
+    remainingRequests: int
+    remainingTokens: int
+    limitRequests: int
+    limitTokens: int
+    resetAt: float  # Absolute Unix timestamp in milliseconds
+    retryAfterMs: float  # Relative duration in milliseconds
+
+
+def date_now() -> float:
+    """`Date.now()`: wall-clock milliseconds. Tests patch this to freeze time."""
+    return math.floor(time.time() * 1000)
+
+
+_INT_PREFIX = re.compile(r"\s*([+-]?\d+)")
+
+
+def parse_int(value: str | None) -> int | None:
+    """`Number.parseInt(value, 10)`, with None for NaN."""
+    if value is None:
+        return None
+    m = _INT_PREFIX.match(value)
+    return int(m.group(1)) if m else None
+
+
+def date_parse(value: str) -> float | None:
+    """A subset of `Date.parse`: RFC 7231 / RFC 2822 dates and ISO 8601 timestamps."""
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        parsed = email.utils.parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError):
+        parsed = None
+    if parsed is None:
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00").replace("z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is None and "T" not in text and " " not in text:
+            # ES date-only forms are UTC.
+            parsed = parsed.replace(tzinfo=UTC)
+    if parsed.tzinfo is None:
+        parsed = parsed.astimezone()
+    return parsed.timestamp() * 1000
+
+
+# OpenAI-style headers (also used by Azure, many OpenAI-compatible APIs)
+_OPENAI = {
+    "remainingRequests": "x-ratelimit-remaining-requests",
+    "remainingTokens": "x-ratelimit-remaining-tokens",
+    "limitRequests": "x-ratelimit-limit-requests",
+    "limitTokens": "x-ratelimit-limit-tokens",
+    "resetRequests": "x-ratelimit-reset-requests",
+    "resetTokens": "x-ratelimit-reset-tokens",
+}
+
+# Anthropic-style headers
+_ANTHROPIC = {
+    "remainingRequests": "anthropic-ratelimit-requests-remaining",
+    "remainingTokens": "anthropic-ratelimit-tokens-remaining",
+    "limitRequests": "anthropic-ratelimit-requests-limit",
+    "limitTokens": "anthropic-ratelimit-tokens-limit",
+    "resetRequests": "anthropic-ratelimit-requests-reset",
+    "resetTokens": "anthropic-ratelimit-tokens-reset",
+}
+
+# Standard/generic headers (RFC 6585 style)
+_STANDARD = {
+    "remaining": "ratelimit-remaining",
+    "limit": "ratelimit-limit",
+    "reset": "ratelimit-reset",
+    "remainingAlt": "x-ratelimit-remaining",
+    "limitAlt": "x-ratelimit-limit",
+    "resetAlt": "x-ratelimit-reset",
+}
+
+
+def parse_rate_limit_headers(headers: dict[str, str]) -> ParsedRateLimitHeaders:
+    """Parse rate limit headers from response."""
+    result: ParsedRateLimitHeaders = {}
+    h = {k.lower(): v for k, v in headers.items()}
+
+    def put(key: str, value: int | None) -> None:
+        if value is not None:
+            result[key] = value  # type: ignore[literal-required]
+
+    put(
+        "remainingRequests",
+        _parse_first_match(
+            h,
+            [
+                _OPENAI["remainingRequests"],
+                _ANTHROPIC["remainingRequests"],
+                _STANDARD["remainingAlt"],
+                _STANDARD["remaining"],
+            ],
+        ),
+    )
+    put(
+        "remainingTokens",
+        _parse_first_match(h, [_OPENAI["remainingTokens"], _ANTHROPIC["remainingTokens"]]),
+    )
+    put(
+        "limitRequests",
+        _parse_first_match(
+            h,
+            [
+                _OPENAI["limitRequests"],
+                _ANTHROPIC["limitRequests"],
+                _STANDARD["limitAlt"],
+                _STANDARD["limit"],
+            ],
+        ),
+    )
+    put("limitTokens", _parse_first_match(h, [_OPENAI["limitTokens"], _ANTHROPIC["limitTokens"]]))
+
+    for name in (
+        _OPENAI["resetRequests"],
+        _OPENAI["resetTokens"],
+        _ANTHROPIC["resetRequests"],
+        # Token limits bind before request limits on eval workloads, and a
+        # token-limited 429 may carry only the tokens reset.
+        _ANTHROPIC["resetTokens"],
+        _STANDARD["resetAlt"],
+        _STANDARD["reset"],
+    ):
+        if name in h:
+            parsed = _parse_reset_time(h[name])
+            if parsed is not None:
+                result["resetAt"] = parsed
+                break
+
+    if "retry-after-ms" in h:
+        ms = parse_int(h["retry-after-ms"])
+        # Accept 0 as valid (means "retry immediately")
+        if ms is not None and ms >= 0:
+            result["retryAfterMs"] = ms
+            if "resetAt" not in result:
+                result["resetAt"] = date_now() + ms
+
+    if "retryAfterMs" not in result and "retry-after" in h:
+        parsed_retry = parse_retry_after(h["retry-after"])
+        if parsed_retry is not None:
+            result["retryAfterMs"] = parsed_retry
+            if "resetAt" not in result:
+                result["resetAt"] = date_now() + parsed_retry
+
+    return result
+
+
+def parse_retry_after(value: str) -> float | None:
+    """Parse a Retry-After header value. Returns the duration in milliseconds."""
+    seconds = parse_int(value)
+    if seconds is not None and seconds >= 0 and str(seconds) == value.strip():
+        return seconds * 1000
+
+    http_date = _parse_http_date(value)
+    if http_date is not None:
+        return max(0, http_date - date_now())
+
+    return None
+
+
+def _parse_first_match(headers: dict[str, str], names: list[str]) -> int | None:
+    for name in names:
+        value = headers.get(name)
+        if value is not None:
+            num = parse_int(value)
+            if num is not None and num >= 0:
+                return num
+    return None
+
+
+# A bare non-negative decimal number and nothing else: "0", "120", "1.5".
+_BARE_NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _parse_reset_time(value: str) -> float | None:
+    """Parse a reset time from various formats. Returns an absolute timestamp in milliseconds."""
+    duration_ms = _parse_duration(value)
+    if duration_ms is not None:
+        return date_now() + duration_ms
+
+    if _BARE_NUMBER_RE.fullmatch(value.strip()):
+        num = float(value.strip())
+        if math.isfinite(num) and num >= 0:
+            # Disambiguate by magnitude:
+            # - < 1 billion: relative seconds
+            # - 1-10 billion: Unix seconds (10 digits)
+            # - > 10 billion: Unix milliseconds (13 digits)
+            if num < 1_000_000_000:
+                return date_now() + num * 1000
+            if num < 10_000_000_000:
+                return num * 1000
+            return num
+
+    # HTTP-date format, plus the RFC 3339 timestamps Anthropic returns in
+    # `anthropic-ratelimit-*-reset`.
+    return _parse_http_date(value)
+
+
+def _parse_http_date(value: str) -> float | None:
+    timestamp = date_parse(value)
+    if timestamp is not None and math.isfinite(timestamp):
+        # Sanity check: within reasonable range (not too far past or future)
+        now = date_now()
+        one_year_ms = 365 * 24 * 60 * 60 * 1000
+        if now - one_year_ms < timestamp < now + one_year_ms:
+            return timestamp
+    return None
+
+
+_DURATION_RE = re.compile(r"(?:(\d+)h)?(?:(\d+)m(?!s))?(?:(\d+(?:\.\d+)?)(ms|s))?")
+
+
+def _parse_duration(value: str) -> float | None:
+    """Parse duration strings like "1s", "100ms", "1m30s", "1h30s", "2h15m30s"."""
+    match = _DURATION_RE.fullmatch(value)
+    if not match:
+        return None
+    hours, minutes, seconds_value, seconds_unit = match.groups()
+    if not hours and not minutes and not seconds_value:
+        return None
+    ms: float = 0
+    if hours:
+        ms += int(hours) * 3600_000
+    if minutes:
+        ms += int(minutes) * 60_000
+    if seconds_value:
+        num = float(seconds_value)
+        ms += num if seconds_unit == "ms" else num * 1000
+    return ms if math.isfinite(ms) else None
