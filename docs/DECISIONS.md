@@ -362,7 +362,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - Deferring in-flight grading until the pause completes. Python cancels it too, and the rows are marked aborted.
   - The `isEvalTimedOut` continue-after-timeout path. On `maxEvalTimeMs`, Python marks the comparison rows aborted and re-raises.
 - Modules: src/promptphoo/cli/eval.py, src/promptphoo/cli/retry.py, src/promptphoo/cli_state.py, src/promptphoo/evaluator/run.py, src/promptphoo/evaluator/comparison.py, src/promptphoo/models/eval.py
-- Commits: this commit
+- Commits: `c65714b`
 
 ## 37. --filter-failing reads either a results JSON file or a stored eval id and matches by vars and provider
 - Decision:
@@ -374,4 +374,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - `--filter-failing` selects `!success`, `--filter-failing-only` selects ASSERT failures and `--filter-errors-only` selects ERROR rows. Failing-only and errors-only together take the union. The metadata filter also applies to extracted tests, and the empty-result warning is upstream's.
 - Rationale: The same rules as Node mean the same selection from the same eval. This was checked against Node for all three flags and their union, from both a DB id and a JSON file.
 - Modules: src/promptphoo/filters.py, src/promptphoo/cli/eval.py
-- Commits: this commit
+- Commits: `c65714b`
