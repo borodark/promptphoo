@@ -434,9 +434,17 @@ async def test_clients_are_reused_per_concurrency(monkeypatch):
 # ---- TLS and pool options -----------------------------------------------------------------------
 
 
-def test_tls_defaults_follow_upstream_insecure_default():
-    assert fetch.get_tls_options().reject_unauthorized is False
-    assert fetch._verify_for(fetch.get_tls_options()) is False
+def test_tls_verifies_by_default():
+    # Upstream skips verification by default; promptphoo verifies (D61).
+    assert fetch.get_tls_options().reject_unauthorized is True
+    assert fetch._verify_for(fetch.get_tls_options()) is True
+
+
+def test_insecure_ssl_true_disables_verification(monkeypatch):
+    monkeypatch.setenv("PROMPTFOO_INSECURE_SSL", "true")
+    tls = fetch.get_tls_options()
+    assert tls.reject_unauthorized is False
+    assert fetch._verify_for(tls) is False
 
 
 def test_insecure_ssl_false_enables_verification(monkeypatch):

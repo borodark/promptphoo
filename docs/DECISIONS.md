@@ -176,6 +176,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: The user accepts upstream's default. This is open for review: verifying by default would be safer.
 - Modules: src/promptphoo/fetch/__init__.py
 - Commits: `b27751e`
+- Note: Superseded by D61.
 
 ## 22. One retry context, owned by the fetch layer
 - Decision: The scheduler sets the provider's `maxRetries` scope through `promptphoo.fetch.with_fetch_retry_context`. `fetch_context.py` re-exports fetch's retry context and error predicates rather than defining its own.
@@ -676,3 +677,15 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Alternatives: Putting a header on every source file (REUSE-style) was rejected for now as noise; NOTICE plus module docstrings ("Ports src/...ts", "Apache-2.0; see NOTICE") identify provenance.
 - Implication: New vendored files or ported third-party algorithms need a NOTICE entry. The NOTICE also states that promptphoo is unofficial and not endorsed by Promptfoo, Inc. or OpenAI.
 - Modules: LICENSE, NOTICE, LICENSES/Apache-2.0.txt, src/promptphoo/_data/NOTICE, pyproject.toml
+
+## 61. Safer defaults than upstream: sandboxed templates, TLS verified, no feedback upload
+- Decision: Three deliberate departures from upstream, made before the public alpha.
+    - Templates render in Jinja2's `SandboxedEnvironment`. Attributes such as `__class__`, `__subclasses__` and `__globals__` are unreachable, so a template, or a var value rendered as one, cannot run Python. Inline expressions (`transformResponse`, `transform`, `transformVars`) compile through the same environment.
+    - TLS certificates are verified unless `PROMPTFOO_INSECURE_SSL=true`. Upstream defaults that variable to true and skips verification.
+    - `promptfoo feedback` sends nothing. It points to promptphoo's issue tracker, read from the package's `Issues` project URL. Upstream posts the message, and optionally the user's email, to api.promptfoo.dev.
+- Rationale: Prompts, tests and var values are routinely loaded from shared files, spreadsheets and datasets, and upstream renders var values as templates. Unsandboxed, any of them could execute code on the machine running the eval. Unverified TLS lets anyone on the network path read API keys. Feedback about an independent port should not go to a company that does not maintain it.
+- Alternatives: Keep upstream's behaviour and document it (D21's original choice). Rejected: a new project should not ship insecure defaults it can cheaply avoid. Sandboxing Python hooks was also considered and rejected; hooks are code by design, and Python cannot be sandboxed reliably inside one process.
+- Assumption: Real templates never use underscore attributes. The full suite (6,512 tests) and all 63 parity fixtures gave identical results with the sandbox on. If a template legitimately needs a blocked attribute, it should move to a Python hook rather than weaken the sandbox. A user behind an intercepting proxy sets `PROMPTFOO_CA_CERT_PATH`, or `PROMPTFOO_INSECURE_SSL=true` as a last resort.
+- Implication: Configs that relied on unverified TLS (self-signed endpoints) now fail until a CA is configured. SECURITY.md describes the trust model: configs and hooks are code; datasets are data.
+- Note: Supersedes D21.
+- Modules: src/promptphoo/templating.py, src/promptphoo/fetch/__init__.py, src/promptphoo/cli/feedback.py, SECURITY.md, tests/test_templating.py, tests/test_fetch.py, tests/test_cli_misc.py

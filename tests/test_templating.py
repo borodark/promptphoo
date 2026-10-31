@@ -65,3 +65,45 @@ def test_python_filters(tmp_path):
     (tmp_path / "f.py").write_text("def shout(s):\n    return s.upper() + '!'\n")
     filters = templating.read_filters({"shout": "f.py"}, str(tmp_path))
     assert templating.render_string("{{ x | shout }}", {"x": "hi"}, filters=filters) == "HI!"
+
+
+# --- sandbox (D61) ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "{{ ''.__class__.__mro__[1].__subclasses__() }}",
+        "{{ (1).__class__.__base__.__subclasses__() }}",
+        "{{ x.upper.__globals__ }}",
+    ],
+)
+def test_templates_cannot_reach_python_internals(template):
+    from jinja2.exceptions import SecurityError
+
+    try:
+        out = templating.render_string(template, {"x": "s"})
+    except SecurityError:
+        return
+    assert "class" not in out and "function" not in out and out in ("", "undefined")
+
+
+def test_var_values_rendered_as_templates_are_sandboxed():
+    # Var values are themselves rendered as templates (as upstream does), so a dataset row is
+    # template code; the sandbox is what keeps an untrusted CSV from running Python.
+    import asyncio
+
+    from jinja2.exceptions import SecurityError
+
+    from promptphoo.evaluator.render import render_prompt
+
+    prompt = {"raw": "Q: {{ q }}", "label": "p"}
+    assert asyncio.run(render_prompt(prompt, {"q": "{{ 7 * 6 }}"})) == "Q: 42"
+    # Unsandboxed, this renders "Q: 399" (the number of classes reachable from str). Sandboxed,
+    # the unsafe attribute is undefined, or raises when the undefined is used.
+    hostile = "{{ ''.__class__.__mro__[1].__subclasses__()|length }}"
+    try:
+        out = asyncio.run(render_prompt(prompt, {"q": hostile}))
+    except SecurityError:
+        return
+    assert out == "Q: "

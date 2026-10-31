@@ -184,9 +184,9 @@ class TlsOptions:
 
 def get_tls_options(log_enabled: bool = True) -> TlsOptions:
     """`rejectUnauthorized` from PROMPTFOO_INSECURE_SSL and `ca` from PROMPTFOO_CA_CERT_PATH."""
-    # Upstream default: PROMPTFOO_INSECURE_SSL is true unless set, so certificates are not
-    # verified unless PROMPTFOO_INSECURE_SSL=false.
-    reject_unauthorized = not envars.get_env_bool("PROMPTFOO_INSECURE_SSL", True)
+    # Departs from upstream, which defaults PROMPTFOO_INSECURE_SSL to true and so skips
+    # certificate checks: promptphoo verifies unless PROMPTFOO_INSECURE_SSL=true (D61).
+    reject_unauthorized = not envars.get_env_bool("PROMPTFOO_INSECURE_SSL", False)
     ca: str | None = None
     ca_cert_path = envars.get_env_string("PROMPTFOO_CA_CERT_PATH")
     if ca_cert_path:

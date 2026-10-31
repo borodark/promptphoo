@@ -24,6 +24,7 @@ from typing import Any
 
 import jinja2
 from jinja2 import meta, nodes
+from jinja2.sandbox import SandboxedEnvironment
 from jinja2.visitor import NodeTransformer
 
 from promptphoo import envars, python_hooks
@@ -254,7 +255,14 @@ def _filter_default(value: Any, default: Any = "", boolean: bool = False) -> Any
 # --- environment ------------------------------------------------------------------------------
 
 
-class NunjucksCompatEnvironment(jinja2.Environment):
+class NunjucksCompatEnvironment(SandboxedEnvironment):
+    """Jinja2 configured to behave like Nunjucks.
+
+    Sandboxed: test vars and datasets are rendered as templates, so a template must not be able
+    to reach Python internals (`__class__`, `__subclasses__`, frame objects). Ordinary
+    templates never touch those attributes. Upstream's Nunjucks is not sandboxed (see D61).
+    """
+
     def __init__(self, throw_on_undefined: bool = False, **kwargs: Any) -> None:
         super().__init__(
             autoescape=False,

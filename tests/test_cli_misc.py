@@ -7,7 +7,6 @@ import asyncio
 import json
 from pathlib import Path
 
-import httpx
 import jsonschema
 import pytest
 import respx
@@ -97,55 +96,39 @@ def test_debug_config_error(tmp_path: Path, caplog):
 
 
 # --- feedback -------
+# promptphoo sends no feedback anywhere (D61); upstream posts it to api.promptfoo.dev.
 
 
-def test_send_feedback(caplog):
+def test_feedback_sends_nothing_and_points_to_tracker(caplog, monkeypatch):
+    monkeypatch.setattr(feedback, "issues_url", lambda: "https://example.test/issues")
     with respx.mock() as mock:
-        route = mock.post(feedback.FEEDBACK_URL).mock(return_value=httpx.Response(200))
-        asyncio.run(feedback.send_feedback("Great tool!"))
-    assert json.loads(route.calls[0].request.content) == {"message": "Great tool!"}
-    assert msgs(caplog) == ["Feedback sent. Thank you!"]
-
-
-def test_send_feedback_api_failure(caplog):
-    with respx.mock() as mock:
-        mock.post(feedback.FEEDBACK_URL).mock(return_value=httpx.Response(400))
-        asyncio.run(feedback.send_feedback("x"))
-    assert msgs(caplog) == ["Failed to send feedback. Please try again or open an issue on GitHub."]
-
-
-def test_send_feedback_network_error(caplog):
-    with respx.mock() as mock:
-        mock.post(feedback.FEEDBACK_URL).mock(side_effect=httpx.ConnectError("down"))
-        asyncio.run(feedback.send_feedback("x"))
-    assert msgs(caplog, "ERROR") == ["Network error while sending feedback"]
-
-
-def test_empty_feedback_is_not_sent():
-    with respx.mock() as mock:
-        asyncio.run(feedback.send_feedback("   "))
-        assert not mock.calls
-
-
-def test_feedback_command_with_message():
-    with respx.mock() as mock:
-        route = mock.post(feedback.FEEDBACK_URL).mock(return_value=httpx.Response(200))
         assert run(["feedback", "hello"]).exit_code == 0
-    assert json.loads(route.calls[0].request.content) == {"message": "hello"}
-
-
-def test_feedback_interactive_adds_contact():
-    with respx.mock() as mock:
-        route = mock.post(feedback.FEEDBACK_URL).mock(return_value=httpx.Response(200))
-        assert run(["feedback"], input_="it works\nme@x.io\n").exit_code == 0
-    assert json.loads(route.calls[0].request.content) == {"message": "it works\n\nContact: me@x.io"}
-
-
-def test_feedback_interactive_empty(caplog):
-    with respx.mock() as mock:
-        run(["feedback"], input_="\n")
         assert not mock.calls
-    assert "No feedback provided." in msgs(caplog)
+    out = msgs(caplog)
+    assert "Please open an issue at https://example.test/issues." in out
+    assert out[-1] == "\nYour message, ready to paste:\n\nhello"
+
+
+def test_feedback_without_message_does_not_prompt(caplog):
+    with respx.mock() as mock:
+        assert run(["feedback"], input_="").exit_code == 0
+        assert not mock.calls
+    assert msgs(caplog)[0] == "promptphoo does not send feedback anywhere."
+
+
+def test_issues_url_reads_project_urls(monkeypatch):
+    class Meta:
+        def get_all(self, _key):
+            return ["Upstream, https://github.com/promptfoo/promptfoo", "Issues, https://x.test/i"]
+
+    monkeypatch.setattr(feedback.metadata, "metadata", lambda _name: Meta())
+    assert feedback.issues_url() == "https://x.test/i"
+    monkeypatch.setattr(
+        feedback.metadata,
+        "metadata",
+        lambda _name: type(Meta)("M", (), {"get_all": lambda self, k: []})(),
+    )
+    assert feedback.issues_url() == feedback.FALLBACK_TRACKER
 
 
 # --- share -------
