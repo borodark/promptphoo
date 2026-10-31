@@ -67,7 +67,7 @@ UNSUPPORTED_SUFFIXES = {".js", ".cjs", ".mjs", ".ts"}
 EXPECTED = {
     "conversation-relevance-ssti.yaml": "model-graded assertions (Phase 4)",
     "defaulttest-llm-rubric-vars.yaml": "model-graded assertions (Phase 4)",
-    "openai-custom-api-key-envar.yaml": "OpenAI provider (Phase 3)",
+    "openai-custom-api-key-envar.yaml": "openai:assistant: is not supported (D1 scope)",
     "python-prompt-with-extension.yaml": "extension hooks (Phase 5)",
     "defaulttest-llm-rubric-vars-tests.yaml": "test data, not a config: Node errors too",
     "tests-external.yaml": "test data, not a config: Node errors too",
