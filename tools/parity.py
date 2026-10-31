@@ -67,7 +67,6 @@ UNSUPPORTED_SUFFIXES = {".js", ".cjs", ".mjs", ".ts"}
 EXPECTED = {
     "defaulttest-llm-rubric-vars.yaml": "grader is a .cjs provider: JS hooks are not supported (D1 scope)",  # noqa: E501
     "openai-custom-api-key-envar.yaml": "openai:assistant: is not supported (D1 scope)",
-    "python-prompt-with-extension.yaml": "extension hooks (Phase 5)",
     "defaulttest-llm-rubric-vars-tests.yaml": "test data, not a config: Node errors too",
     "tests-external.yaml": "test data, not a config: Node errors too",
     "invalid.yaml": "intentionally invalid: Node errors too",

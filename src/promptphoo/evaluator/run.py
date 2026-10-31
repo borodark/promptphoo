@@ -1,6 +1,7 @@
 """The eval loop. Ports runEval / Evaluator from src/evaluator.ts (the non-redteam, untraced
-path). The select-best / max-score pass is in evaluator/comparison.py. Derived metrics,
-extensions and tracing are not ported yet; configs that use them fail or warn explicitly.
+path). The select-best / max-score pass is in evaluator/comparison.py and the extension hooks
+in evaluator/extensions.py. Derived metrics and tracing are not ported yet; configs that use
+them warn explicitly.
 """
 
 from __future__ import annotations
@@ -1178,8 +1179,15 @@ class Evaluator:
         suite, options = self.test_suite, self.options
         if not options.get("silent"):
             logger.info("Starting evaluation %s", self.store.id)
-        if suite.get("extensions"):
-            raise NotImplementedError("extensions are not supported yet")
+        from promptphoo.evaluator.extensions import (
+            check_extensions_supported,
+            run_before_all_extensions,
+        )
+        from promptphoo.suggestions import maybe_add_generated_prompts
+
+        check_extensions_supported(suite.get("extensions"))
+        suite = self.test_suite = await run_before_all_extensions(suite)
+        await maybe_add_generated_prompts(suite, options)
         if suite.get("derivedMetrics"):
             logger.warning("derivedMetrics are not supported yet; they will be skipped")
 
@@ -1259,9 +1267,11 @@ class Evaluator:
             idx = index_of[id(step)]
             try:
                 if timeout_ms and timeout_ms > 0:
-                    call = asyncio.wait_for(run_eval(step), timeout_ms / 1000)
+                    call = asyncio.wait_for(
+                        self._run_eval_step_after_before_each(step), timeout_ms / 1000
+                    )
                 else:
-                    call = run_eval(step)
+                    call = self._run_eval_step_after_before_each(step)
                 # A paused or cancelled step is not saved, so resume runs it again.
                 rows = await await_with_abort(call, abort_signal)
             except TimeoutError as e:
@@ -1271,6 +1281,8 @@ class Evaluator:
                 all_vars.update(dict.fromkeys(row.get("vars") or {}))
                 self._track_row_stats(row)
                 state["complete"] += 1
+                if suite.get("extensions"):
+                    await self._apply_after_each_extensions(step, row)
                 self.comparison.prepare_row(row)
                 try:
                     await self.store.append_result(row)
@@ -1315,6 +1327,7 @@ class Evaluator:
 
         await self.store.append_prompts(prompts)
         self.store.set_vars(list(all_vars))
+        await self._run_after_all_extensions(suite)
         self.store.set_duration_ms(round((time.time() - start) * 1000))
         if self.store.persisted:
             await self.store.save()
@@ -1328,6 +1341,79 @@ class Evaluator:
         self.store.set_vars(list(all_vars))
         await self.store.append_prompts(prompts)
         return self.store
+
+    async def _run_eval_step_after_before_each(self, step: RunEvalOptions) -> list[dict]:
+        from promptphoo.evaluator.extensions import run_extension_hook
+
+        out = await run_extension_hook(
+            self.test_suite.get("extensions"), "beforeEach", {"test": step.test}
+        )
+        step.test = out["test"]
+        return await run_eval(step)
+
+    async def _apply_after_each_extensions(self, step: RunEvalOptions, row: dict) -> None:
+        """Merge afterEach namedScores / metadata / response.metadata into the row before it
+        is persisted. The hook gets copies, so a failing hook leaves the row untouched."""
+        from promptphoo.evaluator.extensions import (
+            run_extension_hook,
+            synchronize_legacy_transport_headers,
+        )
+        from promptphoo.numeric import filter_finite_scores
+
+        try:
+            original_metadata = row.get("metadata")
+            response = row.get("response")
+            original_response_metadata = response.get("metadata") if response else None
+            out = await run_extension_hook(
+                self.test_suite.get("extensions"),
+                "afterEach",
+                {
+                    "test": step.test,
+                    "result": {
+                        **row,
+                        "namedScores": {**(row.get("namedScores") or {})},
+                        "metadata": {**(row.get("metadata") or {})},
+                        "response": {**response, "metadata": {**(response.get("metadata") or {})}}
+                        if response
+                        else response,
+                    },
+                },
+            )
+            result = out["result"]
+            row["namedScores"] = filter_finite_scores(result.get("namedScores") or {})
+            hook_response = result.get("response")
+            row["metadata"] = synchronize_legacy_transport_headers(
+                original_metadata,
+                original_response_metadata,
+                result.get("metadata"),
+                hook_response.get("metadata") if isinstance(hook_response, dict) else None,
+            )
+            if response and hook_response:
+                response["metadata"] = hook_response.get("metadata")
+        except Exception as error:
+            logger.error(
+                "afterEach extension hook failed, persisting row without hook modifications: %s",
+                error,
+            )
+
+    async def _run_after_all_extensions(self, suite: dict[str, Any]) -> None:
+        from promptphoo.evaluator.extensions import run_extension_hook
+
+        if not suite.get("extensions"):
+            return
+        load_results = getattr(self.store, "load_results", None)
+        results = load_results() if load_results else []
+        await run_extension_hook(
+            suite["extensions"],
+            "afterAll",
+            {
+                "prompts": getattr(self.store, "prompts", []),
+                "results": [r.to_evaluate_result() for r in results],
+                "suite": suite,
+                "evalId": self.store.id,
+                "config": getattr(self.store, "config", {}),
+            },
+        )
 
     def _timeout_row(self, step: RunEvalOptions, timeout_ms: int, error: Exception) -> dict:
         row: dict[str, Any] = {

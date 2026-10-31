@@ -510,9 +510,14 @@ def stringify_env_values(env: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 async def resolve_configs(
-    cmd: dict[str, Any], default_config: dict[str, Any] | None = None
+    cmd: dict[str, Any],
+    default_config: dict[str, Any] | None = None,
+    config_type: str | None = None,
 ) -> dict[str, Any]:
-    """Ports resolveConfigs: returns {test_suite, config, base_path, command_line_options}."""
+    """Ports resolveConfigs: returns {test_suite, config, base_path, command_line_options}.
+
+    `config_type` is upstream's `type`: "DatasetGeneration" and "AssertionGeneration" configs
+    need no providers."""
     default_config = default_config or {}
     file_config: dict[str, Any] = {}
     test_sources: list[dict[str, Any]] | None = None
@@ -533,7 +538,7 @@ async def resolve_configs(
         cli_state.with_config({**default_config, **file_config}),
     ):
         resolved = await _resolve_loaded_config(
-            cmd, file_config, default_config, test_sources, prompt_base_paths
+            cmd, file_config, default_config, test_sources, prompt_base_paths, config_type
         )
     cli_state.set_base_path(resolved["base_path"])
     cli_state.set_config(resolved["config"])
@@ -551,6 +556,7 @@ async def _resolve_loaded_config(
     default_config: dict[str, Any],
     test_sources: list[dict[str, Any]] | None,
     prompt_base_paths: list[str] | None,
+    config_type: str | None = None,
 ) -> dict[str, Any]:
     from promptphoo import providers as providers_mod
     from promptphoo.prompts import read_prompts
@@ -646,7 +652,7 @@ async def _resolve_loaded_config(
         )
     if not has_prompts:
         raise ConfigResolutionError("You must provide at least 1 prompt")
-    if not has_providers:
+    if config_type not in ("DatasetGeneration", "AssertionGeneration") and not has_providers:
         raise ConfigResolutionError(
             "You must specify at least 1 provider (for example, openai:gpt-4.1)"
         )

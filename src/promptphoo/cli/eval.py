@@ -1,8 +1,8 @@
 """`promptfoo eval`. Ports src/commands/eval.ts and src/node/doEval.ts.
 
---watch, --share, --suggest-prompts and -x extensions are accepted for compatibility but are
-Phase 5 work and fail clearly. --resume / --retry-errors replay a saved eval (see D36); Ctrl+C
-pauses a run that writes to the database, so it can be resumed.
+--share is accepted for compatibility and only warns. --resume / --retry-errors replay a
+saved eval (see D36); Ctrl+C pauses a run that writes to the database, so it can be
+resumed. --watch polls files (cli/watch.py); -x runs Python extension hooks (D38).
 """
 
 from __future__ import annotations
@@ -37,11 +37,7 @@ from promptphoo.providers import filter_providers
 logger = logging.getLogger("promptphoo")
 
 DEFAULT_CONFIG_EXTENSIONS = ("yaml", "yml", "json", "cjs", "cts", "js", "mjs", "mts", "ts")
-_UNSUPPORTED_OPTIONS = {
-    "watch": "--watch",
-    "suggest_prompts": "--suggest-prompts",
-    "extension": "--extension",
-}
+_UNSUPPORTED_OPTIONS = {}
 
 
 class EvalRunError(RuntimeError):
@@ -99,8 +95,12 @@ async def do_eval(
     default_config: dict[str, Any],
     default_config_path: str | None,
     evaluate_options: dict[str, Any],
+    watch_state: dict[str, Any] | None = None,
 ) -> tuple[Eval, int]:
-    """Run one eval. Returns (eval record, process exit code)."""
+    """Run one eval. Returns (eval record, process exit code).
+
+    `watch_state`, when given, receives the resolved config, config paths and test sources
+    that `--watch` needs to build its watch list."""
     start = time.time()
     setup_env(cmd.get("envPath"))
     for key, flag in _UNSUPPORTED_OPTIONS.items():
@@ -176,6 +176,12 @@ async def do_eval(
     config: dict[str, Any] = resolved["config"]
     test_suite: dict[str, Any] = resolved["test_suite"]
     command_line_options: dict[str, Any] = resolved.get("command_line_options") or {}
+    if watch_state is not None:
+        watch_state.update(
+            config=config,
+            config_paths=[p for p in (cmd.get("config") or [default_config_path]) if p],
+            test_sources=resolved.get("test_sources"),
+        )
     cli_state.set_base_path(resolved["base_path"])
     if command_line_options.get("safeMode"):
         cli_state.set_safe_mode(True)
@@ -373,9 +379,14 @@ async def do_eval(
         default_test = default_test if isinstance(default_test, dict) else {}
         default_test["vars"] = {**(default_test.get("vars") or {}), **cmd["var"]}
         test_suite["defaultTest"] = default_test
-    runtime_tags = None if resume_eval else (cmd.get("tags") or command_line_options.get("tags"))
+    runtime_tags = (
+        None
+        if resume_eval
+        else {**(command_line_options.get("tags") or {}), **(cmd.get("tags") or {})}
+    )
     if runtime_tags:
         config["tags"] = {**(config.get("tags") or {}), **runtime_tags}
+    options.update(resolve_suggestion_options(cmd, command_line_options, options))
 
     runtime_options = {
         **options,
@@ -613,6 +624,27 @@ def _report(
     return 0
 
 
+def resolve_suggestion_options(
+    cmd: dict[str, Any], command_line_options: dict[str, Any], evaluate_options: dict[str, Any]
+) -> dict[str, Any]:
+    """resolveSuggestionOptions: --suggest-prompts N enables suggestions on its own."""
+    if cmd.get("suggest_prompts") is not None:
+        return {"generateSuggestions": True, "suggestionsCount": cmd["suggest_prompts"]}
+    explicit = _first_defined(
+        cmd.get("generateSuggestions"),
+        command_line_options.get("generateSuggestions"),
+        evaluate_options.get("generateSuggestions"),
+    )
+    if explicit is not True:
+        return {"generateSuggestions": False} if explicit is False else {}
+    count = _first_defined(
+        cmd.get("suggestionsCount"),
+        command_line_options.get("suggestionsCount"),
+        evaluate_options.get("suggestionsCount"),
+    )
+    return {"generateSuggestions": True, **({} if count is None else {"suggestionsCount": count})}
+
+
 def _js_number(value: float) -> str:
     return str(int(value)) if float(value).is_integer() else str(value)
 
@@ -766,14 +798,26 @@ def register(cli: click.Group, default_config: dict[str, Any], default_config_pa
         help="Write results to promptfoo directory",
     )
     @click.option("--grader", default=clo.get("grader"), help="Model that will grade outputs")
-    @click.option("--suggest-prompts", type=int)
-    @click.option("-w", "--watch", is_flag=True, default=False)
-    @click.option("-x", "--extension", cls=VariadicOption)
+    @click.option(
+        "--suggest-prompts",
+        type=click.IntRange(1, 50),
+        help="Generate N new prompts (1-50) and append them to the prompt list",
+    )
+    @click.option(
+        "-w", "--watch", is_flag=True, default=False, help="Watch for changes in config and re-run"
+    )
+    @click.option(
+        "-x",
+        "--extension",
+        cls=VariadicOption,
+        help="Extension hooks to run (e.g., file://handler.py:afterAll)",
+    )
     @click.option("--description", help="Description of the eval run")
     @click.option("--progress-bar/--no-progress-bar", default=None)
     @click.option(
         "--env-file", "--env-path", "env_file", multiple=True, help="Path(s) to .env file(s)."
     )
+    @click.option("--verbose", is_flag=True, default=False, help="Show debug logs")
     @click.argument("extra", nargs=-1)
     def eval_cmd(**opts: Any) -> None:  # fmt: skip
         from promptphoo.output import SUPPORTED_OUTPUT_FILE_FORMATS, get_output_file_format
@@ -792,23 +836,92 @@ def register(cli: click.Group, default_config: dict[str, Any], default_config_pa
         if opts["safe_mode"]:
             cli_state.set_safe_mode(True)
         try:
-            _, exit_code = asyncio.run(
-                do_eval(
-                    cmd,
-                    default_config,
-                    default_config_path,
-                    {**evaluate_options, "eventSource": "cli"},
-                )
-            )
-        except EvalRunError as e:
-            logger.error("%s", e)
-            raise SystemExit(1) from e
+            exit_code = run_eval_command(cmd, default_config, default_config_path, evaluate_options)
         finally:
             db.close_db()
         if exit_code:
             raise SystemExit(exit_code)
 
     return eval_cmd
+
+
+def _recoverable_errors() -> tuple[type[BaseException], ...]:
+    """Errors reported as one log line (handleRecoverableWatchError) instead of a traceback."""
+    from promptphoo.config.load import ConfigResolutionError
+    from promptphoo.evaluator.extensions import ExtensionHookError
+    from promptphoo.suggestions import PromptSuggestionsRejectedError
+
+    return EvalRunError, ExtensionHookError, PromptSuggestionsRejectedError, ConfigResolutionError
+
+
+def _log_error(error: BaseException) -> None:
+    """logConfigResolutionError for config errors (at their own level), else logger.error."""
+    cli_message = getattr(error, "cli_message", None)
+    if cli_message is not None:
+        log = logger.warning if getattr(error, "log_level", "error") == "warn" else logger.error
+        log("%s", cli_message)
+    else:
+        logger.error("%s", error)
+
+
+def run_eval_command(
+    cmd: dict[str, Any],
+    default_config: dict[str, Any],
+    default_config_path: str | None,
+    evaluate_options: dict[str, Any],
+    *,
+    poll_interval: float | None = None,
+    should_stop: Any = None,
+) -> int:
+    """Run `eval` once, or keep re-running it on file changes with --watch. Returns the exit
+    code. In watch mode the pass-rate exit code is not applied, as upstream."""
+    from promptphoo.cli import watch
+
+    def run_once(watch_state: dict[str, Any] | None = None) -> int:
+        _, code = asyncio.run(
+            do_eval(
+                dict(cmd),
+                default_config,
+                default_config_path,
+                {**evaluate_options, "eventSource": "cli"},
+                watch_state,
+            )
+        )
+        return code
+
+    watching = bool(cmd.get("watch")) and not cmd.get("resume")
+    state: dict[str, Any] = {}
+    try:
+        exit_code = run_once(state if watching else None)
+    except _recoverable_errors() as e:
+        _log_error(e)
+        return 1
+    if not watching:
+        return exit_code
+
+    config_paths = state.get("config_paths") or []
+    if not config_paths:
+        logger.error(
+            "Could not locate config file(s) to watch. Pass --config path/to/promptfooconfig.yaml "
+            "or run from a directory containing promptfooconfig.{%s}.",
+            ",".join(DEFAULT_CONFIG_EXTENSIONS),
+        )
+        return 1
+    paths = watch.get_watch_paths(cmd, state["config"], config_paths, state.get("test_sources"))
+
+    def rerun() -> None:
+        try:
+            run_once()
+        except _recoverable_errors() as e:
+            _log_error(e)
+
+    watch.watch_and_rerun(
+        paths,
+        rerun,
+        interval=watch.DEFAULT_POLL_INTERVAL if poll_interval is None else poll_interval,
+        should_stop=should_stop or (lambda: False),
+    )
+    return 0
 
 
 def _to_command_options(opts: dict[str, Any]) -> dict[str, Any]:
