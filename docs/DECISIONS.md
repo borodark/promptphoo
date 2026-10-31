@@ -220,6 +220,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Configs with a `redteam` section are not run through promptphoo.
 - Implication: When the RAG branch lands, it may carry its own copy of `ragDefaults.ts`. Keep one copy and import it from both modules.
 - Modules: src/promptphoo/matchers/rubric.py, src/promptphoo/matchers/llm_grading.py, src/promptphoo/assertions/modelgraded.py, src/promptphoo/assertions/trajectory.py, tools/grading_render_golden.js, tools/gen_grading_render_cases.py
+- Commits: `3a9c8f9`
 
 ## 26. agent-rubric needs an explicitly configured agentic grader
 - Decision:
@@ -228,3 +229,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Coding-agent providers are out of scope (plan). An error is safer than grading with a plain model, which upstream also refuses to do.
 - Assumption: Users who need agent-rubric bring a Python provider whose id names an agentic runtime, or wait for those providers to be ported.
 - Modules: src/promptphoo/matchers/agent.py, src/promptphoo/assertions/modelgraded.py
+- Commits: `3a9c8f9`
