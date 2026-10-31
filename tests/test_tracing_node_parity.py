@@ -101,7 +101,11 @@ def _run(cmd: list[str], workdir: Path, config_dir: Path, base_url: str) -> None
         "OLLAMA_BASE_URL": base_url,
         "PYTHONPATH": str(ROOT / "src"),
     }
-    for key in ("PROMPTFOO_TRACING_ENABLED", "PROMPTFOO_OTEL_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT"):
+    for key in (
+        "PROMPTFOO_TRACING_ENABLED",
+        "PROMPTFOO_OTEL_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+    ):
         env.pop(key, None)
     subprocess.run(
         [*cmd, "eval", "-c", "cfg.yaml", "--no-cache", "--no-table"],
