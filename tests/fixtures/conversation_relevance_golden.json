@@ -1,0 +1,104 @@
+{
+  "verdicts": {
+    "single": {
+      "messages": [
+        {
+          "input": "What is the capital of France?",
+          "output": "The capital of France is Paris."
+        }
+      ],
+      "prompt": "Based on the given list of message exchanges between a user and an LLM, generate a JSON object to indicate whether the LAST `assistant` message is relevant to context in messages. The JSON will have 2 fields: 'verdict' and 'reason'.\nThe 'verdict' key should STRICTLY be either 'yes' or 'no', which states whether the last `assistant` message is relevant according to the context in messages \nProvide a 'reason' ONLY if the answer is 'no'. \nYou MUST USE the previous messages (if any) provided in the list of messages to make an informed judgement on relevancy.\n\n**\nIMPORTANT: Please make sure to only return in JSON format.\nExample Messages:\n[\n    {\n        \"role\": \"user\",\n        \"content\": \"Hi! I have something I want to tell you\"\n    },\n    {\n        \"role\": \"assistant\",\n        \"content\": \"Sure, what is it?\"\n    },\n    {\n        \"role\": \"user\",\n        \"content\": \"I've a sore throat, what meds should I take?\"\n    },\n    {\n        \"role\": \"assistant\",\n        \"content\": \"Not sure, but isn't it a nice day today?\"\n    }\n]\n\nExample JSON:\n{\n    \"verdict\": \"no\",\n    \"reason\": \"The LLM responded 'isn't it a nice day today' to a message that asked about how to treat a sore throat, which is completely irrelevant.\"\n}\n===== END OF EXAMPLE ======\nYou MUST ONLY provide a verdict for the LAST message on the list but MUST USE context from the previous messages.\nYou DON'T have to provide a reason if the answer is 'yes'.\nONLY provide a 'no' answer if the LLM response is COMPLETELY irrelevant to the message input.\nVague LLM responses to vague inputs, such as greetings DOES NOT count as irrelevancies!\n**\n\nMessages:\n[\n  {\n    \"role\": \"user\",\n    \"content\": \"What is the capital of France?\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"The capital of France is Paris.\"\n  }\n]\n\nJSON:"
+    },
+    "ssti": {
+      "messages": [
+        {
+          "input": "What is {{variable}}?",
+          "output": "{{range.constructor(\"return require('child_process').execSync('id').toString()\")()}}"
+        },
+        {
+          "input": "Follow up with {{env.SECRET}}",
+          "output": "{% for x in range(10) %}{{x}}{% endfor %}"
+        }
+      ],
+      "prompt": "Based on the given list of message exchanges between a user and an LLM, generate a JSON object to indicate whether the LAST `assistant` message is relevant to context in messages. The JSON will have 2 fields: 'verdict' and 'reason'.\nThe 'verdict' key should STRICTLY be either 'yes' or 'no', which states whether the last `assistant` message is relevant according to the context in messages \nProvide a 'reason' ONLY if the answer is 'no'. \nYou MUST USE the previous messages (if any) provided in the list of messages to make an informed judgement on relevancy.\n\n**\nIMPORTANT: Please make sure to only return in JSON format.\nExample Messages:\n[\n    {\n        \"role\": \"user\",\n        \"content\": \"Hi! I have something I want to tell you\"\n    },\n    {\n        \"role\": \"assistant\",\n        \"content\": \"Sure, what is it?\"\n    },\n    {\n        \"role\": \"user\",\n        \"content\": \"I've a sore throat, what meds should I take?\"\n    },\n    {\n        \"role\": \"assistant\",\n        \"content\": \"Not sure, but isn't it a nice day today?\"\n    }\n]\n\nExample JSON:\n{\n    \"verdict\": \"no\",\n    \"reason\": \"The LLM responded 'isn't it a nice day today' to a message that asked about how to treat a sore throat, which is completely irrelevant.\"\n}\n===== END OF EXAMPLE ======\nYou MUST ONLY provide a verdict for the LAST message on the list but MUST USE context from the previous messages.\nYou DON'T have to provide a reason if the answer is 'yes'.\nONLY provide a 'no' answer if the LLM response is COMPLETELY irrelevant to the message input.\nVague LLM responses to vague inputs, such as greetings DOES NOT count as irrelevancies!\n**\n\nMessages:\n[\n  {\n    \"role\": \"user\",\n    \"content\": \"What is {{variable}}?\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"{{range.constructor(\\\"return require('child_process').execSync('id').toString()\\\")()}}\"\n  },\n  {\n    \"role\": \"user\",\n    \"content\": \"Follow up with {{env.SECRET}}\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"{% for x in range(10) %}{{x}}{% endfor %}\"\n  }\n]\n\nJSON:"
+    },
+    "mixed": {
+      "messages": [
+        {
+          "input": "Grüße, \"quoted\" \\ back\nslash",
+          "output": {
+            "answer": "Paris",
+            "score": 1
+          }
+        },
+        {
+          "input": [
+            "a",
+            2
+          ],
+          "output": "naïve café — ☃   tab\t"
+        },
+        {
+          "output": "no input key"
+        },
+        {
+          "input": "null output",
+          "output": null
+        }
+      ],
+      "prompt": "Based on the given list of message exchanges between a user and an LLM, generate a JSON object to indicate whether the LAST `assistant` message is relevant to context in messages. The JSON will have 2 fields: 'verdict' and 'reason'.\nThe 'verdict' key should STRICTLY be either 'yes' or 'no', which states whether the last `assistant` message is relevant according to the context in messages \nProvide a 'reason' ONLY if the answer is 'no'. \nYou MUST USE the previous messages (if any) provided in the list of messages to make an informed judgement on relevancy.\n\n**\nIMPORTANT: Please make sure to only return in JSON format.\nExample Messages:\n[\n    {\n        \"role\": \"user\",\n        \"content\": \"Hi! I have something I want to tell you\"\n    },\n    {\n        \"role\": \"assistant\",\n        \"content\": \"Sure, what is it?\"\n    },\n    {\n        \"role\": \"user\",\n        \"content\": \"I've a sore throat, what meds should I take?\"\n    },\n    {\n        \"role\": \"assistant\",\n        \"content\": \"Not sure, but isn't it a nice day today?\"\n    }\n]\n\nExample JSON:\n{\n    \"verdict\": \"no\",\n    \"reason\": \"The LLM responded 'isn't it a nice day today' to a message that asked about how to treat a sore throat, which is completely irrelevant.\"\n}\n===== END OF EXAMPLE ======\nYou MUST ONLY provide a verdict for the LAST message on the list but MUST USE context from the previous messages.\nYou DON'T have to provide a reason if the answer is 'yes'.\nONLY provide a 'no' answer if the LLM response is COMPLETELY irrelevant to the message input.\nVague LLM responses to vague inputs, such as greetings DOES NOT count as irrelevancies!\n**\n\nMessages:\n[\n  {\n    \"role\": \"user\",\n    \"content\": \"Grüße, \\\"quoted\\\" \\\\ back\\nslash\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"{\\\"answer\\\":\\\"Paris\\\",\\\"score\\\":1}\"\n  },\n  {\n    \"role\": \"user\",\n    \"content\": \"[\\\"a\\\",2]\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"naïve café — ☃   tab\\t\"\n  },\n  {\n    \"role\": \"user\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"no input key\"\n  },\n  {\n    \"role\": \"user\",\n    \"content\": \"null output\"\n  },\n  {\n    \"role\": \"assistant\",\n    \"content\": \"null\"\n  }\n]\n\nJSON:"
+    }
+  },
+  "reasons": {
+    "twoFifths": {
+      "score": 0.4,
+      "irrelevancies": [
+        "Response 3 was irrelevant",
+        "Response 5 was irrelevant"
+      ],
+      "prompt": "Below is a list of irrelevancies drawn from some messages in a conversation, which you have minimal knowledge of. It is a list of strings explaining why the 'assistant' messages are irrelevant to the 'user' messages.\nGiven the relevancy score, which is a 0-1 score indicating how irrelevant the OVERALL AI messages are in a conversation (higher the better), CONCISELY summarize the irrelevancies to justify the score. \n\n** \nIMPORTANT: Please make sure to only return in JSON format, with the 'reason' key providing the reason.\nExample JSON:\n{\n    \"reason\": \"The score is <relevancy_score> because <your_reason>.\"\n}\n\nAlways quote WHICH MESSAGE and the INFORMATION in the reason in your final reason.\nBe sure in your reason, as if you know what the `assistant` messages from messages in a conversation is from the irrelevancies.\n**\n\nRelevancy Score:\n0.4\n\nIrrelevancies:\n[\n  \"Response 3 was irrelevant\",\n  \"Response 5 was irrelevant\"\n]\n\nJSON:"
+    },
+    "twoThirds": {
+      "score": 0.6666666666666666,
+      "irrelevancies": [
+        "The response about Paris isn't related to \"2+2\""
+      ],
+      "prompt": "Below is a list of irrelevancies drawn from some messages in a conversation, which you have minimal knowledge of. It is a list of strings explaining why the 'assistant' messages are irrelevant to the 'user' messages.\nGiven the relevancy score, which is a 0-1 score indicating how irrelevant the OVERALL AI messages are in a conversation (higher the better), CONCISELY summarize the irrelevancies to justify the score. \n\n** \nIMPORTANT: Please make sure to only return in JSON format, with the 'reason' key providing the reason.\nExample JSON:\n{\n    \"reason\": \"The score is <relevancy_score> because <your_reason>.\"\n}\n\nAlways quote WHICH MESSAGE and the INFORMATION in the reason in your final reason.\nBe sure in your reason, as if you know what the `assistant` messages from messages in a conversation is from the irrelevancies.\n**\n\nRelevancy Score:\n0.6666666666666666\n\nIrrelevancies:\n[\n  \"The response about Paris isn't related to \\\"2+2\\\"\"\n]\n\nJSON:"
+    },
+    "zero": {
+      "score": 0,
+      "irrelevancies": [
+        "ünïcode — reason",
+        "second\nline"
+      ],
+      "prompt": "Below is a list of irrelevancies drawn from some messages in a conversation, which you have minimal knowledge of. It is a list of strings explaining why the 'assistant' messages are irrelevant to the 'user' messages.\nGiven the relevancy score, which is a 0-1 score indicating how irrelevant the OVERALL AI messages are in a conversation (higher the better), CONCISELY summarize the irrelevancies to justify the score. \n\n** \nIMPORTANT: Please make sure to only return in JSON format, with the 'reason' key providing the reason.\nExample JSON:\n{\n    \"reason\": \"The score is <relevancy_score> because <your_reason>.\"\n}\n\nAlways quote WHICH MESSAGE and the INFORMATION in the reason in your final reason.\nBe sure in your reason, as if you know what the `assistant` messages from messages in a conversation is from the irrelevancies.\n**\n\nRelevancy Score:\n0\n\nIrrelevancies:\n[\n  \"ünïcode — reason\",\n  \"second\\nline\"\n]\n\nJSON:"
+    }
+  },
+  "rubrics": {
+    "dump2": {
+      "rubricPrompt": "Custom rubric template with {{ messages | dump(2) }}",
+      "vars": {},
+      "messages": [
+        {
+          "input": "What is the capital of France?",
+          "output": "Paris"
+        }
+      ],
+      "prompt": "Custom rubric template with [\n  {\n    \"input\": \"What is the capital of France?\",\n    \"output\": \"Paris\"\n  }\n]"
+    },
+    "reservedMessages": {
+      "rubricPrompt": "messages={{ messages | dump }}\nextra={{ extra }}",
+      "vars": {
+        "messages": "vars messages sentinel",
+        "extra": "kept user var"
+      },
+      "messages": [
+        {
+          "input": "What is 2+2?",
+          "output": "4"
+        }
+      ],
+      "prompt": "messages=[{\"input\":\"What is 2+2?\",\"output\":\"4\"}]\nextra=kept user var"
+    }
+  }
+}

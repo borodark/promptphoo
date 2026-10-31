@@ -35,7 +35,7 @@ MODEL_GRADED_ASSERTION_TYPES = {
 # still loads; unknown types then fail with Node's "Unknown assertion type" error.
 _HANDLER_MODULES = (
     "basic", "script", "markup", "sql", "refusal", "tools", "trajectory", "textmetrics",
-    "modelgraded", "modelgraded_rag",
+    "modelgraded", "modelgraded_rag", "deepeval",
 )  # fmt: skip
 _handlers: dict[str, Handler] | None = None
 

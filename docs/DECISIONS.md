@@ -326,3 +326,12 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Resolved graders are provider instances inside `options` and `assert`, and they hold clients and locks that `copy.deepcopy` cannot copy. Upstream likewise reattaches `test.provider` after its clone, because the clone loses functions.
 - Modules: src/promptphoo/grading_provider.py, src/promptphoo/assertions/index.py, src/promptphoo/evaluator/run.py
 - Commits: `956e36a`
+
+## 35. Parity sets PROMPTFOO_CAPTURE_PATH and compares captured grader prompts byte for byte
+- Decision:
+  - `tools/parity.py` gives each Node and Python run its own `PROMPTFOO_CAPTURE_PATH` (`.parity/<fixture>/{node,py}.capture.txt`), as upstream's smoke tests do for capture-script graders. When either run writes a capture, the two files must be identical, or the fixture FAILs before the JSON diff.
+  - The `conversation-relevance` template (`matchers/deepeval.py`) is kept as Python string literals, not vendored through `_data/grading_prompts.json`, because upstream builds it in functions from the window. `tools/conversation_relevance_golden.mjs` runs upstream's own `conversationRelevancyTemplate.ts` under `node --experimental-strip-types` (and real Nunjucks for custom `rubricPrompt`s) to write `tests/fixtures/conversation_relevance_golden.json`.
+- Rationale: Without the variable, `capture-conversation-relevance-grader.js` throws in both CLIs, and the fixture then only compares exec-provider error text, which tests nothing about the grader prompt. With it, the SSTI fixture checks the actual prompt sent to the grader.
+- Assumption: Fixtures that do not use a capture script ignore `PROMPTFOO_CAPTURE_PATH`. Upstream's smoke configs read it only from capture scripts.
+- Modules: tools/parity.py, tools/conversation_relevance_golden.mjs, src/promptphoo/matchers/deepeval.py, src/promptphoo/assertions/deepeval.py
+- Commits: `a3a1ffc`

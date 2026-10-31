@@ -65,8 +65,7 @@ UNSUPPORTED = re.compile(
 UNSUPPORTED_SUFFIXES = {".js", ".cjs", ".mjs", ".ts"}
 # Fixtures that fail for a known reason: a later phase, or Node itself rejects the input.
 EXPECTED = {
-    "conversation-relevance-ssti.yaml": "model-graded assertions (Phase 4)",
-    "defaulttest-llm-rubric-vars.yaml": "model-graded assertions (Phase 4)",
+    "defaulttest-llm-rubric-vars.yaml": "grader is a .cjs provider: JS hooks are not supported (D1 scope)",  # noqa: E501
     "openai-custom-api-key-envar.yaml": "openai:assistant: is not supported (D1 scope)",
     "python-prompt-with-extension.yaml": "extension hooks (Phase 5)",
     "defaulttest-llm-rubric-vars-tests.yaml": "test data, not a config: Node errors too",
@@ -100,9 +99,14 @@ def normalize(obj, top=True):
     return obj
 
 
-def run(cmd: list[str], config: Path, out: Path, config_dir: Path) -> tuple[int, str]:
+def run(
+    cmd: list[str], config: Path, out: Path, config_dir: Path, capture: Path
+) -> tuple[int, str]:
     env = {
         **os.environ,
+        # Capture scripts (e.g. capture-conversation-relevance-grader.js) write the grader prompt
+        # here, as the upstream smoke tests arrange; see D35.
+        "PROMPTFOO_CAPTURE_PATH": str(capture),
         "NO_COLOR": "1",
         "PROMPTFOO_CONFIG_DIR": str(config_dir),
         "PROMPTFOO_DISABLE_TELEMETRY": "1",
@@ -130,8 +134,10 @@ def _compare(config: Path, log: list[str]) -> str:
     for name, cmd in (("node", NODE_CMD), ("py", PY_CMD)):
         out = case_dir / f"{name}.json"
         out.unlink(missing_ok=True)
+        capture = case_dir / f"{name}.capture.txt"
+        capture.unlink(missing_ok=True)
         with tempfile.TemporaryDirectory(prefix=f"pf-{name}-") as cfg_dir:
-            code, run_log = run(cmd, config, out, Path(cfg_dir))
+            code, run_log = run(cmd, config, out, Path(cfg_dir), capture)
         (case_dir / f"{name}.log").write_text(run_log)
         data = json.loads(out.read_text()) if out.exists() else None
         results[name] = (code, data)
@@ -143,6 +149,18 @@ def _compare(config: Path, log: list[str]) -> str:
     if py_data is None:
         log.append(f"  py produced no output (exit {py_code}); see {case_dir / 'py.log'}")
         return "FAIL"
+
+    node_capture, py_capture = (case_dir / f"{n}.capture.txt" for n in ("node", "py"))
+    if node_capture.exists() or py_capture.exists():
+        node_text, py_text = (
+            p.read_text() if p.exists() else "" for p in (node_capture, py_capture)
+        )
+        if node_text != py_text:
+            log.append("  captured grader prompt differs (byte comparison)")
+            a, b = node_text.splitlines(), py_text.splitlines()
+            for line in list(difflib.unified_diff(a, b, "node", "py", lineterm="", n=2))[:40]:
+                log.append("  " + line)
+            return "FAIL"
 
     a = json.dumps(normalize(node_data), indent=2, sort_keys=True).splitlines()
     b = json.dumps(normalize(py_data), indent=2, sort_keys=True).splitlines()
