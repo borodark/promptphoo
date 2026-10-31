@@ -1,11 +1,11 @@
 """Trajectory assertions over trace spans.
 
-Ports src/assertions/trajectory.ts, src/assertions/trajectoryUtils.ts, matchesPattern from
-src/assertions/traceUtils.ts and the attribute keys from src/tracing/toolAttributes.ts.
+Ports src/assertions/trajectory.ts and src/assertions/trajectoryUtils.ts. matchesPattern comes
+from assertions/trace.py (traceUtils.ts) and the attribute keys from tracing/tool_attributes.py.
 
 Traces are dicts shaped like Node's TraceData ({traceId, spans: [{name, spanId, startTime,
 endTime, attributes, statusCode, statusMessage}], metadata}), read from
-`params.assertion_value_context["trace"]`.
+`params.assertion_value_context["trace"]`, which run_assertion loads from the trace store.
 """
 
 from __future__ import annotations
@@ -17,93 +17,29 @@ from typing import Any
 
 from promptphoo.assertions.base import AssertionParams, AssertionValueError, GradingResult, Handler
 from promptphoo.assertions.refusal import js_trim
+from promptphoo.assertions.trace import matches_pattern
 from promptphoo.jsonutil import js_deep_equal, js_json_parse
 from promptphoo.jsvalues import UNDEFINED, is_truthy, js_string, json_stringify
+from promptphoo.tracing.tool_attributes import (
+    COMMAND_ATTRIBUTE_KEYS,
+    SEARCH_ATTRIBUTE_KEYS,
+    TOOL_ARGUMENT_ATTRIBUTE_KEYS,
+    TOOL_NAME_ATTRIBUTE_KEYS,
+    get_first_string_attribute,
+    get_tool_name_from_attributes,
+)
+
+__all__ = [
+    "COMMAND_ATTRIBUTE_KEYS",
+    "SEARCH_ATTRIBUTE_KEYS",
+    "TOOL_ARGUMENT_ATTRIBUTE_KEYS",
+    "TOOL_NAME_ATTRIBUTE_KEYS",
+    "get_first_string_attribute",
+    "get_tool_name_from_attributes",
+    "matches_pattern",
+]
 
 _NOT_LT = "[^\n\r\u2028\u2029]"  # JS `.` without the s flag
-
-
-@functools.lru_cache(maxsize=512)
-def _glob_regex(pattern: str) -> re.Pattern[str]:
-    parts = [f"{_NOT_LT}*" if c == "*" else _NOT_LT if c == "?" else re.escape(c) for c in pattern]
-    return re.compile("^" + "".join(parts) + r"\Z", re.IGNORECASE)
-
-
-def matches_pattern(span_name: str, pattern: str) -> bool:
-    """traceUtils.matchesPattern: case-insensitive glob (* and ?) over the whole name."""
-    return _glob_regex(js_string(pattern)).search(js_string(span_name)) is not None
-
-
-# --- tracing/toolAttributes.ts -----------------------------------------------------------------
-
-COMMAND_ATTRIBUTE_KEYS = ("codex.command", "command", "command.name", "command_name")
-SEARCH_ATTRIBUTE_KEYS = ("codex.search.query", "search.query", "search_query")
-
-_TOOL_ATTRIBUTE_FAMILIES: tuple[dict[str, Any], ...] = (
-    {
-        "prefix": "tool",
-        "nameSuffixes": [".name", "_name"],
-        "argSuffixes": [".args", ".arguments", ".input", "_args", "_arguments", "_input"],
-        "extraNameKeys": ["tool"],
-    },
-    {
-        "prefix": "function",
-        "nameSuffixes": [".name", "_name"],
-        "argSuffixes": [".args", ".arguments", ".input", "_args", "_arguments"],
-    },
-    {
-        "prefix": "ai.toolCall",
-        "nameSuffixes": [".name"],
-        "argSuffixes": [".args", ".arguments", ".input"],
-    },  # noqa: E501
-    {
-        "prefix": "gen_ai.tool",
-        "nameSuffixes": [".name"],
-        "argSuffixes": [".args", ".arguments", ".input"],
-        "extraArgKeys": ["gen_ai.tool.call.args", "gen_ai.tool.call.arguments"],
-    },
-    {
-        "prefix": "agent.tool",
-        "nameSuffixes": ["_name"],
-        "argSuffixes": [".args", ".arguments", ".input"],
-        "extraNameKeys": ["agent.tool", "agent.toolName"],
-    },
-    {
-        "prefix": "codex.mcp",
-        "argSuffixes": [".args", ".arguments", ".input"],
-        "extraNameKeys": ["codex.mcp.tool"],
-    },
-)
-
-TOOL_NAME_ATTRIBUTE_KEYS: tuple[str, ...] = tuple(
-    key
-    for f in _TOOL_ATTRIBUTE_FAMILIES
-    for key in [f["prefix"] + s for s in f.get("nameSuffixes", [])] + f.get("extraNameKeys", [])
-)
-TOOL_ARGUMENT_ATTRIBUTE_KEYS: tuple[str, ...] = (
-    *(
-        key
-        for f in _TOOL_ATTRIBUTE_FAMILIES
-        for key in [f["prefix"] + s for s in f.get("argSuffixes", [])] + f.get("extraArgKeys", [])
-    ),
-    "args",
-    "arguments",
-    "input",
-)
-
-
-def get_first_string_attribute(attributes: Any, keys: tuple[str, ...]) -> str | None:
-    if not isinstance(attributes, dict):
-        return None
-    for key in keys:
-        value = attributes.get(key)
-        if isinstance(value, str) and js_trim(value):
-            return js_trim(value)
-    return None
-
-
-def get_tool_name_from_attributes(attributes: Any) -> str | None:
-    return get_first_string_attribute(attributes, TOOL_NAME_ATTRIBUTE_KEYS)
 
 
 # --- trajectoryUtils.ts ------------------------------------------------------------------------

@@ -14,7 +14,7 @@ from promptphoo import cli_state, envars, python_hooks
 from promptphoo.assertions.base import AssertionParams, GradingResult, Handler, coerce_string
 from promptphoo.assertions.result import AssertionsResult
 from promptphoo.files import is_javascript_file
-from promptphoo.jsvalues import is_truthy, json_stringify
+from promptphoo.jsvalues import UNDEFINED, is_truthy, json_stringify
 from promptphoo.providers.base import ApiProvider
 from promptphoo.templating import get_engine
 from promptphoo.transform import transform
@@ -35,9 +35,105 @@ MODEL_GRADED_ASSERTION_TYPES = {
 # still loads; unknown types then fail with Node's "Unknown assertion type" error.
 _HANDLER_MODULES = (
     "basic", "script", "markup", "sql", "refusal", "tools", "trajectory", "textmetrics",
-    "modelgraded", "modelgraded_rag", "deepeval",
+    "modelgraded", "modelgraded_rag", "deepeval", "trace",
 )  # fmt: skip
 _handlers: dict[str, Handler] | None = None
+
+DEFAULT_TRACE_FETCH_MAX_ATTEMPTS = 6
+DEFAULT_TRACE_FETCH_RETRY_DELAY_MS = 250
+DEFAULT_TRACE_FETCH_STABLE_POLLS = 2
+MAX_TRACE_FETCH_MAX_ATTEMPTS = 30
+MAX_TRACE_FETCH_RETRY_DELAY_MS = 5000
+MAX_TRACE_FETCH_STABLE_POLLS = 10
+
+TRACE_AWARE_ASSERTION_TYPES = {
+    "javascript", "python", "ruby", "trace-error-spans", "trace-span-count",
+    "trace-span-duration", "trajectory:goal-success", "trajectory:step-count",
+    "trajectory:tool-args-match", "trajectory:tool-sequence", "trajectory:tool-used",
+}  # fmt: skip
+
+
+def assertion_uses_trace(assertion: dict[str, Any]) -> bool:
+    if assertion.get("type") == "assert-set":
+        return any(assertion_uses_trace(a) for a in assertion.get("assert") or [])
+    return get_assertion_base_type(assertion) in TRACE_AWARE_ASSERTION_TYPES
+
+
+def assertion_may_need_trace_context(assertion: dict[str, Any]) -> bool:
+    if assertion_uses_trace(assertion):
+        return True
+    if assertion.get("type") == "assert-set":
+        return any(assertion_may_need_trace_context(a) for a in assertion.get("assert") or [])
+    if assertion["type"].startswith("promptfoo:redteam:coding-agent:"):
+        return True
+    value = assertion.get("value")
+    return isinstance(value, str) and (value.startswith(("file://", "package:")))
+
+
+def has_trace_aware_assertions(assertions: list[dict[str, Any]] | None) -> bool:
+    return bool(assertions) and any(assertion_may_need_trace_context(a) for a in assertions or [])
+
+
+async def load_trace_data(trace_id: str) -> dict[str, Any] | None:
+    """Poll the trace store until the trace's span count is stable (loadTraceData)."""
+    from promptphoo.tracing.store import get_trace_store
+
+    trace_store = get_trace_store()
+    max_attempts = min(
+        MAX_TRACE_FETCH_MAX_ATTEMPTS,
+        max(1, envars.get_env_int("PROMPTFOO_TRACE_FETCH_MAX_ATTEMPTS",
+                                  DEFAULT_TRACE_FETCH_MAX_ATTEMPTS)),
+    )  # fmt: skip
+    retry_delay_ms = min(
+        MAX_TRACE_FETCH_RETRY_DELAY_MS,
+        max(0, envars.get_env_int("PROMPTFOO_TRACE_FETCH_RETRY_DELAY_MS",
+                                  DEFAULT_TRACE_FETCH_RETRY_DELAY_MS)),
+    )  # fmt: skip
+    stable_polls = min(
+        MAX_TRACE_FETCH_STABLE_POLLS,
+        max(1, envars.get_env_int("PROMPTFOO_TRACE_FETCH_STABLE_POLLS",
+                                  DEFAULT_TRACE_FETCH_STABLE_POLLS)),
+    )  # fmt: skip
+
+    last_span_count = -1
+    stable_observations = 0
+    latest: dict[str, Any] | None = None
+    for attempt in range(max_attempts):
+        latest = await trace_store.get_trace(trace_id, {"sanitizeAttributes": False})
+        span_count = len((latest or {}).get("spans") or [])
+        if span_count > 0:
+            stable_observations = stable_observations + 1 if span_count == last_span_count else 1
+            last_span_count = span_count
+            if stable_observations >= stable_polls or attempt == max_attempts - 1:
+                return latest
+        else:
+            stable_observations = 0
+            last_span_count = span_count
+        if attempt < max_attempts - 1:
+            await asyncio.sleep(retry_delay_ms / 1000)
+    return latest
+
+
+def _assertion_trace(trace_data: dict[str, Any]) -> dict[str, Any]:
+    """context.trace: TraceData's fields in upstream's order; undefined ones are omitted."""
+    trace: dict[str, Any] = {}
+    for key in ("traceId", "evaluationId", "testCaseId", "metadata"):
+        if trace_data.get(key) is not None:
+            trace[key] = trace_data[key]
+    trace["spans"] = trace_data.get("spans") or []
+    return trace
+
+
+def _grader_traceparent(trace_id: str | None) -> str | None:
+    if not trace_id:
+        return None
+    from promptphoo.tracing.evaluator_tracing import generate_span_id, generate_traceparent
+    from promptphoo.tracing.span_roles import get_active_traceparent
+
+    active = get_active_traceparent()
+    if active and active.split("-")[1] == trace_id:
+        return active
+    return generate_traceparent(trace_id, generate_span_id())
 
 
 def get_handlers() -> dict[str, Handler]:
@@ -139,7 +235,10 @@ async def run_assertion(
     vars: dict[str, Any] | None = None,  # noqa: A002 - Node's parameter name
     latency_ms: float | None = None,
     trace_id: str | None = None,
+    trace_data: Any = UNDEFINED,
 ) -> GradingResult:
+    """`trace_data` is the preloaded TraceData, None when preloading found nothing, or
+    UNDEFINED to load it here."""
     resolved_vars = vars if vars is not None else (test.get("vars") or {})
     output = provider_response.get("output")
     if not assertion.get("type"):
@@ -172,6 +271,17 @@ async def run_assertion(
         context["config"] = copy.deepcopy(assertion["config"])
     if provider_response.get("metadata"):
         context["metadata"] = provider_response["metadata"]
+
+    # Add trace data if traceId is available
+    if trace_id and assertion_may_need_trace_context(assertion):
+        try:
+            resolved_trace = (
+                await load_trace_data(trace_id) if trace_data is UNDEFINED else trace_data
+            )
+            if resolved_trace:
+                context["trace"] = _assertion_trace(resolved_trace)
+        except Exception as e:
+            logger.debug("Failed to fetch trace data for assertion: %s", e)
 
     rendered: Any = assertion.get("value")
     value_from_script: Any = None
@@ -229,9 +339,11 @@ async def run_assertion(
             )
         rendered = value_from_script
 
+    grader_traceparent = _grader_traceparent(trace_id)
     provider_call_context = (
         {"originalProvider": provider, "prompt": {"raw": prompt or "", "label": ""},
-         "vars": resolved_vars}
+         "vars": resolved_vars,
+         **({"traceparent": grader_traceparent} if grader_traceparent else {})}
         if provider is not None else None
     )  # fmt: skip
     final_test = get_final_test(
@@ -300,6 +412,14 @@ async def run_assertions(
         else:
             entries.append((assertion, main, i))
 
+    preloaded_trace: Any = UNDEFINED
+    if trace_id and has_trace_aware_assertions([a for a, _, _ in entries]):
+        try:
+            preloaded_trace = await load_trace_data(trace_id)
+        except Exception as e:
+            logger.debug("Failed to preload trace data for assertions: %s", e)
+            preloaded_trace = None
+
     metric_vars = vars if vars is not None else (test.get("vars") or {})
     concurrency = max(
         1,
@@ -316,7 +436,7 @@ async def run_assertions(
             res = await run_assertion(
                 assertion=assertion, test=test, provider_response=provider_response,
                 prompt=prompt, provider=provider, vars=vars, latency_ms=latency_ms,
-                trace_id=trace_id,
+                trace_id=trace_id, trace_data=preloaded_trace,
             )  # fmt: skip
         target.add_result(
             index=index,
