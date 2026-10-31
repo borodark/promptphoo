@@ -264,20 +264,10 @@ def _batches(ids: Sequence[str]) -> Iterable[Sequence[str]]:
         yield ids[i : i + SQLITE_MAX_BOUND_PARAMETERS]
 
 
-def delete_trace_records_for_evals(conn: sqlite3.Connection, eval_ids: Sequence[str]) -> None:
-    """deleteTraceRecordsForEvals: spans, then traces (their FKs have no ON DELETE CASCADE)."""
-    for batch in _batches(eval_ids):
-        marks = ", ".join("?" for _ in batch)
-        conn.execute(
-            "DELETE FROM spans WHERE trace_id in ("
-            f"select trace_id from traces where evaluation_id in ({marks}))",
-            tuple(batch),
-        )
-        conn.execute(f"DELETE FROM traces WHERE evaluation_id in ({marks})", tuple(batch))
-
-
 def _delete_eval_rows(conn: sqlite3.Connection, ids: Sequence[str]) -> int:
-    delete_trace_records_for_evals(conn, ids)
+    from promptphoo.db.import_export import delete_trace_records_for_evals
+
+    delete_trace_records_for_evals(conn, list(ids))
     deleted = 0
     for batch in _batches(ids):
         marks = ", ".join("?" for _ in batch)

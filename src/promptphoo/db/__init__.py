@@ -187,7 +187,9 @@ def migrate(conn: sqlite3.Connection, folder: Path = MIGRATIONS_FOLDER) -> int:
         f'CREATE TABLE IF NOT EXISTS "{MIGRATIONS_TABLE}" '
         "(id SERIAL PRIMARY KEY, hash text NOT NULL, created_at numeric)"
     )
-    row = conn.execute(
+    cur = conn.cursor()
+    cur.row_factory = None  # tuple rows even if a caller installed a dict row_factory
+    row = cur.execute(
         f'SELECT id, hash, created_at FROM "{MIGRATIONS_TABLE}" ORDER BY created_at DESC LIMIT 1'
     ).fetchone()
     last_applied = float(row[2]) if row and row[2] is not None else None
