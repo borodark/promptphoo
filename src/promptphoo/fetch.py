@@ -82,7 +82,10 @@ async def close_client() -> None:
 
 async def fetch_with_proxy(url: str, options: FetchOptions | None = None) -> FetchResponse:
     options = options or {}
-    response = await get_client().request(
+    # `dispatcher`: a caller-owned httpx.AsyncClient (e.g. one with a custom TLS context), like
+    # undici's RequestInit.dispatcher.
+    client = options.get("dispatcher") or get_client()
+    response = await client.request(
         options.get("method") or "GET",
         url,
         headers=options.get("headers"),
