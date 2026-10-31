@@ -1,6 +1,6 @@
 """The eval loop. Ports runEval / Evaluator from src/evaluator.ts (the non-redteam, untraced
-path). select-best / max-score comparison grading, derived metrics, extensions and tracing are
-not ported yet; configs that use them fail or warn explicitly.
+path). The select-best / max-score pass is in evaluator/comparison.py. Derived metrics,
+extensions and tracing are not ported yet; configs that use them fail or warn explicitly.
 """
 
 from __future__ import annotations
@@ -65,9 +65,12 @@ class EvaluationStore(Protocol):
     id: str
     prompts: list[dict[str, Any]]
     persisted: bool
+    results: list[Any]  # in-memory EvalResult records when not persisted
 
     async def append_prompts(self, prompts: list[dict[str, Any]]) -> None: ...
     async def append_result(self, row: dict[str, Any]) -> None: ...
+    async def read_results_by_test_idx(self, test_idx: int) -> list[Any]: ...
+    async def save_result(self, result: Any) -> None: ...
     def set_vars(self, vars_: list[str]) -> None: ...
     def set_duration_ms(self, ms: int) -> None: ...
     async def save(self) -> None: ...
@@ -638,6 +641,9 @@ class Evaluator:
         self.stats = EvalStats()
         self.conversations: dict[str, list[Any]] = {}
         self.registers: dict[str, Any] = {}
+        from promptphoo.evaluator.comparison import ComparisonPass
+
+        self.comparison = ComparisonPass(self)
 
         # Create rate limit registry for adaptive concurrency control
         self.rate_limit_registry: RateLimitRegistry | None = RateLimitRegistry(
@@ -904,12 +910,13 @@ class Evaluator:
 
         concurrency = options.get("maxConcurrency") or DEFAULT_MAX_CONCURRENCY
         steps = await self._build_run_options(tests, columns_by_provider)
-        for step in steps:
-            for a in step.test.get("assert") or []:
-                if a.get("type", "").startswith("select-") or a.get("type") == "max-score":
-                    raise NotImplementedError(
-                        f"{a['type']} assertions are not supported yet (model-graded, Phase 4)"
-                    )
+        from promptphoo.evaluator.comparison import (
+            build_repeat_cache_context_by_test_idx,
+            mark_comparison_rows,
+        )
+
+        rows_with_select_best, rows_with_max_score = mark_comparison_rows(steps)
+        repeat_cache_context_by_test_idx = build_repeat_cache_context_by_test_idx(steps)
 
         uses_conversation = any(prompt_uses_conversation_variable(p) for p in prompts)
         if concurrency > 1:
@@ -954,6 +961,7 @@ class Evaluator:
                 all_vars.update(dict.fromkeys(row.get("vars") or {}))
                 self._track_row_stats(row)
                 state["complete"] += 1
+                self.comparison.prepare_row(row)
                 try:
                     await self.store.append_result(row)
                 except Exception as e:
@@ -972,6 +980,10 @@ class Evaluator:
                 await process(step)
 
         await asyncio.gather(*(limited(s) for s in concurrent))
+
+        await self.comparison.process(
+            prompts, repeat_cache_context_by_test_idx, rows_with_select_best, rows_with_max_score
+        )
 
         await self.store.append_prompts(prompts)
         self.store.set_vars(list(all_vars))

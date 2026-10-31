@@ -170,6 +170,64 @@ class EvalResult:
             return cls(args, persisted=True)
         return cls(args)
 
+    def save(self) -> None:
+        """EvalResult.save: write the (mutated) row back. Upstream updates by id when the row is
+        persisted and inserts otherwise."""
+        r = rs.serialize_result_provider_refs(
+            {
+                "testCase": self.test_case,
+                "prompt": self.prompt,
+                "gradingResult": self.grading_result,
+            }
+        )
+        metadata = rs.persist_trace_metadata(
+            rs.persist_repeat_metadata(self.metadata, self.repeat_index, self.repeat_group_id),
+            self.trace_id,
+            self.evaluation_id,
+        )
+        values: dict[str, Any] = {
+            "id": self.id,
+            "evalId": self.eval_id,
+            "promptIdx": self.prompt_idx,
+            "testIdx": self.test_idx,
+            "testCase": r["testCase"],
+            "prompt": r["prompt"],
+            "promptId": self.prompt_id,
+            "provider": self.provider,
+            "latencyMs": self.latency_ms,
+            "cost": self.cost,
+            "response": self.response,
+            "error": self.error,
+            "failureReason": self.failure_reason,
+            "success": self.success,
+            "score": self.score,
+            "gradingResult": rs.sanitize_grading_result_for_db(r.get("gradingResult")),
+            "namedScores": self.named_scores,
+            "metadata": metadata,
+        }
+        conn = db.get_db()
+        if not self.persisted:
+            _insert_result(conn, values)
+            self.persisted = True
+        else:
+            j = db.to_db_json
+            with db.transaction(conn):
+                conn.execute(
+                    "UPDATE eval_results SET test_case = ?, prompt = ?, prompt_id = ?, "
+                    "provider = ?, latency_ms = ?, cost = ?, response = ?, error = ?, "
+                    "failure_reason = ?, success = ?, score = ?, grading_result = ?, "
+                    "named_scores = ?, metadata = ?, updated_at = ? WHERE id = ?",
+                    (
+                        j(values["testCase"]), j(values["prompt"]), values["promptId"],
+                        j(values["provider"]), values["latencyMs"], values["cost"],
+                        j(values["response"]), values["error"], values["failureReason"],
+                        1 if values["success"] else 0, values["score"],
+                        j(values["gradingResult"]), j(values["namedScores"]),
+                        j(values["metadata"]), _now_ms() // 1000, self.id,
+                    ),
+                )  # fmt: skip
+        db.update_signal_file(self.eval_id)
+
     def to_evaluate_result(self, strip_flags: dict[str, bool] | None = None) -> dict[str, Any]:
         flags = strip_flags or rs.get_strip_flags()
         strip_output = flags["shouldStripResponseOutput"]
@@ -437,6 +495,19 @@ class Eval:
             self.results.append(result)
         else:
             db.update_signal_file(self.id)
+
+    async def read_results_by_test_idx(self, test_idx: int) -> list[EvalResult]:
+        """fetchResultsByTestIdx (EvalResult.findManyByEvalId with testIdx; no ORDER BY)."""
+        conn = db.get_db()
+        conn.row_factory = _row_factory
+        rows = conn.execute(
+            "SELECT * FROM eval_results WHERE eval_id = ? AND test_idx = ?",
+            (self.id, test_idx),
+        ).fetchall()
+        return [EvalResult.from_db_row(r) for r in rows]
+
+    async def save_result(self, result: EvalResult) -> None:
+        result.save()
 
     def set_vars(self, vars_: list[str]) -> None:
         self.vars = vars_

@@ -1,0 +1,24 @@
+description: max-score parity
+prompts:
+  - "short"
+  - "a much longer answer about Paris"
+  - "Paris"
+providers:
+  - echo
+tests:
+  - assert:
+      - type: contains
+        value: Paris
+      - type: python
+        value: "len(output) > 10"
+        metric: long
+      - type: max-score
+        value:
+          weights: {python: 2}
+  - assert:
+      - type: icontains
+        value: paris
+      - type: max-score
+        value:
+          method: sum
+          threshold: 2
