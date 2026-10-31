@@ -741,6 +741,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Note: Supersedes D13.
 - Modules: pyproject.toml, src/promptphoo/__init__.py
 - Commits: `9ffd3ec`
+- Note: The first release is numbered 0.1.1 instead of 0.1.0a1; the Alpha classifier still marks its status.
 
 ## 60. The test suite never touches the real state directory or needs an optional extra
 - Decision:

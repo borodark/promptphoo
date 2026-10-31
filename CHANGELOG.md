@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0a1 — unreleased
+## 0.1.1 — unreleased
 
 The first public alpha: a Python 3 port of the promptfoo 0.125.1 eval core. It reads the same
 configs, accepts the same `eval` flags and shares the same `~/.promptfoo` database as Node. What

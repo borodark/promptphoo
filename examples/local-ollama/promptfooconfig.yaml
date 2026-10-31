@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
 # Fully local eval: Ollama models under test, a local grader and local embeddings.
 #   ollama pull qwen3:4b qwen3:8b gpt-oss:20b nomic-embed-text
-#   promptfoo eval -c examples/local-ollama/promptfooconfig.yaml
+#   promptphoo eval -c examples/local-ollama/promptfooconfig.yaml
 description: Local Ollama smoke test (model-graded and embedding assertions)
 
 prompts:

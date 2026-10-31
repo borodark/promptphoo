@@ -27,7 +27,7 @@ difference from Node is recorded in [docs/DECISIONS.md](DECISIONS.md).
 
 ```bash
 pip install promptphoo        # or, until there is a release: pip install . from a clone
-promptphoo --version          # promptphoo 0.1.0a1 (compatible with promptfoo 0.125.1)
+promptphoo --version          # promptphoo 0.1.1 (compatible with promptfoo 0.125.1)
 ```
 
 promptphoo installs two commands, `promptphoo` and its short form `ph`. It deliberately does

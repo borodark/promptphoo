@@ -1,6 +1,6 @@
 [project]
 name = "promptphoo"
-version = "0.1.0a1"
+version = "0.1.1"
 description = "Python 3 port of the promptfoo eval core (drop-in compatible CLI and state)"
 readme = "README.md"
 license = "MIT AND Apache-2.0"
