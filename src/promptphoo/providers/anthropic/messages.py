@@ -49,6 +49,11 @@ from promptphoo.providers.anthropic.util import (
 )
 from promptphoo.providers.shared import transform_tool_choice, transform_tools
 from promptphoo.tokens import create_empty_token_usage
+from promptphoo.tracing.genai_tracer import (
+    extract_provider_response_attributes,
+    get_test_index,
+    with_genai_span,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -312,7 +317,26 @@ class AnthropicMessagesProvider(AnthropicGenericProvider):
         self.validate_authentication()
         if not self.model_name:
             raise ValueError("Anthropic model name is not set. Please provide a valid model name.")
-        return await self._call_api_internal(prompt, context)
+        span_context = {
+            "system": self.get_gen_ai_system(),
+            "operationName": "chat",
+            "model": self.model_name,
+            "providerId": self.id(),
+            "maxTokens": self.config.get("max_tokens"),
+            "temperature": self.config.get("temperature"),
+            "testIndex": get_test_index(context),
+            "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+            "traceparent": (context or {}).get("traceparent"),
+            "requestBody": prompt,
+        }
+        return await with_genai_span(
+            span_context,
+            lambda _span: self._call_api_internal(prompt, context),
+            extract_provider_response_attributes,
+        )
+
+    def get_gen_ai_system(self) -> str:
+        return "anthropic"
 
     def _resolve_model_thinking(
         self,

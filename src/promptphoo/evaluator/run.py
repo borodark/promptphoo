@@ -456,118 +456,131 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
         except ValueError:
             rendered_json = None
 
-        start = time.monotonic()
-        if test.get("providerOutput") is not None:
-            response: dict[str, Any] = {
-                "output": test["providerOutput"],
-                "tokenUsage": create_empty_token_usage(),
-                "cost": 0,
-                "cached": False,
+        if test.get("providerOutput") is None:
+            target = test["provider"] if is_api_provider(test.get("provider")) else provider
+            trace_context = await _generate_trace_context(step, target, prompt_for_render)
+
+        async def run_execution() -> list[dict[str, Any]]:
+            nonlocal latency_ms
+            start = time.monotonic()
+            if test.get("providerOutput") is not None:
+                response: dict[str, Any] = {
+                    "output": test["providerOutput"],
+                    "tokenUsage": create_empty_token_usage(),
+                    "cost": 0,
+                    "cached": False,
+                }
+            else:
+                active = test["provider"] if is_api_provider(test.get("provider")) else provider
+                context = {
+                    "vars": vars_,
+                    "prompt": _context_prompt(prompt_for_render, prompt_config),
+                    "filters": step.filters,
+                    "originalProvider": provider,
+                    "test": test,
+                    "getCache": cache.get_cache,
+                    "repeatIndex": step.repeat_index,
+                    "testIdx": step.test_idx,
+                }
+                if not cache.is_cache_enabled():
+                    context["bustCache"] = True
+                if step.eval_id:
+                    context["evaluationId"] = step.eval_id
+                if trace_context:
+                    context["traceparent"] = trace_context.get("traceparent")
+                    context["evaluationId"] = trace_context.get("evaluationId")
+                    context["testCaseId"] = trace_context.get("testCaseId")
+                provider_response: dict[str, Any] | None = None
+                try:
+                    provider_response = await _call_active_provider(
+                        active,
+                        rendered_prompt,
+                        context,
+                        step.rate_limit_registry,
+                        trace_context=trace_context,
+                        prompt_label=prompt_for_render.get("label"),
+                        test_idx=step.test_idx,
+                    )
+                finally:
+                    await _collect_external_trace_after_provider_call(
+                        step, provider_response, trace_context
+                    )
+                response = provider_response  # type: ignore[assignment]
+                if not isinstance(response, dict):
+                    raise TypeError(f"Provider returned {type(response).__name__}, expected a dict")
+            latency_ms = round((time.monotonic() - start) * 1000)
+            if response.get("metadata"):
+                response["metadata"] = js_json_parse(json_stringify(response["metadata"]))
+            response = _normalize_cached_target_response(response)
+
+            if not response.get("error"):
+                history = step.conversations.setdefault(conversation_key, [])
+                last_input = None
+                if isinstance(rendered_json, list) and rendered_json:
+                    last = rendered_json[-1]
+                    last_input = (last.get("content") if isinstance(last, dict) else None) or last
+                conversation_output = response.get("conversationOutput")
+                history.append({
+                    "prompt": rendered_json or rendered_prompt,
+                    "input": last_input or rendered_json or rendered_prompt,
+                    "output": conversation_output if conversation_output is not None
+                    else (response.get("output") or ""),
+                    "metadata": response.get("metadata"),
+                })  # fmt: skip
+
+            if (
+                not response.get("cached")
+                and not provider.handles_own_delay
+                and provider.delay
+                and provider.delay > 0
+            ):
+                await sleep_with_abort(provider.delay)
+
+            persisted_vars = _omit_runtime_vars(vars_)
+            ret: dict[str, Any] = {
+                **setup,
+                "vars": persisted_vars,
+                "prompt": {**setup["prompt"], "raw": rendered_prompt},
+                "response": response,
+                "success": False,
+                "failureReason": ResultFailureReason.NONE,
+                "score": 0,
+                "namedScores": {},
+                "latencyMs": response.get("latencyMs") if response.get("latencyMs") is not None
+                else latency_ms,
+                "cost": response.get("cost"),
+            }  # fmt: skip
+            if response.get("incurredCost") is not None:
+                ret["incurredCost"] = response["incurredCost"]
+            ret["metadata"] = {
+                **(test.get("metadata") or {}),
+                **(response.get("metadata") or {}),
+                FILE_METADATA_KEY: file_metadata,
             }
-        else:
-            active = test["provider"] if is_api_provider(test.get("provider")) else provider
-            trace_context = await _generate_trace_context(step, active, prompt_for_render)
-            context = {
-                "vars": vars_,
-                "prompt": _context_prompt(prompt_for_render, prompt_config),
-                "filters": step.filters,
-                "originalProvider": provider,
-                "test": test,
-                "getCache": cache.get_cache,
-                "repeatIndex": step.repeat_index,
-                "testIdx": step.test_idx,
-            }
-            if not cache.is_cache_enabled():
-                context["bustCache"] = True
-            if step.eval_id:
-                context["evaluationId"] = step.eval_id
-            if trace_context:
-                context["traceparent"] = trace_context.get("traceparent")
-                context["evaluationId"] = trace_context.get("evaluationId")
-                context["testCaseId"] = trace_context.get("testCaseId")
-            provider_response: dict[str, Any] | None = None
-            try:
-                provider_response = await _call_active_provider(
-                    active, rendered_prompt, context, step.rate_limit_registry
-                )
-            finally:
-                await _collect_external_trace_after_provider_call(
-                    step, provider_response, trace_context
-                )
-            response = provider_response  # type: ignore[assignment]
-            if not isinstance(response, dict):
-                raise TypeError(f"Provider returned {type(response).__name__}, expected a dict")
-        latency_ms = round((time.monotonic() - start) * 1000)
-        if response.get("metadata"):
-            response["metadata"] = js_json_parse(json_stringify(response["metadata"]))
-        response = _normalize_cached_target_response(response)
+            ret["promptIdx"] = step.prompt_idx
+            if step.repeat_group_id is not None:
+                ret["repeatGroupId"] = step.repeat_group_id
+                ret["repeatIndex"] = step.repeat_index
+            ret["testIdx"] = step.test_idx
+            ret["testCase"] = test
+            ret["promptId"] = prompt.get("id") or ""
+            ret["tokenUsage"] = create_empty_token_usage()
+            ret.update(get_trace_linkage(trace_context, step.eval_id))
+            if not ret["metadata"].get("sessionIds") and not ret["metadata"].get("sessionId"):
+                session = _session_id(response, persisted_vars)
+                if session is not None:
+                    ret["metadata"]["sessionId"] = session
 
-        if not response.get("error"):
-            history = step.conversations.setdefault(conversation_key, [])
-            last_input = None
-            if isinstance(rendered_json, list) and rendered_json:
-                last = rendered_json[-1]
-                last_input = (last.get("content") if isinstance(last, dict) else None) or last
-            conversation_output = response.get("conversationOutput")
-            history.append({
-                "prompt": rendered_json or rendered_prompt,
-                "input": last_input or rendered_json or rendered_prompt,
-                "output": conversation_output if conversation_output is not None
-                else (response.get("output") or ""),
-                "metadata": response.get("metadata"),
-            })  # fmt: skip
+            await _apply_response_outcome(step, ret, response, rendered_prompt, persisted_vars,
+                                          latency_ms, get_trace_id(trace_context))  # fmt: skip
+            if response.get("tokenUsage"):
+                accumulate_response_token_usage(ret["tokenUsage"], response)
+            store_as = (test.get("options") or {}).get("storeOutputAs")
+            if store_as and (ret.get("response") or {}).get("output"):
+                step.registers[store_as] = ret["response"]["output"]
+            return [ret]
 
-        if (
-            not response.get("cached")
-            and not provider.handles_own_delay
-            and provider.delay
-            and provider.delay > 0
-        ):
-            await sleep_with_abort(provider.delay)
-
-        persisted_vars = _omit_runtime_vars(vars_)
-        ret: dict[str, Any] = {
-            **setup,
-            "vars": persisted_vars,
-            "prompt": {**setup["prompt"], "raw": rendered_prompt},
-            "response": response,
-            "success": False,
-            "failureReason": ResultFailureReason.NONE,
-            "score": 0,
-            "namedScores": {},
-            "latencyMs": response.get("latencyMs") if response.get("latencyMs") is not None
-            else latency_ms,
-            "cost": response.get("cost"),
-        }  # fmt: skip
-        if response.get("incurredCost") is not None:
-            ret["incurredCost"] = response["incurredCost"]
-        ret["metadata"] = {
-            **(test.get("metadata") or {}),
-            **(response.get("metadata") or {}),
-            FILE_METADATA_KEY: file_metadata,
-        }
-        ret["promptIdx"] = step.prompt_idx
-        if step.repeat_group_id is not None:
-            ret["repeatGroupId"] = step.repeat_group_id
-            ret["repeatIndex"] = step.repeat_index
-        ret["testIdx"] = step.test_idx
-        ret["testCase"] = test
-        ret["promptId"] = prompt.get("id") or ""
-        ret["tokenUsage"] = create_empty_token_usage()
-        ret.update(get_trace_linkage(trace_context, step.eval_id))
-        if not ret["metadata"].get("sessionIds") and not ret["metadata"].get("sessionId"):
-            session = _session_id(response, persisted_vars)
-            if session is not None:
-                ret["metadata"]["sessionId"] = session
-
-        await _apply_response_outcome(step, ret, response, rendered_prompt, persisted_vars,
-                                      latency_ms, get_trace_id(trace_context))  # fmt: skip
-        if response.get("tokenUsage"):
-            accumulate_response_token_usage(ret["tokenUsage"], response)
-        store_as = (test.get("options") or {}).get("storeOutputAs")
-        if store_as and (ret.get("response") or {}).get("output"):
-            step.registers[store_as] = ret["response"]["output"]
-        return [ret]
+        return await _run_with_test_case_span(trace_context, step.test_idx, run_execution)
     except asyncio.CancelledError:
         raise
     except Exception as err:
@@ -751,6 +764,10 @@ async def _call_active_provider(
     call_api_context: dict[str, Any],
     rate_limit_registry: RateLimitRegistry | None,
     abort_signal: Any = None,
+    *,
+    trace_context: dict[str, Any] | None = None,
+    prompt_label: str | None = None,
+    test_idx: int | None = None,
 ) -> dict[str, Any]:
     """callActiveProvider: route the target call through the eval's rate-limit registry, which
     queues it per rate-limit key, learns quota from response headers, adapts concurrency and
@@ -772,8 +789,11 @@ async def _call_active_provider(
                 "rateLimitRegistry": rate_limit_registry,
                 "rateLimitProvider": active_provider,
             },
-            lambda: active_provider.call_api(rendered_prompt, call_api_context, call_api_options),
-        )
+            lambda: _invoke_target(
+                active_provider, rendered_prompt, call_api_context, call_api_options,
+                trace_context, prompt_label, test_idx,
+            ),
+        )  # fmt: skip
 
     if rate_limit_registry:
         response = await rate_limit_registry.execute(
@@ -785,6 +805,79 @@ async def _call_active_provider(
         logger.debug("Provider response properties: %s", ", ".join(response))
         logger.debug("Provider response cached property explicitly: %s", response.get("cached"))
     return response
+
+
+async def _invoke_target(
+    active_provider: ApiProvider,
+    rendered_prompt: str,
+    call_api_context: dict[str, Any],
+    call_api_options: dict[str, Any] | None,
+    trace_context: dict[str, Any] | None,
+    prompt_label: str | None,
+    test_idx: int | None,
+) -> dict[str, Any]:
+    """The target call, inside a target span when the step is traced (withTracedProviderCall)."""
+    if not (trace_context or {}).get("traceparent"):
+        return await active_provider.call_api(rendered_prompt, call_api_context, call_api_options)
+    from promptphoo.tracing.target_tracer import with_traced_provider_call
+
+    return await with_traced_provider_call(
+        {
+            "provider": active_provider,
+            "callContext": call_api_context,
+            "promptLabel": prompt_label,
+            "evalId": call_api_context.get("evaluationId"),
+            "testIndex": test_idx,
+        },
+        lambda context: active_provider.call_api(rendered_prompt, context, call_api_options),
+    )
+
+
+async def _run_with_test_case_span(
+    trace_context: dict[str, Any] | None,
+    test_idx: int,
+    run_execution: Any,
+) -> list[dict[str, Any]]:
+    """withTestCaseSpan around the step, with the tracing hooks graders read from context."""
+    if not trace_context:
+        return await run_execution()
+    from promptphoo.scheduler.provider_call_execution_context import (
+        with_provider_call_tracing_context,
+    )
+    from promptphoo.tracing.span_roles import get_active_traceparent
+    from promptphoo.tracing.target_tracer import (
+        with_grader_span,
+        with_test_case_span,
+        with_traced_provider_call,
+    )
+
+    return await with_provider_call_tracing_context(
+        {
+            "getActiveTraceparent": get_active_traceparent,
+            "testIndex": test_idx,
+            "withGraderSpan": with_grader_span,
+            "withProviderSpan": with_traced_provider_call,
+        },
+        lambda: with_test_case_span(trace_context.get("rootSpan"), run_execution),
+    )
+
+
+def _suite_tracing_enabled(test_suite: dict[str, Any]) -> bool:
+    """The evaluator's check for initializing OTEL: env, suite, defaultTest or any test."""
+    default_test = test_suite.get("defaultTest")
+    return (
+        envars.get_env_bool("PROMPTFOO_TRACING_ENABLED", False)
+        or (test_suite.get("tracing") or {}).get("enabled") is True
+        or (
+            isinstance(default_test, dict)
+            and (default_test.get("metadata") or {}).get("tracingEnabled") is True
+        )
+        or any(
+            ((t or {}).get("metadata") or {}).get("tracingEnabled") is True
+            for t in (test_suite.get("tests") or [])
+            if isinstance(t, dict)
+        )
+    )
 
 
 def _context_prompt(prompt: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
@@ -1312,11 +1405,25 @@ class Evaluator:
             enabled = False if self.options.get("cache") is False else cache.is_cache_enabled()
             with cache.with_cache_enabled(enabled):
                 max_ms = self.options.get("maxEvalTimeMs") or envars.get_max_eval_time_ms()
+                otel_initialized = False
                 try:
+                    if _suite_tracing_enabled(suite):
+                        from promptphoo.tracing.otel_config import get_default_otel_config
+                        from promptphoo.tracing.otel_sdk import initialize_otel
+
+                        logger.debug("[Evaluator] Initializing OTEL SDK for tracing")
+                        initialize_otel(get_default_otel_config())
+                        otel_initialized = True
                     if max_ms and max_ms > 0:
                         return await asyncio.wait_for(self._run(time.time()), max_ms / 1000)
                     return await self._run(time.time())
                 finally:
+                    if otel_initialized:
+                        from promptphoo.tracing.otel_sdk import flush_otel, shutdown_otel
+
+                        logger.debug("[Evaluator] Flushing OTEL spans...")
+                        await flush_otel()
+                        await shutdown_otel()
                     self._dispose_rate_limit_registry()
                     for provider in suite["providers"]:
                         try:

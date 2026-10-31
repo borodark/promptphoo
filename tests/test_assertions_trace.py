@@ -573,11 +573,6 @@ async def test_empty_attribute_selection_is_explained(
     assert "private-tool-value" not in result["reason"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="run_assertion does not wrap grading in the tracing context's withGraderSpan "
-    "(upstream runAssertion does when traceId is set)",
-)
 async def test_grader_span_uses_evaluation_tracing_context(fake_store: FakeTraceStore) -> None:
     calls: list[dict[str, Any]] = []
     test = {"metadata": {"evaluationId": "test-evaluation-id"},

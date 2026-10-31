@@ -16,6 +16,9 @@ from promptphoo.assertions.result import AssertionsResult
 from promptphoo.files import is_javascript_file
 from promptphoo.jsvalues import UNDEFINED, is_truthy, json_stringify
 from promptphoo.providers.base import ApiProvider
+from promptphoo.scheduler.provider_call_execution_context import (
+    get_provider_call_tracing_context,
+)
 from promptphoo.templating import get_engine
 from promptphoo.transform import transform
 from promptphoo.yamlload import load_yaml
@@ -237,8 +240,42 @@ async def run_assertion(
     trace_id: str | None = None,
     trace_data: Any = UNDEFINED,
 ) -> GradingResult:
-    """`trace_data` is the preloaded TraceData, None when preloading found nothing, or
-    UNDEFINED to load it here."""
+    """runAssertion: a traced assertion runs inside a `grader <type>` span. `trace_data` is
+    the preloaded TraceData, None when preloading found nothing, or UNDEFINED to load it
+    here."""
+    kwargs: dict[str, Any] = {
+        "assertion": assertion, "test": test, "provider_response": provider_response,
+        "prompt": prompt, "provider": provider, "vars": vars, "latency_ms": latency_ms,
+        "trace_id": trace_id, "trace_data": trace_data,
+    }  # fmt: skip
+    if not trace_id:
+        return await _run_assertion_internal(**kwargs)
+    tracing_context = get_provider_call_tracing_context()
+    with_grader_span = tracing_context.get("withGraderSpan") if tracing_context else None
+    if not tracing_context or with_grader_span is None:
+        return await _run_assertion_internal(**kwargs)
+    return await with_grader_span(
+        {
+            "graderId": assertion.get("type"),
+            "evalId": (test.get("metadata") or {}).get("evaluationId"),
+            "testIndex": tracing_context.get("testIndex"),
+        },
+        lambda: _run_assertion_internal(**kwargs),
+    )
+
+
+async def _run_assertion_internal(
+    *,
+    assertion: dict[str, Any],
+    test: dict[str, Any],
+    provider_response: dict[str, Any],
+    prompt: str | None = None,
+    provider: Any = None,
+    vars: dict[str, Any] | None = None,  # noqa: A002 - Node's parameter name
+    latency_ms: float | None = None,
+    trace_id: str | None = None,
+    trace_data: Any = UNDEFINED,
+) -> GradingResult:
     resolved_vars = vars if vars is not None else (test.get("vars") or {})
     output = provider_response.get("output")
     if not assertion.get("type"):

@@ -96,19 +96,30 @@ def _eval(tmp_path, monkeypatch):
         result = CliRunner().invoke(build_cli(args), args, catch_exceptions=False)
         data = json.loads((tmp_path / "out.json").read_text())
         traces = db.get_db().execute("SELECT trace_id, evaluation_id FROM traces").fetchall()
-        span_count = db.get_db().execute("SELECT count(*) FROM spans").fetchone()[0]
+        names = [r[0] for r in db.get_db().execute("SELECT name FROM spans").fetchall()]
     finally:
         db.close_db()
-    return result, data, traces, span_count
+    return result, data, traces, names
 
 
 def test_trace_assertions_grade_spans_written_by_the_provider(tmp_path, monkeypatch):
-    result, data, traces, span_count = _eval(tmp_path, monkeypatch)
+    result, data, traces, names = _eval(tmp_path, monkeypatch)
     rows = sorted(data["results"]["results"], key=lambda r: r["testIdx"])
     assert len(rows) == 2
     eval_id = data["evalId"]
     assert {t[1] for t in traces} == {eval_id}
-    assert span_count == 8
+    # The provider's 4 spans per test, plus promptfoo's own: the test case, the target and one
+    # grader span per assertion. Those are batch-exported after grading, as under Node, so the
+    # assertions below see only the provider's spans.
+    provider_spans = ["agent.run", "llm.chat", "tool.fetch", "tool.search"] * 2
+    graders = [
+        "grader trace-span-count", "grader trace-span-count", "grader trace-span-duration",
+        "grader trace-error-spans", "grader trajectory:tool-used",
+        "grader trajectory:tool-sequence", "grader python",
+        "grader trace-error-spans", "grader trace-span-duration",
+    ]  # fmt: skip
+    own_spans = ["promptfoo.test_case", "traced"] * 2 + graders
+    assert sorted(names) == sorted(provider_spans + own_spans)
 
     first, second = rows
     for row in rows:

@@ -1,13 +1,13 @@
 """Ports test/tracing/spanFilter.test.ts and test/tracing/toolAttributes.test.ts, plus the
-ContextVar port of src/tracing/spanRoles.ts."""
+context-based port of src/tracing/spanRoles.ts."""
 
 from __future__ import annotations
 
 import pytest
 
+from promptphoo.tracing.otel_api import ROOT_CONTEXT, SpanContext, context, trace
 from promptphoo.tracing.span_filter import is_relevant_span, matches_span_filter
 from promptphoo.tracing.span_roles import (
-    ACTIVE_SPAN_CONTEXT,
     SPAN_ROLE_ATTRIBUTE,
     get_active_span_role,
     get_active_traceparent,
@@ -164,22 +164,18 @@ def test_key_tables_have_no_duplicates():
 # --- spanRoles.ts -----------------------------------------------------------------------------
 
 
-def test_span_role_is_scoped():
+async def test_span_role_is_scoped():
     assert SPAN_ROLE_ATTRIBUTE == "promptfoo.span.role"
     assert get_active_span_role() is None
-    assert with_span_role("grader", get_active_span_role) == "grader"
+    assert await with_span_role("grader", get_active_span_role) == "grader"
     assert get_active_span_role() is None
 
 
 def test_active_traceparent_requires_a_valid_span_context():
     assert get_active_traceparent() is None
-    token = ACTIVE_SPAN_CONTEXT.set({"traceId": "a" * 32, "spanId": "b" * 16, "traceFlags": 1})
-    try:
+    valid = trace.set_span_context(ROOT_CONTEXT, SpanContext("a" * 32, "b" * 16, 1))
+    with context.use(valid):
         assert get_active_traceparent() == f"00-{'a' * 32}-{'b' * 16}-01"
-    finally:
-        ACTIVE_SPAN_CONTEXT.reset(token)
-    token = ACTIVE_SPAN_CONTEXT.set({"traceId": "0" * 32, "spanId": "b" * 16, "traceFlags": 1})
-    try:
+    invalid = trace.set_span_context(ROOT_CONTEXT, SpanContext("0" * 32, "b" * 16, 1))
+    with context.use(invalid):
         assert get_active_traceparent() is None
-    finally:
-        ACTIVE_SPAN_CONTEXT.reset(token)

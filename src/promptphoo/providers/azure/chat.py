@@ -32,6 +32,7 @@ from promptphoo.providers.function_callbacks import FunctionCallbackHandler
 from promptphoo.providers.openai import gpt6
 from promptphoo.providers.shared import get_request_timeout_ms, parse_chat_prompt, transform_tools
 from promptphoo.templating import render_vars_in_object
+from promptphoo.tracing.genai_tracer import get_test_index, with_genai_span
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,28 @@ def azure_usage_cost(model_name: str, config: dict[str, Any], usage: Any) -> flo
 
 def _drop_none(obj: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in obj.items() if v is not None}
+
+
+def _azure_span_result(response: ProviderResponse) -> dict[str, Any]:
+    """Azure chat's span result: four usage totals, prediction details, the finish reason."""
+    result: dict[str, Any] = {}
+    usage = response.get("tokenUsage")
+    if usage:
+        details = usage.get("completionDetails") or {}
+        result["tokenUsage"] = {
+            "prompt": usage.get("prompt"),
+            "completion": usage.get("completion"),
+            "total": usage.get("total"),
+            "cached": usage.get("cached"),
+            "completionDetails": {
+                "reasoning": details.get("reasoning"),
+                "acceptedPrediction": details.get("acceptedPrediction"),
+                "rejectedPrediction": details.get("rejectedPrediction"),
+            },
+        }
+    if response.get("finishReason"):
+        result["finishReasons"] = [response["finishReason"]]
+    return result
 
 
 class AzureChatCompletionProvider(AzureGenericProvider):
@@ -375,7 +398,26 @@ class AzureChatCompletionProvider(AzureGenericProvider):
             raise RuntimeError("Invariant failed: auth headers are not initialized")
         if not self.get_api_base_url():
             raise ValueError("Azure API host must be set.")
-        return await self._call_api_internal(prompt, context, options)
+        span_context = {
+            "system": "azure",
+            "operationName": "chat",
+            "model": self.deployment_name,
+            "providerId": self.id(),
+            "maxTokens": self.config.get("max_tokens"),
+            "temperature": self.config.get("temperature"),
+            "topP": self.config.get("top_p"),
+            "stopSequences": self.config.get("stop"),
+            "frequencyPenalty": self.config.get("frequency_penalty"),
+            "presencePenalty": self.config.get("presence_penalty"),
+            "testIndex": get_test_index(context),
+            "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+            "traceparent": (context or {}).get("traceparent"),
+        }
+        return await with_genai_span(
+            span_context,
+            lambda _span: self._call_api_internal(prompt, context, options),
+            _azure_span_result,
+        )
 
     def get_chat_url(self, config: dict[str, Any]) -> str:
         api_version = config.get("apiVersion") or DEFAULT_AZURE_API_VERSION

@@ -552,3 +552,56 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Node and promptphoo both keep the database at `<configDir>/promptfoo.db` in WAL mode, and Node's spans for the test case, provider call and graders never match the fixture's `tool.*` / `llm.*` / `agent.*` patterns.
 - Modules: src/promptphoo/tracing/providers/__init__.py, src/promptphoo/tracing/providers/types.py, src/promptphoo/tracing/providers/fetch.py, src/promptphoo/tracing/providers/tempo.py, src/promptphoo/tracing/providers/langfuse.py, src/promptphoo/tracing/providers/braintrust.py, tools/parity.py, tests/fixtures/parity_tracing/trace-assertions.yaml, tests/fixtures/parity_tracing/span_writer.py
 - Commits: `b646b5b`
+
+## 56. promptfoo's own spans come from an in-house tracer that stands in for the OpenTelemetry JS SDK
+- Decision:
+  - `opentelemetry` is not a dependency. `tracing/otel_api.py` ports the slice of `@opentelemetry/api` that promptfoo uses:
+    - SpanKind, SpanStatusCode and TraceFlags.
+    - SpanContext, plus an immutable Context held in a ContextVar. `context.with_` awaits under that context, and asyncio tasks inherit it.
+    - The `trace` facade: a ProxyTracer and a NoopTracer, which passes a valid parent through.
+    - The W3C traceparent propagator. Like upstream's, it accepts lowercase hex only.
+  - `tracing/otel_trace_sdk.py` ports the parts of sdk-trace-base 2.x that promptfoo uses:
+    - The ParentBased(AlwaysOn) sampler, random W3C ids, and HrTime times (start from `Date.now()` ms, end from a monotonic clock).
+    - setStatus: UNSET is ignored, OK is final, and only ERROR keeps a message.
+    - setAttribute drops None and invalid values and keeps at most 128 attributes. recordException records an `exception` event.
+    - Simple and Batch span processors (512/2048/5000 ms/30000 ms, overridable by `OTEL_BSP_*`), the in-memory exporter, and BasicTracerProvider.register().
+  - `tracing/local_span_exporter.py` ports LocalSpanExporter. It writes through `get_trace_store().add_spans` with `{skipTraceCheck: false, warnIfMissingTrace: false}`, retries once after 50 ms, skips FOREIGN KEY failures and fails the export on any other error.
+  - `tracing/otlp_http_exporter.py` is the OTLP/HTTP exporter, sending JSON rather than upstream's protobuf. It encodes like otlp-transformer's JSON serializer: hex ids, nanosecond times as strings, `kind + 1`, intValue/doubleValue. It reads `OTEL_EXPORTER_OTLP_*` headers and timeout, and retries 429/502/503/504 up to 5 times with jittered backoff and Retry-After.
+  - `otel_sdk.py`, `otel_config.py`, `resource_attributes.py`, `genai_tracer.py`, `target_tracer.py` and `span_roles.py` port their upstream files. The resource is `service.name`/`service.version` = 0.125.1 and merges into every stored span's attributes, as Node's exporter does.
+  - Known divergences from Node:
+    - recordException uses the Python exception class name as `exception.type` unless the error carries a string `code`.
+    - There are no SIGINT/SIGTERM flush handlers.
+    - `shutdown_otel` unregisters the global provider and propagator, so a second eval in the same process re-initializes. Node's global stays set.
+    - BatchSpanProcessor.force_flush also waits for exports already started by the timer.
+    - The `OTEL_TRACES_SAMPLER` env and span-limit env vars are not read.
+    - The OTLP User-Agent is `OTel-OTLP-Exporter-Python-promptphoo/0.125.1`.
+- Rationale: promptfoo needs only a small, synchronous-API slice of OpenTelemetry: start a span, set attributes, propagate traceparent, batch-export to the local store. Porting that slice keeps span names, attributes, ids, status and parentage the same as Node's, adds no dependency, and lets tests inspect spans in memory.
+- Assumption: Nothing in promptphoo needs OTel auto-instrumentation, metrics or logs. An OTLP collector that accepts protobuf also accepts `application/json` on `/v1/traces`.
+- Implication: A user who installs the real OpenTelemetry Python SDK does not get promptfoo's spans through it. Spans go to the local store and, when `PROMPTFOO_OTEL_ENDPOINT` / `OTEL_EXPORTER_OTLP_ENDPOINT` is set, to that endpoint.
+- Modules: src/promptphoo/tracing/otel_api.py, src/promptphoo/tracing/otel_trace_sdk.py, src/promptphoo/tracing/otel_sdk.py, src/promptphoo/tracing/otel_config.py, src/promptphoo/tracing/local_span_exporter.py, src/promptphoo/tracing/otlp_http_exporter.py, src/promptphoo/tracing/resource_attributes.py, src/promptphoo/tracing/genai_tracer.py, src/promptphoo/tracing/target_tracer.py, src/promptphoo/tracing/span_roles.py
+- Commits: `57ba6af`
+
+## 57. Span call sites follow upstream: test-case root, target, grader and GenAI provider spans
+- Decision:
+  - `Evaluator.evaluate` initializes the tracer when env, suite, defaultTest or any test enables tracing, and flushes and shuts it down in `finally`.
+  - `generate_trace_context_if_needed` (the `tracing/evaluator_tracing.py` shim) starts the `promptfoo.test_case` root span, with upstream's attributes, and derives the traceparent from it. A traced step runs inside `with_test_case_span`, which sets status ERROR with the row's error as the message, under a provider-call tracing context (getActiveTraceparent, testIndex, withGraderSpan, withProviderSpan).
+  - The target call goes through `with_traced_provider_call`:
+    - The span is named after the label, else the provider id, has CLIENT kind and role `target`.
+    - The call context gets a child traceparent.
+    - Embedding calls get a GenAI `embeddings` span instead.
+  - `run_assertion` wraps each assertion of a traced step in `grader <type>` (withGraderSpan). Grader calls get the active traceparent, so `matchers/providers.py`'s existing withProviderSpan hook makes `grader provider <label>` spans under it.
+  - `get_active_traceparent` reads the active span from the tracer's context. This replaces D54's `ACTIVE_SPAN_CONTEXT` ContextVar. The xfail for withGraderSpan in `tests/test_assertions_trace.py` is removed.
+  - withGenAISpan is added to every promptphoo provider whose upstream calls it: openai chat/completion/responses, anthropic messages, azure chat, bedrock converse, google vertex, ollama completion/chat and openrouter. Each uses upstream's span context and result extractor. A body-building failure in openai chat and openrouter still gets a span.
+  - `tests/test_tracing_node_parity.py` runs two traced configs under both CLIs, skipped unless NODE_PROMPTFOO is set:
+    - echo, a Python file provider and llm-rubric/contains/equals graders;
+    - the six HTTP providers against a canned local LLM server (`tests/tracing_fake_llm.py`).
+  - It compares the stored spans with ids and times dropped: name path from the root, attributes with the eval id normalized, and status code and message. Both configs match Node.
+  - Not ported:
+    - flushOtel before trace-aware assertions. Batch export runs after grading, as under Node's 5 s delay, so assertions see only the target's own spans.
+    - withGenAIToolSpan wiring in function callbacks.
+    - Tracing in comparison.py.
+    - Spans for providers promptphoo lacks.
+- Rationale: Matching upstream's call sites means the stored traces, the web UI's trace view and trace assertions with `includeInternalSpans` see the same tree under Node and Python.
+- Assumption: Upstream keeps the BatchSpanProcessor delay above the time a test takes to grade. If it ever flushes before trace-aware assertions, `tests/test_trace_assertions_e2e.py` and the trace-assertions parity fixture will diverge.
+- Modules: src/promptphoo/evaluator/run.py, src/promptphoo/assertions/index.py, src/promptphoo/tracing/evaluator_tracing.py, src/promptphoo/providers/openai/chat.py, src/promptphoo/providers/openai/completion.py, src/promptphoo/providers/openai/responses.py, src/promptphoo/providers/anthropic/messages.py, src/promptphoo/providers/azure/chat.py, src/promptphoo/providers/bedrock/converse.py, src/promptphoo/providers/google/vertex.py, src/promptphoo/providers/ollama.py, src/promptphoo/providers/compatible/openrouter.py, tests/test_tracing_node_parity.py
+- Commits: `57ba6af`

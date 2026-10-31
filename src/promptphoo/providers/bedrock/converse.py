@@ -40,6 +40,7 @@ from promptphoo.providers.shared import (
     openai_tool_choice_to_bedrock,
     openai_tools_to_bedrock,
 )
+from promptphoo.tracing.genai_tracer import get_test_index, with_genai_span
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +231,22 @@ def _content_blocks(content: Any) -> list[dict[str, Any]]:
         else:
             blocks.append({"text": json_stringify(block)})
     return blocks
+
+
+def _converse_span_result(response: dict[str, Any]) -> dict[str, Any]:
+    """Converse's span result: the three usage totals and the stop reason from metadata."""
+    result: dict[str, Any] = {}
+    usage = response.get("tokenUsage")
+    if usage:
+        result["tokenUsage"] = {
+            "prompt": usage.get("prompt"),
+            "completion": usage.get("completion"),
+            "total": usage.get("total"),
+        }
+    stop_reason = (response.get("metadata") or {}).get("stopReason")
+    if stop_reason:
+        result["finishReasons"] = [stop_reason]
+    return result
 
 
 def parse_converse_messages(prompt: str) -> dict[str, Any]:
@@ -560,6 +577,32 @@ class AwsBedrockConverseProvider(AwsBedrockGenericProvider):
         return _is_disabled_tool_choice(self._effective_tool_choice(prompt_config))
 
     async def call_api(
+        self,
+        prompt: str,
+        context: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        inference_config = self.build_inference_config() or {}
+        span_context = {
+            "system": "bedrock",
+            "operationName": "chat",
+            "model": self.model_name,
+            "providerId": self.id(),
+            "maxTokens": inference_config.get("maxTokens"),
+            "temperature": inference_config.get("temperature"),
+            "topP": inference_config.get("topP"),
+            "stopSequences": inference_config.get("stopSequences"),
+            "testIndex": get_test_index(context),
+            "promptLabel": ((context or {}).get("prompt") or {}).get("label"),
+            "traceparent": (context or {}).get("traceparent"),
+        }
+        return await with_genai_span(
+            span_context,
+            lambda _span: self._call_api_internal(prompt, context, options),
+            _converse_span_result,
+        )
+
+    async def _call_api_internal(
         self,
         prompt: str,
         context: dict[str, Any] | None = None,
