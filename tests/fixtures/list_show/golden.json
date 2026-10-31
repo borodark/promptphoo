@@ -1,0 +1,1157 @@
+{
+ "stages": {
+  "stage1": {
+   "evals": {
+    "columns": [
+     "id",
+     "created_at",
+     "description",
+     "results",
+     "config",
+     "author",
+     "prompts",
+     "vars",
+     "is_redteam",
+     "runtime_options"
+    ],
+    "rows": [
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      1793425003513,
+      "First echo eval",
+      "{\"durationMs\":61.0,\"evaluationDurationMs\":61.0}",
+      "{\"basePath\":\"/tmp/tmpy_8kld75\",\"tags\":{},\"description\":\"First echo eval\",\"prompts\":[\"Hello {{name}}\",\"Bye {{name}} from {{place}}\"],\"providers\":[\"echo\"],\"tests\":[{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}]},{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}]}],\"env\":{},\"outputPath\":[],\"extensions\":[],\"metadata\":{},\"evaluateOptions\":{}}",
+      null,
+      "[{\"id\":\"652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7\",\"raw\":\"Hello {{name}}\",\"label\":\"Hello {{name}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":9,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}},{\"id\":\"334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2\",\"raw\":\"Bye {{name}} from {{place}}\",\"label\":\"Bye {{name}} from {{place}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":6,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}}]",
+      "[\"name\",\"place\"]",
+      0,
+      "{\"eventSource\":\"cli\",\"showProgressBar\":false,\"repeat\":1,\"maxConcurrency\":4,\"cache\":false}"
+     ],
+     [
+      "eval-rjI-2026-10-31T05:36:47",
+      1793425007674,
+      "A second eval with a description that is quite long, long enough to exceed one hundred characters in total length for sure",
+      "{\"durationMs\":63.0,\"evaluationDurationMs\":63.0}",
+      "{\"basePath\":\"/tmp/tmpy_8kld75\",\"tags\":{},\"description\":\"A second eval with a description that is quite long, long enough to exceed one hundred characters in total length for sure\",\"prompts\":[\"Summarize {{text}}\"],\"providers\":[\"echo\"],\"tests\":[{\"vars\":{\"text\":\"alpha beta\"}}],\"env\":{},\"outputPath\":[],\"extensions\":[],\"metadata\":{},\"evaluateOptions\":{}}",
+      null,
+      "[{\"id\":\"70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c\",\"raw\":\"Summarize {{text}}\",\"label\":\"Summarize {{text}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":0,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":0,\"assertFailCount\":0,\"totalLatencyMs\":6,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}}]",
+      "[\"text\"]",
+      0,
+      "{\"eventSource\":\"cli\",\"showProgressBar\":false,\"repeat\":1,\"maxConcurrency\":4,\"cache\":false}"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      1793425011487,
+      "First echo eval",
+      "{\"durationMs\":95.0,\"evaluationDurationMs\":95.0}",
+      "{\"basePath\":\"/tmp/tmpy_8kld75\",\"tags\":{},\"description\":\"First echo eval\",\"prompts\":[\"Hello {{name}}\",\"Bye {{name}} from {{place}}\"],\"providers\":[\"echo\"],\"tests\":[{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}]},{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}]}],\"env\":{},\"outputPath\":[],\"extensions\":[],\"metadata\":{},\"evaluateOptions\":{}}",
+      null,
+      "[{\"id\":\"652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7\",\"raw\":\"Hello {{name}}\",\"label\":\"Hello {{name}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":16,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}},{\"id\":\"334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2\",\"raw\":\"Bye {{name}} from {{place}}\",\"label\":\"Bye {{name}} from {{place}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":12,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}}]",
+      "[\"name\",\"place\"]",
+      0,
+      "{\"eventSource\":\"cli\",\"showProgressBar\":false,\"repeat\":1,\"maxConcurrency\":4,\"cache\":false}"
+     ]
+    ]
+   },
+   "prompts": {
+    "columns": [
+     "id",
+     "created_at",
+     "prompt"
+    ],
+    "rows": [
+     [
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "2026-10-31 05:36:43",
+      "Hello {{name}}"
+     ],
+     [
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "2026-10-31 05:36:43",
+      "Bye {{name}} from {{place}}"
+     ],
+     [
+      "70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c",
+      "2026-10-31 05:36:47",
+      "Summarize {{text}}"
+     ]
+    ]
+   },
+   "datasets": {
+    "columns": [
+     "id",
+     "created_at",
+     "tests"
+    ],
+    "rows": [
+     [
+      "aef222809530ad2badc2c99c2ad1aa9ff7bf4abc7321bce35619291fd26c2667",
+      "2026-10-31 05:36:43",
+      "[{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}]},{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}]}]"
+     ],
+     [
+      "032005ef59952046d3b148c52b30779c7910b3cd6047f685837eb03e7b8ace94",
+      "2026-10-31 05:36:47",
+      "[{\"vars\":{\"text\":\"alpha beta\"}}]"
+     ]
+    ]
+   },
+   "evals_to_prompts": {
+    "columns": [
+     "eval_id",
+     "prompt_id"
+    ],
+    "rows": [
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7"
+     ],
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2"
+     ],
+     [
+      "eval-rjI-2026-10-31T05:36:47",
+      "70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2"
+     ]
+    ]
+   },
+   "evals_to_datasets": {
+    "columns": [
+     "eval_id",
+     "dataset_id"
+    ],
+    "rows": [
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      "aef222809530ad2badc2c99c2ad1aa9ff7bf4abc7321bce35619291fd26c2667"
+     ],
+     [
+      "eval-rjI-2026-10-31T05:36:47",
+      "032005ef59952046d3b148c52b30779c7910b3cd6047f685837eb03e7b8ace94"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      "aef222809530ad2badc2c99c2ad1aa9ff7bf4abc7321bce35619291fd26c2667"
+     ]
+    ]
+   },
+   "eval_results": {
+    "columns": [
+     "id",
+     "created_at",
+     "updated_at",
+     "eval_id",
+     "prompt_idx",
+     "test_idx",
+     "test_case",
+     "prompt",
+     "prompt_id",
+     "provider",
+     "latency_ms",
+     "cost",
+     "response",
+     "error",
+     "success",
+     "score",
+     "grading_result",
+     "named_scores",
+     "metadata",
+     "failure_reason"
+    ],
+    "rows": [
+     [
+      "f407b63d-7fc9-4619-b46e-eac3792c90c4",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      0,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello World\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      6,
+      0.0,
+      "{\"output\":\"Hello World\",\"raw\":\"Hello World\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "d44aec47-e3a5-42dd-a2cd-70e26dffab86",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      1,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye World from Paris\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      3,
+      0.0,
+      "{\"output\":\"Bye World from Paris\",\"raw\":\"Bye World from Paris\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "48c7671f-6b9f-481d-a380-e60e20b37a85",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      0,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello Bob\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      3,
+      0.0,
+      "{\"output\":\"Hello Bob\",\"raw\":\"Hello Bob\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Hello Bob\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ],
+     [
+      "b3fa69be-78b5-41c0-9877-aef8ba4fd7b4",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      1,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye Bob from Rome\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      3,
+      0.0,
+      "{\"output\":\"Bye Bob from Rome\",\"raw\":\"Bye Bob from Rome\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Bye Bob from Rome\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ],
+     [
+      "61e21c39-ca13-4e3e-8259-0bdfaa757a91",
+      "2026-10-31 05:36:47",
+      "2026-10-31 05:36:47",
+      "eval-rjI-2026-10-31T05:36:47",
+      0,
+      0,
+      "{\"vars\":{\"text\":\"alpha beta\"},\"assert\":[],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Summarize alpha beta\",\"label\":\"Summarize {{text}}\",\"config\":{}}",
+      "70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      6,
+      0.0,
+      "{\"output\":\"Summarize alpha beta\",\"raw\":\"Summarize alpha beta\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"No assertions\",\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0}}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "bf7e8013-1110-40c7-8187-1c5c00d36401",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      0,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello World\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      10,
+      0.0,
+      "{\"output\":\"Hello World\",\"raw\":\"Hello World\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "e8b1bcc7-0a26-4265-86e2-1ff1f799abbb",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      1,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye World from Paris\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      7,
+      0.0,
+      "{\"output\":\"Bye World from Paris\",\"raw\":\"Bye World from Paris\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "916133b3-893a-429e-9698-59962dda6bcc",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      0,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello Bob\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      6,
+      0.0,
+      "{\"output\":\"Hello Bob\",\"raw\":\"Hello Bob\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Hello Bob\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ],
+     [
+      "36404c82-3d5e-4510-b762-bcc00f026d58",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      1,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye Bob from Rome\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      5,
+      0.0,
+      "{\"output\":\"Bye Bob from Rome\",\"raw\":\"Bye Bob from Rome\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Bye Bob from Rome\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ]
+    ]
+   }
+  },
+  "stage2": {
+   "evals": {
+    "columns": [
+     "id",
+     "created_at",
+     "description",
+     "results",
+     "config",
+     "author",
+     "prompts",
+     "vars",
+     "is_redteam",
+     "runtime_options"
+    ],
+    "rows": [
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      1793425003513,
+      "First echo eval",
+      "{\"durationMs\":61.0,\"evaluationDurationMs\":61.0}",
+      "{\"basePath\":\"/tmp/tmpy_8kld75\",\"tags\":{},\"description\":\"First echo eval\",\"prompts\":[\"Hello {{name}}\",\"Bye {{name}} from {{place}}\"],\"providers\":[\"echo\"],\"tests\":[{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}]},{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}]}],\"env\":{},\"outputPath\":[],\"extensions\":[],\"metadata\":{},\"evaluateOptions\":{}}",
+      null,
+      "[{\"id\":\"652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7\",\"raw\":\"Hello {{name}}\",\"label\":\"Hello {{name}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":9,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}},{\"id\":\"334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2\",\"raw\":\"Bye {{name}} from {{place}}\",\"label\":\"Bye {{name}} from {{place}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":6,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}}]",
+      "[\"name\",\"place\"]",
+      0,
+      "{\"eventSource\":\"cli\",\"showProgressBar\":false,\"repeat\":1,\"maxConcurrency\":4,\"cache\":false}"
+     ],
+     [
+      "eval-rjI-2026-10-31T05:36:47",
+      1793425007674,
+      "A second eval with a description that is quite long, long enough to exceed one hundred characters in total length for sure",
+      "{\"durationMs\":63.0,\"evaluationDurationMs\":63.0}",
+      "{\"basePath\":\"/tmp/tmpy_8kld75\",\"tags\":{},\"description\":\"A second eval with a description that is quite long, long enough to exceed one hundred characters in total length for sure\",\"prompts\":[\"Summarize {{text}}\"],\"providers\":[\"echo\"],\"tests\":[{\"vars\":{\"text\":\"alpha beta\"}}],\"env\":{},\"outputPath\":[],\"extensions\":[],\"metadata\":{},\"evaluateOptions\":{}}",
+      null,
+      "[{\"id\":\"70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c\",\"raw\":\"Summarize {{text}}\",\"label\":\"Summarize {{text}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":0,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":0,\"assertFailCount\":0,\"totalLatencyMs\":6,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}}]",
+      "[\"text\"]",
+      0,
+      "{\"eventSource\":\"cli\",\"showProgressBar\":false,\"repeat\":1,\"maxConcurrency\":4,\"cache\":false}"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      1793425011487,
+      "First echo eval",
+      "{\"durationMs\":95.0,\"evaluationDurationMs\":95.0}",
+      "{\"basePath\":\"/tmp/tmpy_8kld75\",\"tags\":{},\"description\":\"First echo eval\",\"prompts\":[\"Hello {{name}}\",\"Bye {{name}} from {{place}}\"],\"providers\":[\"echo\"],\"tests\":[{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}]},{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}]}],\"env\":{},\"outputPath\":[],\"extensions\":[],\"metadata\":{},\"evaluateOptions\":{}}",
+      null,
+      "[{\"id\":\"652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7\",\"raw\":\"Hello {{name}}\",\"label\":\"Hello {{name}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":16,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}},{\"id\":\"334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2\",\"raw\":\"Bye {{name}} from {{place}}\",\"label\":\"Bye {{name}} from {{place}}\",\"provider\":\"echo\",\"metrics\":{\"score\":1,\"testPassCount\":1,\"testFailCount\":1,\"testErrorCount\":0,\"testCacheHitCount\":0,\"assertPassCount\":1,\"assertFailCount\":1,\"totalLatencyMs\":12,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":2,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"namedScores\":{},\"namedScoresCount\":{},\"namedScoreWeights\":{},\"cost\":0}}]",
+      "[\"name\",\"place\"]",
+      0,
+      "{\"eventSource\":\"cli\",\"showProgressBar\":false,\"repeat\":1,\"maxConcurrency\":4,\"cache\":false}"
+     ],
+     [
+      "eval-v3L-2020-01-02T03:04:05",
+      1577934245000,
+      "Legacy v3 eval",
+      "{\"version\":2,\"timestamp\":\"2020-01-02T03:04:05.000Z\",\"results\":[],\"stats\":{\"successes\":18,\"failures\":9,\"tokenUsage\":{}},\"table\":{\"head\":{\"prompts\":[{\"raw\":\"Legacy {{q}}\",\"label\":\"Legacy {{q}}\",\"provider\":\"echo\",\"id\":\"legacyprompt0001\",\"metrics\":{\"score\":18.125,\"testPassCount\":18,\"testFailCount\":5,\"testErrorCount\":4,\"assertPassCount\":18,\"assertFailCount\":9,\"totalLatencyMs\":27,\"tokenUsage\":{},\"namedScores\":{},\"namedScoresCount\":{},\"cost\":0}}],\"vars\":[\"q\"]},\"body\":[{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 0---detail\",\"failureReason\":2,\"prompt\":\"Legacy 0\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v0\"],\"test\":{\"vars\":{\"q\":\"v0\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 1\",\"failureReason\":0,\"prompt\":\"Legacy 1\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v1\"],\"test\":{\"vars\":{\"q\":\"v1\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 2\",\"failureReason\":0,\"prompt\":\"Legacy 2\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v2\"],\"test\":{\"vars\":{\"q\":\"v2\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 3---detail\",\"failureReason\":1,\"prompt\":\"Legacy 3\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v3\"],\"test\":{\"vars\":{\"q\":\"v3\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 4\",\"failureReason\":0,\"prompt\":\"Legacy 4\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v4\"],\"test\":{\"vars\":{\"q\":\"v4\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 5\",\"failureReason\":0,\"prompt\":\"Legacy 5\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v5\"],\"test\":{\"vars\":{\"q\":\"v5\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 6---detail\",\"failureReason\":2,\"prompt\":\"Legacy 6\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v6\"],\"test\":{\"vars\":{\"q\":\"v6\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 7\",\"failureReason\":0,\"prompt\":\"Legacy 7\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v7\"],\"test\":{\"vars\":{\"q\":\"v7\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 8\",\"failureReason\":0,\"prompt\":\"Legacy 8\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v8\"],\"test\":{\"vars\":{\"q\":\"v8\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 9---detail\",\"failureReason\":1,\"prompt\":\"Legacy 9\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v9\"],\"test\":{\"vars\":{\"q\":\"v9\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 10\",\"failureReason\":0,\"prompt\":\"Legacy 10\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v10\"],\"test\":{\"vars\":{\"q\":\"v10\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 11\",\"failureReason\":0,\"prompt\":\"Legacy 11\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v11\"],\"test\":{\"vars\":{\"q\":\"v11\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 12---detail\",\"failureReason\":2,\"prompt\":\"Legacy 12\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v12\"],\"test\":{\"vars\":{\"q\":\"v12\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 13\",\"failureReason\":0,\"prompt\":\"Legacy 13\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v13\"],\"test\":{\"vars\":{\"q\":\"v13\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 14\",\"failureReason\":0,\"prompt\":\"Legacy 14\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v14\"],\"test\":{\"vars\":{\"q\":\"v14\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 15---detail\",\"failureReason\":1,\"prompt\":\"Legacy 15\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v15\"],\"test\":{\"vars\":{\"q\":\"v15\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 16\",\"failureReason\":0,\"prompt\":\"Legacy 16\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v16\"],\"test\":{\"vars\":{\"q\":\"v16\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 17\",\"failureReason\":0,\"prompt\":\"Legacy 17\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v17\"],\"test\":{\"vars\":{\"q\":\"v17\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 18---detail\",\"failureReason\":2,\"prompt\":\"Legacy 18\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v18\"],\"test\":{\"vars\":{\"q\":\"v18\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 19\",\"failureReason\":0,\"prompt\":\"Legacy 19\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v19\"],\"test\":{\"vars\":{\"q\":\"v19\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 20\",\"failureReason\":0,\"prompt\":\"Legacy 20\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v20\"],\"test\":{\"vars\":{\"q\":\"v20\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 21---detail\",\"failureReason\":1,\"prompt\":\"Legacy 21\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v21\"],\"test\":{\"vars\":{\"q\":\"v21\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 22\",\"failureReason\":0,\"prompt\":\"Legacy 22\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v22\"],\"test\":{\"vars\":{\"q\":\"v22\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 23\",\"failureReason\":0,\"prompt\":\"Legacy 23\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v23\"],\"test\":{\"vars\":{\"q\":\"v23\"}}},{\"outputs\":[{\"pass\":false,\"score\":0,\"text\":\"bad 24---detail\",\"failureReason\":2,\"prompt\":\"Legacy 24\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v24\"],\"test\":{\"vars\":{\"q\":\"v24\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 25\",\"failureReason\":0,\"prompt\":\"Legacy 25\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v25\"],\"test\":{\"vars\":{\"q\":\"v25\"}}},{\"outputs\":[{\"pass\":true,\"score\":1,\"text\":\"echo 26\",\"failureReason\":0,\"prompt\":\"Legacy 26\",\"latencyMs\":1,\"cost\":0,\"namedScores\":{}}],\"vars\":[\"v26\"],\"test\":{\"vars\":{\"q\":\"v26\"}}}]}}",
+      "{\"description\":\"Legacy v3 eval\",\"prompts\":[\"Legacy {{q}}\"],\"providers\":[\"echo\"],\"tests\":[{\"vars\":{\"q\":\"v0\"}},{\"vars\":{\"q\":\"v1\"}},{\"vars\":{\"q\":\"v2\"}},{\"vars\":{\"q\":\"v3\"}},{\"vars\":{\"q\":\"v4\"}},{\"vars\":{\"q\":\"v5\"}},{\"vars\":{\"q\":\"v6\"}},{\"vars\":{\"q\":\"v7\"}},{\"vars\":{\"q\":\"v8\"}},{\"vars\":{\"q\":\"v9\"}},{\"vars\":{\"q\":\"v10\"}},{\"vars\":{\"q\":\"v11\"}},{\"vars\":{\"q\":\"v12\"}},{\"vars\":{\"q\":\"v13\"}},{\"vars\":{\"q\":\"v14\"}},{\"vars\":{\"q\":\"v15\"}},{\"vars\":{\"q\":\"v16\"}},{\"vars\":{\"q\":\"v17\"}},{\"vars\":{\"q\":\"v18\"}},{\"vars\":{\"q\":\"v19\"}},{\"vars\":{\"q\":\"v20\"}},{\"vars\":{\"q\":\"v21\"}},{\"vars\":{\"q\":\"v22\"}},{\"vars\":{\"q\":\"v23\"}},{\"vars\":{\"q\":\"v24\"}},{\"vars\":{\"q\":\"v25\"}},{\"vars\":{\"q\":\"v26\"}}]}",
+      "legacy@example.com",
+      null,
+      null,
+      0,
+      null
+     ]
+    ]
+   },
+   "prompts": {
+    "columns": [
+     "id",
+     "created_at",
+     "prompt"
+    ],
+    "rows": [
+     [
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "2026-10-31 05:36:43",
+      "Hello {{name}}"
+     ],
+     [
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "2026-10-31 05:36:43",
+      "Bye {{name}} from {{place}}"
+     ],
+     [
+      "70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c",
+      "2026-10-31 05:36:47",
+      "Summarize {{text}}"
+     ]
+    ]
+   },
+   "datasets": {
+    "columns": [
+     "id",
+     "created_at",
+     "tests"
+    ],
+    "rows": [
+     [
+      "aef222809530ad2badc2c99c2ad1aa9ff7bf4abc7321bce35619291fd26c2667",
+      "2026-10-31 05:36:43",
+      "[{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}]},{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}]}]"
+     ],
+     [
+      "032005ef59952046d3b148c52b30779c7910b3cd6047f685837eb03e7b8ace94",
+      "2026-10-31 05:36:47",
+      "[{\"vars\":{\"text\":\"alpha beta\"}}]"
+     ]
+    ]
+   },
+   "evals_to_prompts": {
+    "columns": [
+     "eval_id",
+     "prompt_id"
+    ],
+    "rows": [
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7"
+     ],
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2"
+     ],
+     [
+      "eval-rjI-2026-10-31T05:36:47",
+      "70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2"
+     ]
+    ]
+   },
+   "evals_to_datasets": {
+    "columns": [
+     "eval_id",
+     "dataset_id"
+    ],
+    "rows": [
+     [
+      "eval-FzK-2026-10-31T05:36:43",
+      "aef222809530ad2badc2c99c2ad1aa9ff7bf4abc7321bce35619291fd26c2667"
+     ],
+     [
+      "eval-rjI-2026-10-31T05:36:47",
+      "032005ef59952046d3b148c52b30779c7910b3cd6047f685837eb03e7b8ace94"
+     ],
+     [
+      "eval-DFs-2026-10-31T05:36:51",
+      "aef222809530ad2badc2c99c2ad1aa9ff7bf4abc7321bce35619291fd26c2667"
+     ]
+    ]
+   },
+   "eval_results": {
+    "columns": [
+     "id",
+     "created_at",
+     "updated_at",
+     "eval_id",
+     "prompt_idx",
+     "test_idx",
+     "test_case",
+     "prompt",
+     "prompt_id",
+     "provider",
+     "latency_ms",
+     "cost",
+     "response",
+     "error",
+     "success",
+     "score",
+     "grading_result",
+     "named_scores",
+     "metadata",
+     "failure_reason"
+    ],
+    "rows": [
+     [
+      "f407b63d-7fc9-4619-b46e-eac3792c90c4",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      0,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello World\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      6,
+      0.0,
+      "{\"output\":\"Hello World\",\"raw\":\"Hello World\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "d44aec47-e3a5-42dd-a2cd-70e26dffab86",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      1,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye World from Paris\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      3,
+      0.0,
+      "{\"output\":\"Bye World from Paris\",\"raw\":\"Bye World from Paris\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "48c7671f-6b9f-481d-a380-e60e20b37a85",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      0,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello Bob\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      3,
+      0.0,
+      "{\"output\":\"Hello Bob\",\"raw\":\"Hello Bob\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Hello Bob\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ],
+     [
+      "b3fa69be-78b5-41c0-9877-aef8ba4fd7b4",
+      "2026-10-31 05:36:43",
+      "2026-10-31 05:36:43",
+      "eval-FzK-2026-10-31T05:36:43",
+      1,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye Bob from Rome\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      3,
+      0.0,
+      "{\"output\":\"Bye Bob from Rome\",\"raw\":\"Bye Bob from Rome\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Bye Bob from Rome\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ],
+     [
+      "61e21c39-ca13-4e3e-8259-0bdfaa757a91",
+      "2026-10-31 05:36:47",
+      "2026-10-31 05:36:47",
+      "eval-rjI-2026-10-31T05:36:47",
+      0,
+      0,
+      "{\"vars\":{\"text\":\"alpha beta\"},\"assert\":[],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Summarize alpha beta\",\"label\":\"Summarize {{text}}\",\"config\":{}}",
+      "70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      6,
+      0.0,
+      "{\"output\":\"Summarize alpha beta\",\"raw\":\"Summarize alpha beta\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"No assertions\",\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0}}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "bf7e8013-1110-40c7-8187-1c5c00d36401",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      0,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello World\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      10,
+      0.0,
+      "{\"output\":\"Hello World\",\"raw\":\"Hello World\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "e8b1bcc7-0a26-4265-86e2-1ff1f799abbb",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      1,
+      0,
+      "{\"vars\":{\"name\":\"World\",\"place\":\"Paris\"},\"assert\":[{\"type\":\"contains\",\"value\":\"World\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye World from Paris\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      7,
+      0.0,
+      "{\"output\":\"Bye World from Paris\",\"raw\":\"Bye World from Paris\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      null,
+      1,
+      1.0,
+      "{\"pass\":true,\"score\":1,\"reason\":\"All assertions passed\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":true,\"score\":1,\"reason\":\"Assertion passed\",\"assertion\":{\"type\":\"contains\",\"value\":\"World\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      0
+     ],
+     [
+      "916133b3-893a-429e-9698-59962dda6bcc",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      0,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Hello Bob\",\"label\":\"Hello {{name}}\",\"config\":{}}",
+      "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      6,
+      0.0,
+      "{\"output\":\"Hello Bob\",\"raw\":\"Hello Bob\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Hello Bob\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Hello Bob\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ],
+     [
+      "36404c82-3d5e-4510-b762-bcc00f026d58",
+      "2026-10-31 05:36:51",
+      "2026-10-31 05:36:51",
+      "eval-DFs-2026-10-31T05:36:51",
+      1,
+      1,
+      "{\"vars\":{\"name\":\"Bob\",\"place\":\"Rome\"},\"assert\":[{\"type\":\"equals\",\"value\":\"nope\"}],\"options\":{},\"metadata\":{}}",
+      "{\"raw\":\"Bye Bob from Rome\",\"label\":\"Bye {{name}} from {{place}}\",\"config\":{}}",
+      "334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2",
+      "{\"id\":\"echo\",\"label\":\"\",\"config\":{\"basePath\":\"/tmp/tmpy_8kld75\"}}",
+      5,
+      0.0,
+      "{\"output\":\"Bye Bob from Rome\",\"raw\":\"Bye Bob from Rome\",\"cost\":0,\"cached\":false,\"tokenUsage\":{\"prompt\":0,\"completion\":0,\"cached\":0,\"total\":0,\"numRequests\":1,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0},\"assertions\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0,\"completionDetails\":{\"reasoning\":0,\"acceptedPrediction\":0,\"rejectedPrediction\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0}}},\"isRefusal\":false,\"metadata\":{}}",
+      "Expected output \"Bye Bob from Rome\" to equal \"nope\"",
+      0,
+      0.0,
+      "{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"namedScores\":{},\"tokensUsed\":{\"total\":0,\"prompt\":0,\"completion\":0,\"cached\":0,\"numRequests\":0},\"componentResults\":[{\"pass\":false,\"score\":0,\"reason\":\"Expected output \\\"Bye Bob from Rome\\\" to equal \\\"nope\\\"\",\"assertion\":{\"type\":\"equals\",\"value\":\"nope\"}}]}",
+      "{}",
+      "{\"_promptfooFileMetadata\":{}}",
+      1
+     ]
+    ]
+   }
+  }
+ },
+ "cases": [
+  {
+   "name": "empty_list",
+   "stage": "empty",
+   "args": [
+    "list",
+    "evals"
+   ],
+   "exitCode": 0,
+   "output": "No data to display\n========================================================================================================================\nRun promptfoo show eval <id> to see details of a specific evaluation.\nRun promptfoo show prompt <id> to see details of a specific prompt.\n"
+  },
+  {
+   "name": "empty_prompts",
+   "stage": "empty",
+   "args": [
+    "list",
+    "prompts"
+   ],
+   "exitCode": 0,
+   "output": "No data to display\n========================================================================================================================\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "empty_datasets",
+   "stage": "empty",
+   "args": [
+    "list",
+    "datasets"
+   ],
+   "exitCode": 0,
+   "output": "No data to display\n========================================================================================================================\nRun promptfoo show dataset <id> to see details of a specific dataset.\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "empty_show",
+   "stage": "empty",
+   "args": [
+    "show"
+   ],
+   "exitCode": 1,
+   "output": "No eval found\nRun promptfoo eval to create one.\n"
+  },
+  {
+   "name": "empty_show_eval",
+   "stage": "empty",
+   "args": [
+    "show",
+    "eval"
+   ],
+   "exitCode": 1,
+   "output": "No eval found\nRun promptfoo eval to create one.\n"
+  },
+  {
+   "name": "empty_del_latest",
+   "stage": "empty",
+   "args": [
+    "delete",
+    "eval",
+    "latest"
+   ],
+   "exitCode": 1,
+   "output": "No eval found.\n"
+  },
+  {
+   "name": "list",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "evals"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────────────────────────\u001b[39m\u001b[90m┬─────────────────────────\u001b[39m\u001b[90m┬──────────\u001b[39m\u001b[90m┬────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m eval id                        \u001b[39m\u001b[90m│\u001b[39m\u001b[31m description             \u001b[39m\u001b[90m│\u001b[39m\u001b[31m prompts  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m vars       \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-FzK-2026-10-31T05:36:43   \u001b[90m│\u001b[39m First echo eval         \u001b[90m│\u001b[39m 652b7c,  \u001b[90m│\u001b[39m name,      \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m                         \u001b[90m│\u001b[39m 334744   \u001b[90m│\u001b[39m place      \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-rjI-2026-10-31T05:36:47   \u001b[90m│\u001b[39m A second eval with a    \u001b[90m│\u001b[39m 70365c   \u001b[90m│\u001b[39m text       \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m description that is     \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m quite long, long enough \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m to exceed one hundred   \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m characters in...        \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51   \u001b[90m│\u001b[39m First echo eval         \u001b[90m│\u001b[39m 652b7c,  \u001b[90m│\u001b[39m name,      \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m                         \u001b[90m│\u001b[39m 334744   \u001b[90m│\u001b[39m place      \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────\u001b[39m\u001b[90m┴─────────────────────────\u001b[39m\u001b[90m┴──────────\u001b[39m\u001b[90m┴────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show eval <id> to see details of a specific evaluation.\nRun promptfoo show prompt <id> to see details of a specific prompt.\n"
+  },
+  {
+   "name": "list_ids",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "evals",
+    "--ids-only"
+   ],
+   "exitCode": 0,
+   "output": "eval-DFs-2026-10-31T05:36:51\neval-rjI-2026-10-31T05:36:47\neval-FzK-2026-10-31T05:36:43\n"
+  },
+  {
+   "name": "list_n1",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "evals",
+    "-n",
+    "1"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────────────────────────\u001b[39m\u001b[90m┬─────────────────────────\u001b[39m\u001b[90m┬──────────\u001b[39m\u001b[90m┬────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m eval id                        \u001b[39m\u001b[90m│\u001b[39m\u001b[31m description             \u001b[39m\u001b[90m│\u001b[39m\u001b[31m prompts  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m vars       \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51   \u001b[90m│\u001b[39m First echo eval         \u001b[90m│\u001b[39m 652b7c,  \u001b[90m│\u001b[39m name,      \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m                         \u001b[90m│\u001b[39m 334744   \u001b[90m│\u001b[39m place      \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────\u001b[39m\u001b[90m┴─────────────────────────\u001b[39m\u001b[90m┴──────────\u001b[39m\u001b[90m┴────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show eval <id> to see details of a specific evaluation.\nRun promptfoo show prompt <id> to see details of a specific prompt.\n"
+  },
+  {
+   "name": "prompts",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "prompts"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────\u001b[39m\u001b[90m┬──────────────────────────────\u001b[39m\u001b[90m┬────────\u001b[39m\u001b[90m┬──────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m prompt id  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m raw                          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m evals  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m recent eval                  \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 652b7c     \u001b[90m│\u001b[39m Hello {{name}}               \u001b[90m│\u001b[39m 2      \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 334744     \u001b[90m│\u001b[39m Bye {{name}} from {{place}}  \u001b[90m│\u001b[39m 2      \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 70365c     \u001b[90m│\u001b[39m Summarize {{text}}           \u001b[90m│\u001b[39m 1      \u001b[90m│\u001b[39m eval-rjI-2026-10-31T05:36:47 \u001b[90m│\u001b[39m\n\u001b[90m└────────────\u001b[39m\u001b[90m┴──────────────────────────────\u001b[39m\u001b[90m┴────────\u001b[39m\u001b[90m┴──────────────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "prompts_ids",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "prompts",
+    "--ids-only"
+   ],
+   "exitCode": 0,
+   "output": "652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7\n334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2\n70365cb164e17e6004590d1b695012f2c6d03eeb553b220589f7e8462354643c\n"
+  },
+  {
+   "name": "prompts_n1",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "prompts",
+    "-n",
+    "1"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────\u001b[39m\u001b[90m┬──────────────────────────────\u001b[39m\u001b[90m┬────────\u001b[39m\u001b[90m┬──────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m prompt id  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m raw                          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m evals  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m recent eval                  \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 652b7c     \u001b[90m│\u001b[39m Hello {{name}}               \u001b[90m│\u001b[39m 1      \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 334744     \u001b[90m│\u001b[39m Bye {{name}} from {{place}}  \u001b[90m│\u001b[39m 1      \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m└────────────\u001b[39m\u001b[90m┴──────────────────────────────\u001b[39m\u001b[90m┴────────\u001b[39m\u001b[90m┴──────────────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "datasets",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "datasets"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────\u001b[39m\u001b[90m┬───────────────\u001b[39m\u001b[90m┬────────\u001b[39m\u001b[90m┬──────────\u001b[39m\u001b[90m┬──────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m dataset id \u001b[39m\u001b[90m│\u001b[39m\u001b[31m best prompt   \u001b[39m\u001b[90m│\u001b[39m\u001b[31m evals  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m prompts  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m recent eval                  \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼───────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 032005     \u001b[90m│\u001b[39m 70365c        \u001b[90m│\u001b[39m 1      \u001b[90m│\u001b[39m 1        \u001b[90m│\u001b[39m eval-rjI-2026-10-31T05:36:47 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼───────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m aef222     \u001b[90m│\u001b[39m 652b7c        \u001b[90m│\u001b[39m 2      \u001b[90m│\u001b[39m 2        \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m└────────────\u001b[39m\u001b[90m┴───────────────\u001b[39m\u001b[90m┴────────\u001b[39m\u001b[90m┴──────────\u001b[39m\u001b[90m┴──────────────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show dataset <id> to see details of a specific dataset.\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "datasets_ids",
+   "stage": "stage1",
+   "args": [
+    "list",
+    "datasets",
+    "--ids-only"
+   ],
+   "exitCode": 0,
+   "output": "032005ef59952046d3b148c52b30779c7910b3cd6047f685837eb03e7b8ace94\naef222809530ad2badc2c99c2ad1aa9ff7bf4abc7321bce35619291fd26c2667\n"
+  },
+  {
+   "name": "show",
+   "stage": "stage1",
+   "args": [
+    "show"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌──────────────────────────────\u001b[39m\u001b[90m┬──────────────────────────────\u001b[39m\u001b[90m┬──────────────────────────────\u001b[39m\u001b[90m┬──────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m name                         \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m place                        \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [echo] Hello {{name}}        \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [echo] Bye {{name}} from     \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m                              \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m                              \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m                              \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m {{place}}                    \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m├──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m World                        \u001b[90m│\u001b[39m Paris                        \u001b[90m│\u001b[39m [PASS] Hello World           \u001b[90m│\u001b[39m [PASS] Bye World from Paris  \u001b[90m│\u001b[39m\n\u001b[90m├──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m Bob                          \u001b[90m│\u001b[39m Rome                         \u001b[90m│\u001b[39m [FAIL] Hello Bob             \u001b[90m│\u001b[39m [FAIL] Bye Bob from Rome     \u001b[90m│\u001b[39m\n\u001b[90m└──────────────────────────────\u001b[39m\u001b[90m┴──────────────────────────────\u001b[39m\u001b[90m┴──────────────────────────────\u001b[39m\u001b[90m┴──────────────────────────────┘\u001b[39m\n========================================================================================================================\nEval eval-DFs-2026-10-31T05:36:51\n========================================================================================================================\n2 prompts\nPrompt IDs: 652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7, 334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2\n2 variables: name, place\n"
+  },
+  {
+   "name": "show_eval",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "eval"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌──────────────────────────────\u001b[39m\u001b[90m┬──────────────────────────────\u001b[39m\u001b[90m┬──────────────────────────────\u001b[39m\u001b[90m┬──────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m name                         \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m place                        \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [echo] Hello {{name}}        \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [echo] Bye {{name}} from     \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m                              \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m                              \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m                              \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m {{place}}                    \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m├──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m World                        \u001b[90m│\u001b[39m Paris                        \u001b[90m│\u001b[39m [PASS] Hello World           \u001b[90m│\u001b[39m [PASS] Bye World from Paris  \u001b[90m│\u001b[39m\n\u001b[90m├──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m Bob                          \u001b[90m│\u001b[39m Rome                         \u001b[90m│\u001b[39m [FAIL] Hello Bob             \u001b[90m│\u001b[39m [FAIL] Bye Bob from Rome     \u001b[90m│\u001b[39m\n\u001b[90m└──────────────────────────────\u001b[39m\u001b[90m┴──────────────────────────────\u001b[39m\u001b[90m┴──────────────────────────────\u001b[39m\u001b[90m┴──────────────────────────────┘\u001b[39m\n========================================================================================================================\nEval eval-DFs-2026-10-31T05:36:51\n========================================================================================================================\n2 prompts\nPrompt IDs: 652b7c016734eedbef52857a9b0ed99076468635861e3a29201b847f71e86da7, 334744fd24e5dcc157c48dfc22e32196aefa56e149dbc2881c84273e6611d6a2\n2 variables: name, place\n"
+  },
+  {
+   "name": "show_missing",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "nope"
+   ],
+   "exitCode": 1,
+   "output": "No resource found with ID nope\nRun promptfoo list evals, promptfoo list prompts, or promptfoo list datasets to see available IDs.\n"
+  },
+  {
+   "name": "show_prompt",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "prompt",
+    "652b7c"
+   ],
+   "exitCode": 0,
+   "output": "========================================================================================================================\nHello {{name}}\n========================================================================================================================\nPrompt 652b7c\n========================================================================================================================\nThis prompt is used in the following evals:\n\u001b[90m┌────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m Eval ID            \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Dataset ID         \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Raw score          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass rate          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass count         \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Fail count         \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-F             \u001b[90m│\u001b[39m aef222             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-D             \u001b[90m│\u001b[39m aef222             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show eval <id> to see details of a specific evaluation.\nRun promptfoo show dataset <id> to see details of a specific dataset.\n"
+  },
+  {
+   "name": "show_prompt_top",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "652b7c"
+   ],
+   "exitCode": 0,
+   "output": "========================================================================================================================\nHello {{name}}\n========================================================================================================================\nPrompt 652b7c\n========================================================================================================================\nThis prompt is used in the following evals:\n\u001b[90m┌────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m Eval ID            \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Dataset ID         \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Raw score          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass rate          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass count         \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Fail count         \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-F             \u001b[90m│\u001b[39m aef222             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-D             \u001b[90m│\u001b[39m aef222             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show eval <id> to see details of a specific evaluation.\nRun promptfoo show dataset <id> to see details of a specific dataset.\n"
+  },
+  {
+   "name": "show_dataset",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "dataset",
+    "aef222"
+   ],
+   "exitCode": 0,
+   "output": "========================================================================================================================\nDataset aef222\n========================================================================================================================\nThis dataset is used in the following evals:\n\u001b[90m┌────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m Eval ID            \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Prompt ID          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Raw score          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass rate          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass count         \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Fail count         \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-D             \u001b[90m│\u001b[39m 652b7c             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-D             \u001b[90m│\u001b[39m 334744             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "show_dataset_top",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "aef222"
+   ],
+   "exitCode": 0,
+   "output": "========================================================================================================================\nDataset aef222\n========================================================================================================================\nThis dataset is used in the following evals:\n\u001b[90m┌────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────\u001b[39m\u001b[90m┬────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m Eval ID            \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Prompt ID          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Raw score          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass rate          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Pass count         \u001b[39m\u001b[90m│\u001b[39m\u001b[31m Fail count         \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-D             \u001b[90m│\u001b[39m 652b7c             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────\u001b[39m\u001b[90m┼────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-D             \u001b[90m│\u001b[39m 334744             \u001b[90m│\u001b[39m 1.00               \u001b[90m│\u001b[39m 50.00%             \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m 1                  \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────\u001b[39m\u001b[90m┴────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "show_prefix",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "eval-"
+   ],
+   "exitCode": 1,
+   "output": "No evaluation found with ID eval-\nRun promptfoo list evals to see available evaluation IDs.\n"
+  },
+  {
+   "name": "show_prompt_missing",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "prompt",
+    "zzz"
+   ],
+   "exitCode": 1,
+   "output": "Prompt with ID zzz not found.\n"
+  },
+  {
+   "name": "show_dataset_missing",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "dataset",
+    "zzz"
+   ],
+   "exitCode": 1,
+   "output": "Dataset with ID zzz not found.\n"
+  },
+  {
+   "name": "show_eval_missing",
+   "stage": "stage1",
+   "args": [
+    "show",
+    "eval",
+    "zzz"
+   ],
+   "exitCode": 1,
+   "output": "No evaluation found with ID zzz\nRun promptfoo list evals to see available evaluation IDs.\n"
+  },
+  {
+   "name": "v3_list",
+   "stage": "stage2",
+   "args": [
+    "list",
+    "evals"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────────────────────────\u001b[39m\u001b[90m┬─────────────────────────\u001b[39m\u001b[90m┬──────────\u001b[39m\u001b[90m┬────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m eval id                        \u001b[39m\u001b[90m│\u001b[39m\u001b[31m description             \u001b[39m\u001b[90m│\u001b[39m\u001b[31m prompts  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m vars       \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-v3L-2020-01-02T03:04:05   \u001b[90m│\u001b[39m Legacy v3 eval          \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-FzK-2026-10-31T05:36:43   \u001b[90m│\u001b[39m First echo eval         \u001b[90m│\u001b[39m 652b7c,  \u001b[90m│\u001b[39m name,      \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m                         \u001b[90m│\u001b[39m 334744   \u001b[90m│\u001b[39m place      \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-rjI-2026-10-31T05:36:47   \u001b[90m│\u001b[39m A second eval with a    \u001b[90m│\u001b[39m 70365c   \u001b[90m│\u001b[39m text       \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m description that is     \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m quite long, long enough \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m to exceed one hundred   \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m characters in...        \u001b[90m│\u001b[39m          \u001b[90m│\u001b[39m            \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────\u001b[39m\u001b[90m┼─────────────────────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51   \u001b[90m│\u001b[39m First echo eval         \u001b[90m│\u001b[39m 652b7c,  \u001b[90m│\u001b[39m name,      \u001b[90m│\u001b[39m\n\u001b[90m│\u001b[39m                                \u001b[90m│\u001b[39m                         \u001b[90m│\u001b[39m 334744   \u001b[90m│\u001b[39m place      \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────\u001b[39m\u001b[90m┴─────────────────────────\u001b[39m\u001b[90m┴──────────\u001b[39m\u001b[90m┴────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show eval <id> to see details of a specific evaluation.\nRun promptfoo show prompt <id> to see details of a specific prompt.\n"
+  },
+  {
+   "name": "v3_show",
+   "stage": "stage2",
+   "args": [
+    "show",
+    "eval",
+    "eval-v3L-2020-01-02T03:04:05"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m q                                                          \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [echo] Legacy {{q}}                                        \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v0                                                         \u001b[90m│\u001b[39m [ERROR] bad 0---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v1                                                         \u001b[90m│\u001b[39m [PASS] echo 1                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v2                                                         \u001b[90m│\u001b[39m [PASS] echo 2                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v3                                                         \u001b[90m│\u001b[39m [FAIL] bad 3---detail                                      \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v4                                                         \u001b[90m│\u001b[39m [PASS] echo 4                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v5                                                         \u001b[90m│\u001b[39m [PASS] echo 5                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v6                                                         \u001b[90m│\u001b[39m [ERROR] bad 6---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v7                                                         \u001b[90m│\u001b[39m [PASS] echo 7                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v8                                                         \u001b[90m│\u001b[39m [PASS] echo 8                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v9                                                         \u001b[90m│\u001b[39m [FAIL] bad 9---detail                                      \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v10                                                        \u001b[90m│\u001b[39m [PASS] echo 10                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v11                                                        \u001b[90m│\u001b[39m [PASS] echo 11                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v12                                                        \u001b[90m│\u001b[39m [ERROR] bad 12---detail                                    \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v13                                                        \u001b[90m│\u001b[39m [PASS] echo 13                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v14                                                        \u001b[90m│\u001b[39m [PASS] echo 14                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v15                                                        \u001b[90m│\u001b[39m [FAIL] bad 15---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v16                                                        \u001b[90m│\u001b[39m [PASS] echo 16                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v17                                                        \u001b[90m│\u001b[39m [PASS] echo 17                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v18                                                        \u001b[90m│\u001b[39m [ERROR] bad 18---detail                                    \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v19                                                        \u001b[90m│\u001b[39m [PASS] echo 19                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v20                                                        \u001b[90m│\u001b[39m [PASS] echo 20                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v21                                                        \u001b[90m│\u001b[39m [FAIL] bad 21---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v22                                                        \u001b[90m│\u001b[39m [PASS] echo 22                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v23                                                        \u001b[90m│\u001b[39m [PASS] echo 23                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v24                                                        \u001b[90m│\u001b[39m [ERROR] bad 24---detail                                    \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────────────────────────┘\u001b[39m\n... 2 more rows not shown ...\n\n========================================================================================================================\nEval eval-v3L-2020-01-02T03:04:05\n========================================================================================================================\n1 prompts\nPrompt IDs: legacyprompt0001\n1 variables: q\n"
+  },
+  {
+   "name": "v3_show_top",
+   "stage": "stage2",
+   "args": [
+    "show",
+    "eval-v3L-2020-01-02T03:04:05"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┬────────────────────────────────────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[1m\u001b[34m q                                                          \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\u001b[1m\u001b[34m [echo] Legacy {{q}}                                        \u001b[39m\u001b[22m\u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v0                                                         \u001b[90m│\u001b[39m [ERROR] bad 0---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v1                                                         \u001b[90m│\u001b[39m [PASS] echo 1                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v2                                                         \u001b[90m│\u001b[39m [PASS] echo 2                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v3                                                         \u001b[90m│\u001b[39m [FAIL] bad 3---detail                                      \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v4                                                         \u001b[90m│\u001b[39m [PASS] echo 4                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v5                                                         \u001b[90m│\u001b[39m [PASS] echo 5                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v6                                                         \u001b[90m│\u001b[39m [ERROR] bad 6---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v7                                                         \u001b[90m│\u001b[39m [PASS] echo 7                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v8                                                         \u001b[90m│\u001b[39m [PASS] echo 8                                              \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v9                                                         \u001b[90m│\u001b[39m [FAIL] bad 9---detail                                      \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v10                                                        \u001b[90m│\u001b[39m [PASS] echo 10                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v11                                                        \u001b[90m│\u001b[39m [PASS] echo 11                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v12                                                        \u001b[90m│\u001b[39m [ERROR] bad 12---detail                                    \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v13                                                        \u001b[90m│\u001b[39m [PASS] echo 13                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v14                                                        \u001b[90m│\u001b[39m [PASS] echo 14                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v15                                                        \u001b[90m│\u001b[39m [FAIL] bad 15---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v16                                                        \u001b[90m│\u001b[39m [PASS] echo 16                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v17                                                        \u001b[90m│\u001b[39m [PASS] echo 17                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v18                                                        \u001b[90m│\u001b[39m [ERROR] bad 18---detail                                    \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v19                                                        \u001b[90m│\u001b[39m [PASS] echo 19                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v20                                                        \u001b[90m│\u001b[39m [PASS] echo 20                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v21                                                        \u001b[90m│\u001b[39m [FAIL] bad 21---detail                                     \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v22                                                        \u001b[90m│\u001b[39m [PASS] echo 22                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v23                                                        \u001b[90m│\u001b[39m [PASS] echo 23                                             \u001b[90m│\u001b[39m\n\u001b[90m├────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┼────────────────────────────────────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m v24                                                        \u001b[90m│\u001b[39m [ERROR] bad 24---detail                                    \u001b[90m│\u001b[39m\n\u001b[90m└────────────────────────────────────────────────────────────\u001b[39m\u001b[90m┴────────────────────────────────────────────────────────────┘\u001b[39m\n... 2 more rows not shown ...\n\n========================================================================================================================\nEval eval-v3L-2020-01-02T03:04:05\n========================================================================================================================\n1 prompts\nPrompt IDs: legacyprompt0001\n1 variables: q\n"
+  },
+  {
+   "name": "v3_prompts",
+   "stage": "stage2",
+   "args": [
+    "list",
+    "prompts"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────\u001b[39m\u001b[90m┬──────────────────────────────\u001b[39m\u001b[90m┬────────\u001b[39m\u001b[90m┬──────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m prompt id  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m raw                          \u001b[39m\u001b[90m│\u001b[39m\u001b[31m evals  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m recent eval                  \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 652b7c     \u001b[90m│\u001b[39m Hello {{name}}               \u001b[90m│\u001b[39m 2      \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 334744     \u001b[90m│\u001b[39m Bye {{name}} from {{place}}  \u001b[90m│\u001b[39m 2      \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼──────────────────────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 70365c     \u001b[90m│\u001b[39m Summarize {{text}}           \u001b[90m│\u001b[39m 1      \u001b[90m│\u001b[39m eval-rjI-2026-10-31T05:36:47 \u001b[90m│\u001b[39m\n\u001b[90m└────────────\u001b[39m\u001b[90m┴──────────────────────────────\u001b[39m\u001b[90m┴────────\u001b[39m\u001b[90m┴──────────────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "v3_datasets",
+   "stage": "stage2",
+   "args": [
+    "list",
+    "datasets"
+   ],
+   "exitCode": 0,
+   "output": "\u001b[90m┌────────────\u001b[39m\u001b[90m┬───────────────\u001b[39m\u001b[90m┬────────\u001b[39m\u001b[90m┬──────────\u001b[39m\u001b[90m┬──────────────────────────────┐\u001b[39m\n\u001b[90m│\u001b[39m\u001b[31m dataset id \u001b[39m\u001b[90m│\u001b[39m\u001b[31m best prompt   \u001b[39m\u001b[90m│\u001b[39m\u001b[31m evals  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m prompts  \u001b[39m\u001b[90m│\u001b[39m\u001b[31m recent eval                  \u001b[39m\u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼───────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m a29a73     \u001b[90m│\u001b[39m N/A           \u001b[90m│\u001b[39m 1      \u001b[90m│\u001b[39m 0        \u001b[90m│\u001b[39m eval-v3L-2020-01-02T03:04:05 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼───────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 032005     \u001b[90m│\u001b[39m 70365c        \u001b[90m│\u001b[39m 1      \u001b[90m│\u001b[39m 1        \u001b[90m│\u001b[39m eval-rjI-2026-10-31T05:36:47 \u001b[90m│\u001b[39m\n\u001b[90m├────────────\u001b[39m\u001b[90m┼───────────────\u001b[39m\u001b[90m┼────────\u001b[39m\u001b[90m┼──────────\u001b[39m\u001b[90m┼──────────────────────────────┤\u001b[39m\n\u001b[90m│\u001b[39m aef222     \u001b[90m│\u001b[39m 652b7c        \u001b[90m│\u001b[39m 2      \u001b[90m│\u001b[39m 2        \u001b[90m│\u001b[39m eval-DFs-2026-10-31T05:36:51 \u001b[90m│\u001b[39m\n\u001b[90m└────────────\u001b[39m\u001b[90m┴───────────────\u001b[39m\u001b[90m┴────────\u001b[39m\u001b[90m┴──────────\u001b[39m\u001b[90m┴──────────────────────────────┘\u001b[39m\n========================================================================================================================\nRun promptfoo show dataset <id> to see details of a specific dataset.\nRun promptfoo show prompt <id> to see details of a specific prompt.\nRun promptfoo show eval <id> to see details of a specific evaluation.\n"
+  },
+  {
+   "name": "v3_show_prompt",
+   "stage": "stage2",
+   "args": [
+    "show",
+    "prompt",
+    "b13387"
+   ],
+   "exitCode": 1,
+   "output": "Prompt with ID b13387 not found.\n"
+  },
+  {
+   "name": "del_missing",
+   "stage": "deletes",
+   "args": [
+    "delete",
+    "nope"
+   ],
+   "exitCode": 1,
+   "output": "No resource found with ID nope\n"
+  },
+  {
+   "name": "del_prefix",
+   "stage": "deletes",
+   "args": [
+    "delete",
+    "eval-"
+   ],
+   "exitCode": 1,
+   "output": "Could not delete evaluation with ID eval-:\nError: Eval with ID eval- not found\n"
+  },
+  {
+   "name": "del_eval_missing",
+   "stage": "deletes",
+   "args": [
+    "delete",
+    "eval",
+    "nope"
+   ],
+   "exitCode": 1,
+   "output": "Could not delete evaluation with ID nope:\nError: Eval with ID nope not found\n"
+  },
+  {
+   "name": "del_v3",
+   "stage": "deletes",
+   "args": [
+    "delete",
+    "eval",
+    "eval-v3L-2020-01-02T03:04:05"
+   ],
+   "exitCode": 0,
+   "output": "Evaluation with ID eval-v3L-2020-01-02T03:04:05 has been successfully deleted.\n"
+  },
+  {
+   "name": "del_latest",
+   "stage": "deletes",
+   "args": [
+    "delete",
+    "eval",
+    "latest"
+   ],
+   "exitCode": 0,
+   "output": "Evaluation with ID eval-DFs-2026-10-31T05:36:51 has been successfully deleted.\n"
+  },
+  {
+   "name": "del_after_list",
+   "stage": "deletes",
+   "args": [
+    "list",
+    "evals",
+    "--ids-only"
+   ],
+   "exitCode": 0,
+   "output": "eval-rjI-2026-10-31T05:36:47\neval-FzK-2026-10-31T05:36:43\n"
+  }
+ ],
+ "countsAfterDeletes": {
+  "evals": 2,
+  "prompts": 3,
+  "datasets": 2,
+  "tags": 0,
+  "evals_to_prompts": 3,
+  "evals_to_datasets": 2,
+  "evals_to_tags": 0,
+  "eval_results": 5,
+  "traces": 0,
+  "spans": 0,
+  "blob_assets": 0,
+  "blob_references": 0
+ }
+}
