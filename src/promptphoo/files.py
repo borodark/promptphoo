@@ -238,6 +238,33 @@ def maybe_load_config_from_external_file(
     return maybe_load_from_external_file(config, context)
 
 
+def maybe_load_response_format_from_external_file(
+    response_format: Any, vars: Mapping[str, Any] | None = None
+) -> Any:
+    """Render and load a response_format, including a nested json_schema file reference.
+    Ports maybeLoadResponseFormatFromExternalFile from src/util/file.ts."""
+    from promptphoo.jsvalues import is_truthy
+    from promptphoo.templating import render_vars_in_object
+
+    if response_format is None:
+        return response_format
+    loaded = maybe_load_from_external_file(render_vars_in_object(response_format, vars))
+    if not is_truthy(loaded) or not isinstance(loaded, dict):
+        return loaded
+    if loaded.get("type") == "json_schema":
+        json_schema = loaded.get("json_schema")
+        nested = loaded.get("schema") or (
+            json_schema.get("schema") if isinstance(json_schema, dict) else None
+        )
+        if is_truthy(nested):
+            loaded_schema = maybe_load_from_external_file(render_vars_in_object(nested, vars))
+            if "schema" in loaded:
+                return {**loaded, "schema": loaded_schema}
+            if isinstance(json_schema, dict) and "schema" in json_schema:
+                return {**loaded, "json_schema": {**json_schema, "schema": loaded_schema}}
+    return loaded
+
+
 def parse_path_or_glob(base_path: str, prompt_path: str) -> dict[str, Any]:
     """Return {extension, function_name, is_path_pattern, file_path} for a prompt/test path."""
     prompt_path = prompt_path.removeprefix("file://")

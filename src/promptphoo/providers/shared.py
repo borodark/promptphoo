@@ -373,3 +373,29 @@ def normalize_finish_reason(raw: Any) -> str | None:
         return None
     key = trimmed.lower()
     return FINISH_REASON_MAP.get(key, key)
+
+
+# Ported in the Anthropic/Bedrock branch.
+
+
+def resolve_direct_test_variable(value: Any, vars: dict[str, Any] | None = None) -> Any:
+    """Read a simple eval variable without evaluating template expressions."""
+    if not isinstance(value, str) or envars.get_env_bool("PROMPTFOO_DISABLE_TEMPLATING"):
+        return value
+    m = re.match(r"^\{\{\s*([A-Za-z_]\w*)\s*\}\}$", value)
+    variable = m.group(1) if m else None
+    return vars[variable] if variable and vars and variable in vars else value
+
+
+def get_openai_chat_output_limit_from_env() -> int | None:
+    limit = get_openai_completion_token_limit_from_env()
+    return limit if limit is not None else envars.get_env_int("OPENAI_MAX_TOKENS")
+
+
+def get_openai_completion_token_limit_from_env() -> int | None:
+    return envars.get_env_int("OPENAI_MAX_COMPLETION_TOKENS")
+
+
+def is_promptfoo_sample_target(provider: Any) -> bool:
+    url = (getattr(provider, "config", None) or {}).get("url")
+    return isinstance(url, str) and ("promptfoo.app" in url or "promptfoo.dev" in url)
