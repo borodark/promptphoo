@@ -1,0 +1,98 @@
+[
+  {
+    "ok": "Hello World"
+  },
+  {
+    "ok": "Hello WORLD"
+  },
+  {
+    "ok": "Premium user"
+  },
+  {
+    "ok": "Free user"
+  },
+  {
+    "ok": "true|3|2.5||"
+  },
+  {
+    "ok": "a,b,3"
+  },
+  {
+    "ok": "[object Object]"
+  },
+  {
+    "ok": "{\"a\":1,\"b\":[true,null,\"x\"]}"
+  },
+  {
+    "ok": "{\n  \"a\": 1\n}"
+  },
+  {
+    "ok": "yes"
+  },
+  {
+    "ok": "yes"
+  },
+  {
+    "ok": "full"
+  },
+  {
+    "ok": "3 5"
+  },
+  {
+    "ok": "HELLO true"
+  },
+  {
+    "ok": "a=1;b=2;"
+  },
+  {
+    "ok": "1:a,2:b,3:c"
+  },
+  {
+    "ok": "line1\n"
+  },
+  {
+    "ok": "fallback|yes"
+  },
+  {
+    "ok": "dflt||dflt"
+  },
+  {
+    "ok": "1, true, z"
+  },
+  {
+    "ok": "abcde..."
+  },
+  {
+    "ok": "true true"
+  },
+  {
+    "ok": "Ann "
+  },
+  {
+    "ok": "bonono split Banana split Banana Split"
+  },
+  {
+    "ok": "{\"k\":2}"
+  },
+  {
+    "ok": "3 1 3 321"
+  },
+  {
+    "ok": "1 0.30000000000000004 2.5"
+  },
+  {
+    "ok": "Hi Bo"
+  },
+  {
+    "ok": "two words|2"
+  },
+  {
+    "ok": "a<br />\nb"
+  },
+  {
+    "ok": "none"
+  },
+  {
+    "ok": "3 3.5 3"
+  }
+]

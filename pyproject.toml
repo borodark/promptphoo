@@ -44,12 +44,15 @@ extend-exclude = ["src/promptphoo/_data"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["SIM102"]
 
 [tool.pyright]
 include = ["src", "tools"]
 exclude = ["src/promptphoo/_data"]
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
