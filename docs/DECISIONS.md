@@ -97,7 +97,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Note: Supersedes D6.
 - Note: pydantic has since been removed from the dependencies, together with the equally unused rapidfuzz and rich (see D59).
 - Modules: src/promptphoo/ajv.py, src/promptphoo/_data/config-schema.json
-- Commits: `6d075ff`
+- Commits: `6d075ff` `9ffd3ec`
 
 ## 8. JS undefined is an omitted key, or the UNDEFINED sentinel where Node emits the key
 - Decision: Model JS `undefined` by leaving the key out. Where Node still emits the key (empty XML tags, the `config` key on prompts, the duration fields in stats), use `jsvalues.UNDEFINED`.
@@ -126,7 +126,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Rationale: `entrypoint.js` requires Node 22.22 or later, and the development machine had 22.21.1. Installing the published release from npm, rather than building a checkout, pins the reference at exactly 0.125.1.
 - Assumption: Running on Node 22.21 doesn't change promptfoo's output for these fixtures.
 - Modules: tools/parity.py
-- Commits: `400e703`
+- Commits: `400e703` `c181195`
 
 ## 12. Parity harness: parallel, normalized, with a list of expected divergences
 - Decision:
@@ -138,7 +138,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Every EXPECTED entry names the phase or the upstream reason that explains it.
 - Implication: The Phase 2 exit criterion was met with 61 PASS and 0 unexpected failures.
 - Modules: tools/parity.py
-- Commits: `400e703`
+- Commits: `400e703` `c181195`
 
 ## 13. pytest runs serially by default
 - Decision: pytest-xdist is installed in the venv but is opt-in (`pytest -n auto`). It is not in pyproject.toml.
@@ -147,6 +147,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Note: The suite has grown to about 6,500 tests and past that mark. pytest-xdist is now in the `dev` extra, and the documented verify command runs `pytest -q -n auto` (see D59).
 - Note: Superseded by D59.
 - Modules: pyproject.toml
+- Commits: `9ffd3ec`
 
 ## 14. Console table colour follows TTY detection
 - Decision: Colour the console table only when stdout is a TTY, using the supports-color rules.
@@ -193,13 +194,14 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: `providers/shared.py` kept the Google branch's version plus four functions from the Anthropic branch. `finish_reason.py` and `providers/credentials.py` still duplicate helpers in `shared.py`, to be folded together.
 - Note: The duplicates have since been folded: `normalize_finish_reason` exists only in `finish_reason.py`, and the credential resolvers only in `providers/credentials.py`.
 - Modules: src/promptphoo/providers/shared.py, src/promptphoo/cache.py
-- Commits: `cef9bb0` `c6eec72`
+- Commits: `cef9bb0` `c6eec72` `c181195`
 
 ## 20. Providers built on OpenAI chat wait for the OpenAI core
 - Decision: Start the OpenAI Responses API, Azure and the table of about 40 OpenAI-compatible wrappers only after the OpenAI chat provider lands.
 - Rationale: All three subclass or reuse the OpenAI chat provider.
 - Note: All three have landed: `providers/openai/responses.py`, `providers/azure/` and `providers/compatible/` (see D23, D24, D31).
 - Modules: src/promptphoo/providers
+- Commits: `c181195`
 
 ## 21. TLS verification follows upstream's PROMPTFOO_INSECURE_SSL, which defaults to true
 - Decision: Port `rejectUnauthorized: !getEnvBool('PROMPTFOO_INSECURE_SSL', true)` as written, so certificates are not verified unless `PROMPTFOO_INSECURE_SSL=false`.
@@ -239,7 +241,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
   - `azure:responses:<deployment>` is now supported (`providers/azure/responses.py`). As upstream, it extends the Azure base and composes the shared ResponsesProcessor, with cost from `calculateAzureCost`. It keeps D23's limits: `stream: true` raises the OpenAI Responses error, and a queued or in-progress background response returns an error and is evicted from the cache.
 - Note: Azure chat now records upstream's GenAI tracing span (see D57). MCP is still not ported.
 - Modules: src/promptphoo/providers/azure, src/promptphoo/providers/function_callbacks.py, src/promptphoo/evaluator/run.py, tools/gen_azure_tables.mjs
-- Commits: `48aa106`
+- Commits: `48aa106` `c181195`
 
 ## 25. LLM-judge matchers always grade locally; Pi and JS rubric prompts raise
 - Decision:
@@ -254,7 +256,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: When the RAG branch lands, it may carry its own copy of `ragDefaults.ts`. Keep one copy and import it from both modules.
 - Note: There is one copy. `finalize_graded_assertion` lives in `assertions/rag_defaults.py` (see D27), and `assertions/modelgraded.py` imports it from there.
 - Modules: src/promptphoo/matchers/rubric.py, src/promptphoo/matchers/llm_grading.py, src/promptphoo/assertions/modelgraded.py, src/promptphoo/assertions/trajectory.py, tools/grading_render_golden.js, tools/gen_grading_render_cases.py
-- Commits: `3a9c8f9`
+- Commits: `3a9c8f9` `c181195`
 
 ## 26. agent-rubric needs an explicitly configured agentic grader
 - Decision:
@@ -277,7 +279,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: Once the shims are replaced, drop the duplicate `is_grader_failure` in rag_defaults.py if llm_grading exports one.
 - Modules: src/promptphoo/matchers, src/promptphoo/providers/defaults.py, src/promptphoo/assertions/rag_defaults.py, src/promptphoo/assertions/context_utils.py, src/promptphoo/assertions/modelgraded_rag.py, tools/rag_prompts_golden.js
 - Note: At merge the shims were replaced by the grading-infrastructure branch's modules (see D32, D33, D34). The RAG matchers now call the real `call_grading_provider`, so their `invoke` callbacks accept the optional `on_response_headers` argument. The duplicate `is_grader_failure` is gone: `rag_defaults.py` imports it from `matchers/llm_grading.py`.
-- Commits: `336d4e7`
+- Commits: `336d4e7` `c181195`
 
 ## 28. Similarity, moderation and classifier paths that depend on unported upstream code
 - Decision:
@@ -289,7 +291,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Eval users of moderation have an OpenAI key or configure the grader explicitly.
 - Note: The perplexity family has since been ported (see D31), so search-rubric's Perplexity candidate now loads. The xAI candidate, `xai:responses:`, still fails to load and is skipped.
 - Modules: src/promptphoo/matchers/similarity.py, src/promptphoo/matchers/moderation.py, src/promptphoo/matchers/classification.py, src/promptphoo/providers/web_search_utils.py
-- Commits: `336d4e7`
+- Commits: `336d4e7` `c181195`
 
 ## 29. The select-best / max-score pass mutates stored EvalResult records; resume and cancellation paths wait for Phase 5
 - Decision:
@@ -303,12 +305,13 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Persisted rows reach the comparison in SQLite's order for `WHERE eval_id = ? AND test_idx = ?`, which uses the `(eval_id, test_idx, success)` index, so failing rows come before passing ones rather than in prompt order. Node runs the same query on the same schema and was observed to agree (parity PASS on `tests/fixtures/parity_comparison/`). Only the order of texts in the grader prompt depends on it.
 - Implication: The grading-infrastructure branch's versions of the shim modules win at merge; `matchers/comparison.py` imports them lazily by the contract names.
 - Modules: src/promptphoo/evaluator/comparison.py, src/promptphoo/evaluator/run.py, src/promptphoo/models/eval.py, src/promptphoo/matchers/comparison.py, src/promptphoo/assertions/index.py
-- Commits: `9af5f6e`
+- Commits: `9af5f6e` `c181195`
 - Note: The shim modules were replaced by the grading infrastructure at merge (see D32, D33, D34), and the resume and cancellation branches were ported later (see D36).
 - Note: Superseded by D36.
 
 ## 30. (unused)
 - Note: This number was never assigned. It was left free when decisions written on parallel branches were merged, and it is not reused.
+- Commits: `c181195`
 
 ## 31. OpenAI-compatible families: a data table for pure routing wrappers, a small subclass for the rest
 - Decision:
@@ -332,6 +335,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: Abort signals, tracing spans and response-header observers are left out of the providers that override `callApi` (openrouter, snowflake, xai), as they are in the OpenAI chat port.
 - Note: The OpenAI Responses provider landed with the assumed name and hook. `groq:responses:`, `meta:<model>` and `meta:responses:` build on it. `xai:responses:` is still rejected, because upstream's xAI Responses provider is a separate module that is not ported.
 - Modules: src/promptphoo/providers/compatible, src/promptphoo/providers/registry.py
+- Commits: `c181195`
 
 ## 32. Graders always run locally; grader calls skip the provider resource registry
 - Decision:
@@ -357,7 +361,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: Until then, a user with only `MISTRAL_API_KEY` or `XAI_API_KEY` gets OpenAI graders (which fail without `OPENAI_API_KEY`), where upstream would use Mistral or xAI.
 - Note: The TODO markers at the loaders are now comments saying why each branch is skipped. None of the four modules exists yet. xAI chat is ported (see D31), but upstream's xAI default bundle also needs the xAI Responses provider, so the xAI branch stays skipped.
 - Modules: src/promptphoo/providers/defaults.py, src/promptphoo/providers/openai/defaults.py, src/promptphoo/providers/anthropic/defaults.py
-- Commits: `956e36a`
+- Commits: `956e36a` `c181195`
 
 ## 34. Grader references reuse configured providers; the final test shares provider instances
 - Decision:
@@ -468,7 +472,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: Scripts that pipe an answer into `delete eval all` get the same result and exit code under both CLIs; only the terminal rendering of the prompt differs.
 - Note: promptphoo has since gained per-run log files and the same footer (see D45). The footer is still cut from the goldens, because its log file paths differ on every run.
 - Modules: src/promptphoo/cli/list_.py, src/promptphoo/cli/show.py, src/promptphoo/cli/delete.py, tools/list_show_golden.py, tests/test_cli_list_show_delete.py, tests/fixtures/list_show/golden.json
-- Commits: `89b55d0`
+- Commits: `89b55d0` `c181195`
 
 ## 42. export and import write and read Node's exact files and rows; only three fields are nondeterministic
 - Decision:
@@ -565,6 +569,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 50. (unused)
 - Note: This number was never assigned. It was left free when decisions written on parallel branches were merged, and it is not reused.
+- Commits: `c181195`
 
 ## 51. The OTLP receiver is an asyncio port of upstream's express app, byte for byte at the HTTP level
 - Decision:
@@ -613,7 +618,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Python file providers run in a worker thread (`python_hooks.call_async`), so a provider that POSTs to the in-loop receiver cannot deadlock it. Spans are read back only after the grace wait.
 - Implication: `tests/test_tracing_receiver_node.py` runs the same traced eval under both CLIs, skipped without NODE_PROMPTFOO. Its stdlib provider (`tests/fixtures/tracing/otlp_posting_provider.py`) exports OTLP/JSON and OTLP/protobuf spans to the eval's receiver. The provider-posted span rows and the trace rows match Node's. Tracing telemetry (`record('feature_used')`) is not ported.
 - Modules: src/promptphoo/tracing/store.py, src/promptphoo/tracing/sanitize_attributes.py, src/promptphoo/tracing/evaluator_tracing.py, src/promptphoo/evaluator/run.py, src/promptphoo/cli/import_.py, src/promptphoo/db/import_export.py, tests/test_tracing_store.py, tests/test_tracing_sanitize_attributes.py, tests/test_tracing_evaluator_tracing.py, tests/test_tracing_receiver_node.py, tests/fixtures/tracing/otlp_posting_provider.py
-- Commits: `3b43b7d`
+- Commits: `3b43b7d` `c181195`
 
 ## 53. `export` emits `traces` as upstream does, and trace parity compares them
 - Decision:
@@ -643,7 +648,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: With tracing enabled, every test with a `python` or `file://` assertion polls the store (6 x 250 ms by default) when no spans arrive, as upstream does.
 - Note: promptfoo's own spans have landed (see D56, D57), so a traced Python eval stores the test-case, target and grader spans as Node does. `get_active_traceparent` reads the tracer's active span, and the `ACTIVE_SPAN_CONTEXT` ContextVar is gone.
 - Modules: src/promptphoo/assertions/trace.py, src/promptphoo/assertions/index.py, src/promptphoo/assertions/trajectory.py, src/promptphoo/evaluator/run.py, src/promptphoo/tracing/trace_context.py, src/promptphoo/tracing/span_filter.py, src/promptphoo/tracing/span_roles.py, src/promptphoo/tracing/tool_attributes.py, src/promptphoo/tracing/store.py, src/promptphoo/tracing/sanitize_attributes.py, src/promptphoo/tracing/evaluator_tracing.py
-- Commits: `b646b5b`
+- Commits: `b646b5b` `c181195`
 
 ## 55. External trace providers fetch through fetch_with_proxy; trace parity runs a stdlib sqlite3 span writer under both CLIs
 - Decision:
@@ -734,6 +739,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: Parallel test runs become the documented default, replacing D13's serial default, and D7's remark that pydantic is still listed is out of date (see its note). A missing extra fails only when the feature that needs it runs, and its tests skip.
 - Note: Supersedes D13.
 - Modules: pyproject.toml, src/promptphoo/__init__.py
+- Commits: `9ffd3ec`
 
 ## 60. The test suite never touches the real state directory or needs an optional extra
 - Decision:
@@ -742,3 +748,4 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Rationale: Run with `HOME` pointing at an empty directory, the suite without the fixture created `~/.promptfoo/promptfoo.db`; with it, nothing is created. Tests that write to the user's real eval history, or that read whatever is already there, are both harmful and flaky.
 - Assumption: Every state path goes through `paths.get_config_directory_path` or one of the two env vars cleared here.
 - Modules: tests/conftest.py, tests/test_providers_bedrock.py, tests/test_providers_http.py, tests/test_providers_google.py
+- Commits: `9ffd3ec`
