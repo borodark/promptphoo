@@ -151,3 +151,71 @@ async def execute_provider_function_callback(
     except Exception as error:
         logger.error("%sError executing function '%s': %s", prefix, function_name, error)
         raise
+
+
+class FunctionCallbackHandler:
+    """Ports FunctionCallbackHandler (src/providers/functionCallbackUtils.ts) without MCP tools:
+    run each call's `functionToolCallbacks` entry, falling back to the stringified call."""
+
+    def __init__(self) -> None:
+        self.loaded_callbacks: dict[str, Callable[..., Any]] = {}
+
+    @staticmethod
+    def _extract_function_info(call: Any) -> dict[str, Any] | None:
+        if not isinstance(call, dict):
+            return None
+        if call.get("name") and isinstance(call["name"], str):
+            return {"name": call["name"], "arguments": call.get("arguments")}
+        function = call.get("function")
+        if call.get("type") == "function" and isinstance(function, dict) and function.get("name"):
+            return {"name": function["name"], "arguments": function.get("arguments")}
+        return None
+
+    async def process_call(
+        self, call: Any, callbacks: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        info = self._extract_function_info(call)
+        original = call if isinstance(call, str) else json_stringify(call)
+        if (
+            not isinstance(call, dict)
+            or not info
+            or not callbacks
+            or not callbacks.get(info["name"])
+        ):
+            return {"output": original, "isError": False}
+        call_id = call.get("call_id") if isinstance(call.get("call_id"), str) else None
+        if call_id is None and isinstance(call.get("id"), str):
+            call_id = call["id"]
+        try:
+            output = await execute_provider_function_callback(
+                function_name=info["name"],
+                args=info["arguments"] or "{}",
+                callbacks=callbacks,
+                cache=self.loaded_callbacks,
+                call_id=call_id,
+            )
+            return {"output": output, "isError": False}
+        except CallbackPathTraversalError as error:
+            logger.warning("[FunctionCallback] Rejected callback '%s': %s", info["name"], error)
+        except Exception as error:
+            logger.debug("Function callback failed for %s: %s", info["name"], error)
+        return {"output": original, "isError": True}
+
+    async def process_calls(self, calls: Any, callbacks: dict[str, Any] | None = None) -> Any:
+        if not calls:
+            return calls
+        is_array = isinstance(calls, list)
+        calls_array = calls if is_array else [calls]
+        results = [await self.process_call(call, callbacks) for call in calls_array]
+        has_success = any(
+            not r["isError"] and r["output"] != json_stringify(calls_array[i])
+            for i, r in enumerate(results)
+        )
+        if has_success:
+            outputs = [r["output"] for r in results]
+            if not is_array and len(outputs) == 1:
+                return outputs[0]
+            return "\n".join(outputs) if all(isinstance(o, str) for o in outputs) else outputs
+        if not is_array and len(results) == 1:
+            return results[0]["output"]
+        return calls

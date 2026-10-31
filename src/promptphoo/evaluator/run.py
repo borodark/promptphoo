@@ -885,6 +885,9 @@ class Evaluator:
         tests = filter_by_range(tests, options.get("filterRange"))
         prompts, columns_by_provider = self._build_prompt_columns()
         await self.store.append_prompts(prompts)
+        from promptphoo.providers.azure.warnings import maybe_emit_azure_openai_warning
+
+        maybe_emit_azure_openai_warning(suite, tests)
 
         var_names: dict[str, None] = {}  # insertion-ordered like a JS Set
         default = get_default_test(suite) or {}
