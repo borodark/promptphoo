@@ -2,9 +2,10 @@
 
 Ports the parts of src/models/eval.ts (`Eval.create` with all of its options, `Eval.delete`),
 src/models/evalResult.ts (`createManyFromEvaluateResult`), src/database/evalDeletion.ts
-(`deleteTraceRecordsForEvals`) and src/tracing/store.ts (`getTrace` existence, `createTrace`,
-`addSpans`) that import needs. Rows are written exactly as drizzle writes them, so Node reads
-an eval that Python imported (and the reverse) without noticing.
+(`deleteTraceRecordsForEvals`) that import needs; traces are written through
+`tracing/store.py`, as upstream writes them through its TraceStore. Rows are written exactly
+as drizzle writes them, so Node reads an eval that Python imported (and the reverse) without
+noticing.
 
 Unless PROMPTFOO_INLINE_MEDIA is set, imported responses go through the blob extractor as in
 upstream: inline media is stored, and `promptfoo://blob/` references already in them are
@@ -280,73 +281,6 @@ def notify_evaluations_deleted(eval_ids: list[str]) -> None:
     from promptphoo.db.queries import update_signal_file_for_deleted_evals
 
     update_signal_file_for_deleted_evals(eval_ids)
-
-
-# --- traces -------------------------------------------------------------------------------
-
-
-def trace_exists(trace_id: str) -> bool:
-    conn = db.get_db()
-    row = conn.execute("SELECT 1 FROM traces WHERE trace_id = ? LIMIT 1", (trace_id,)).fetchone()
-    return row is not None
-
-
-def create_trace(
-    trace_id: str, evaluation_id: str, test_case_id: str, metadata: Any = None
-) -> None:
-    """TraceStore.createTrace (insert, ignoring an existing trace id)."""
-    conn = db.get_db()
-    with db.transaction(conn):
-        conn.execute(
-            "INSERT INTO traces (id, trace_id, evaluation_id, test_case_id, created_at, metadata) "
-            "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (trace_id) DO NOTHING",
-            (
-                str(uuid.uuid4()),
-                trace_id,
-                evaluation_id,
-                test_case_id,
-                _now_ms(),
-                db.to_db_json(metadata),
-            ),
-        )
-
-
-def add_spans(trace_id: str, spans: list[dict[str, Any]]) -> bool:
-    """TraceStore.addSpans with the trace-existence check. Returns whether spans were stored."""
-    import logging
-
-    if not trace_exists(trace_id):
-        logging.getLogger("promptphoo").warning(
-            "[TraceStore] Trace %s not found, skipping %d spans. This may indicate spans arrived "
-            "before trace was created.",
-            trace_id,
-            len(spans),
-        )
-        return False
-    if not spans:
-        return True
-    conn = db.get_db()
-    with db.transaction(conn):
-        for span in spans:
-            conn.execute(
-                "INSERT INTO spans (id, trace_id, span_id, parent_span_id, name, start_time, "
-                "end_time, attributes, status_code, status_message) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT (trace_id, span_id) DO NOTHING",
-                (
-                    str(uuid.uuid4()),
-                    trace_id,
-                    span.get("spanId"),
-                    span.get("parentSpanId"),
-                    span.get("name"),
-                    span.get("startTime"),
-                    span.get("endTime"),
-                    db.to_db_json(span.get("attributes")),
-                    span.get("statusCode"),
-                    span.get("statusMessage"),
-                ),
-            )
-    return True
 
 
 def find_eval_row(eval_id: str) -> dict[str, Any] | None:

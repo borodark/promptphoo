@@ -433,13 +433,13 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Decision:
   - `cli/export.py` ports `src/commands/export.ts`. `export eval <id|latest>` goes through `output.writer` (`-o` takes every `eval -o` format) or prints `createOutputData` as two-space JSON. `export logs` (`-n/--count`, `-o/--output`) rebuilds upstream's hand-rolled tar (same 512-byte headers, padding and two zero blocks) inside one zlib gzip stream at level 9. `getLogDirectory`/`getLogFiles` from `src/util/logs.ts` are private to that module.
   - `cli/import_.py` ports `src/commands/import.ts` with upstream's branch order: the `--force` preflight runs before the DB lookup, and the collision, `--new-id` and `--force` paths follow it, including the "was deleted for a --force replacement" disclosure. v3 summaries go through `db/import_export.create_eval_record`, a full port of `Eval.create` with every option (completed prompts, vars, runtime options, durations, prompts/datasets/tags rows), and then `create_many_from_evaluate_result`. Legacy v2 summaries get the bare `evals` insert. `importers/` ports `src/importers/` (format sniffing and the OpenAI Evals JSONL converter).
-  - Traces in an export are validated and written to the `traces`/`spans` tables, and trace ids are remapped as upstream remaps them (`--new-id`, duplicates, ids already in the store). Export does not emit `traces` yet, because the trace store read path and `sanitizeTraceAttributes` belong to Phase 6.
+  - Traces in an export are validated and written to the `traces`/`spans` tables, and trace ids are remapped as upstream remaps them (`--new-id`, duplicates, ids already in the store). Export emits `traces` too, see D53.
   - Error text copies Node where users see it: `ENOENT: no such file or directory, open '<file>'`, V8's `Unexpected token 'x', "<text>" is not valid JSON` (approximated for long inputs), and `Failed to export eval: Error: <message>`. `JSON.parse` rejects NaN/Infinity, and JSONL lines are cut with JS `trim` semantics, which strip a BOM.
   - `output/export_to_file.py` ports `src/util/exportToFile/` (`convertEvalResultToTableCell`, `convertTestResultsToTableRow`, `JsonlFileWriter`) for reuse by table pages. `EvalResult` objects are first projected to a Node instance's own properties.
   - Three parity fixes outside this area came from the byte-for-byte comparison. `sanitize_config_for_output` reassigns an empty tracing `auth`/`headers` object, because `{}` is truthy in JS. The template engine gains Nunjucks's `escape`/`e` filter (`&quot;`, `&#39;`, `&#92;`, where markupsafe writes `&#34;`). `db.migrate` reads with a tuple cursor, so it survives a dict `row_factory` that `Eval.find_by_id` installs on the shared connection.
 - Rationale: The requirement is interop. A Python export of a DB eval is byte-identical to Node's apart from `metadata.exportedAt` (wall clock) and `metadata.nodeVersion` (`v22.x` vs `python-3.x`). After a re-import, each result's `id` also differs, because import mints new eval_results uuids in both runtimes. An OpenAI Evals import also stamps `evals.created_at` with the wall clock. Normalising those four fields, Node and Python exports, imports and re-exports agree for v4 evals, legacy table-backed evals, traced exports and both OpenAI fixtures, in every output format and in every table row.
 - Assumption: Node writes no other nondeterministic export field. `platform`/`arch` are equal on one machine, and the eval_results read order is SQLite's for the same query on the same file.
-- Implication: `tests/test_import_export_node.py` checks all of this when `NODE_PROMPTFOO` is set. `tests/test_import_export.py` checks it offline against `tests/fixtures/import_export/node-v4-export.json`, which Node wrote. A traced eval loses `traces` on a Python re-export until Phase 6.
+- Implication: `tests/test_import_export_node.py` checks all of this when `NODE_PROMPTFOO` is set. `tests/test_import_export.py` checks it offline against `tests/fixtures/import_export/node-v4-export.json`, which Node wrote. Traced evals keep `traces` on export and re-export, see D53.
 - Modules: src/promptphoo/cli/export.py, src/promptphoo/cli/import_.py, src/promptphoo/db/import_export.py, src/promptphoo/importers/parse.py, src/promptphoo/importers/openai_evals.py, src/promptphoo/output/export_to_file.py, src/promptphoo/sanitizer.py, src/promptphoo/templating.py, src/promptphoo/db/__init__.py, tests/test_import_export.py, tests/test_import_export_node.py
 - Commits: `a4dfc5e`
 
@@ -522,13 +522,77 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Modules: src/promptphoo/cli/import_.py, src/promptphoo/cli/export.py, src/promptphoo/output/writer.py, src/promptphoo/db/import_export.py, tests/test_import_export.py, tests/test_blobs_node.py
 - Commits: `f21cee5`
 
+## 51. The OTLP receiver is an asyncio port of upstream's express app, byte for byte at the HTTP level
+- Decision:
+  - `tracing/otlp_receiver.py` ports `src/tracing/otlpReceiver.ts`: `POST /v1/traces` (OTLP/JSON and OTLP/protobuf, gated by `acceptFormats`), `GET /v1/traces` (service info), `POST /v1/logs` (OTLP/JSON logs become 1 ms child spans), `GET /health` and `GET /debug/status`. Each handler is a straight port, covering id conversion (hex, base64 via Node-lenient decoding, zero ids), attribute parsing, the receiver-created trace rows for `evaluation.id` spans, ingest-time redaction (span name and status message echoes too), registered per-evaluation trace policies, and the log body/name limits.
+  - There is no web framework. A small HTTP/1.1 server on `asyncio.start_server` (keep-alive, chunked bodies, `Expect: 100-continue`) stands in for express 5 and body-parser 2:
+    - routing is case-insensitive with an optional trailing slash, and HEAD is answered as GET;
+    - the JSON parser is strict and has a 10 MB limit, and `{}` stands in for an empty body;
+    - gzip, deflate and identity bodies are accepted;
+    - `X-Powered-By: Express`, weak ETags, finalhandler's 404 page, and body-parser's status codes are copied. Invalid JSON is a 400 `{"error":"Invalid JSON"}`; other parser errors go to the global handler as a 500 `{"error":"Internal server error"}`.
+  - `listen` rejects with Node's message (`listen EADDRINUSE: address already in use <host>:<port>`). `start_otlp_receiver` drops the singleton after a failed listen, so the next start makes a new receiver.
+  - `tracing/protobuf.py` is a pure-Python decoder for ExportTraceServiceRequest that follows protobufjs 8's generated decoders:
+    - a field with the wrong wire type is skipped;
+    - a repeated singular message merges into the earlier one, and the last oneof member wins;
+    - strings must be valid UTF-8;
+    - nesting is limited to depth 100, and an overflowing length prefix is rejected;
+    - errors carry protobufjs's text, prefixed `Invalid protobuf data:`.
+  - `toObject` is applied with `defaults: true`, so 64-bit values become JS numbers.
+  - `tools/otlp_protobuf_golden.py` fuzzes the decoder against protobufjs through `tools/otlp_node.mjs`. Its output, `tests/fixtures/tracing/protobuf_golden.jsonl`, holds 240 valid and mutated payloads with Node's results, and the tests replay it offline.
+  - `jsvalues.number_to_string` now prints integral doubles of 2^53 and above with JS's shortest round-trip digits (`2**60` -> `1152921504606847000`), as the decoded 64-bit fields need.
+- Rationale: Providers export to the receiver with stock OTLP SDKs, so what they see (status codes, bodies and headers) must be Node's. `protobuf` and `opentelemetry-proto` are not dependencies, and the request schema is small and fixed.
+- Assumption: Exporters send `application/json` or `application/x-protobuf` with identity, gzip or deflate encoding. Node also decodes `br` and `zstd`, which this receiver answers with a 500. A JSON array where an id string is expected is converted by the JS string coercion upstream applies, which is not reproduced for every shape.
+- Implication: Run against Node's receiver (via `tools/otlp_node.mjs serve`), 36 hand-picked requests (routing, content types, encodings, malformed bodies, the size limit, logs) get the same status, headers and body from both, apart from `/debug/status` uptime. `tests/test_tracing_otlp_receiver.py` ports upstream's receiver tests, and `tests/test_tracing_protobuf.py` ports the protobuf tests and replays the golden file.
+- Modules: src/promptphoo/tracing/otlp_receiver.py, src/promptphoo/tracing/protobuf.py, src/promptphoo/jsvalues.py, src/promptphoo/cli_state.py, tools/otlp_node.mjs, tools/otlp_protobuf_golden.py, tests/fixtures/tracing/protobuf_golden.jsonl, tests/test_tracing_otlp_receiver.py, tests/test_tracing_protobuf.py
+- Commits: `3b43b7d`
+
+## 52. One TraceStore writes Node's rows; the evaluator leases the shared receiver as upstream does
+- Decision:
+  - `tracing/store.py` replaces D54's shim and is the only writer of the `traces`/`spans` tables. `get_trace_store()` returns a singleton TraceStore with upstream's async methods: `create_trace`, `add_spans`, `get_traces_by_evaluation`, `get_trace`, `get_trace_metadata`, `delete_old_traces` and `get_spans`. Each has a `*_sync` twin, which `import`, `export` and the output writer call.
+  - Row writes match drizzle's:
+    - uuid4 ids and `created_at` in epoch ms;
+    - `JSON.stringify` text for metadata and attributes, with NULL for undefined;
+    - `ON CONFLICT DO NOTHING` on `trace_id` and on `(trace_id, span_id)`;
+    - a span batch goes in one transaction.
+  - `deleteOldTraces` also matches rows whose `created_at` is a SQLite timestamp string, as upstream's cutoff SQL does.
+  - Reads also follow upstream. Span attributes are sanitized by default (`tracing/sanitize_attributes.py`: credential keys become `<redacted>`, configured patterns become `[REDACTED]`, and values are truncated at 400 UTF-16 units). `get_spans` ports the earliest-start, depth, internal-span, span-filter and maxSpans selection.
+  - `cli/import_.py` writes traces through the store. The duplicate trace writers in `db/import_export.py` are gone.
+  - `tracing/evaluator_tracing.py` replaces the shims of D54/D57. It ports the receiver lifecycle in full:
+    - a refcounted lease, so overlapping evals share one receiver and the first eval's endpoint and formats are kept;
+    - in-flight starts and stops are serialized, and a failed stop keeps the lease;
+    - each eval's trace policy is registered and dropped when it releases;
+    - retention pruning, and `tracing.failOnReceiverStartFailure`;
+    - `cliState.activeOtlpReceiver`.
+  - D57's `promptfoo.test_case` root span through the GenAI tracer is kept.
+  - `Evaluator.evaluate` follows upstream's order: acquire the receiver, initialize OTEL, run; then flush OTEL, wait `SPAN_EXPORT_GRACE_SECONDS` (3 s) if a receiver is running, and release the lease.
+- Rationale: The coordinator's contract kept the shim's method names and camelCase dict shapes, so the trace assertions, the local span exporter and import all share one store. sqlite3 is synchronous, so each async method wraps its sync twin and both kinds of caller can use it.
+- Assumption: Python file providers run in a worker thread (`python_hooks.call_async`), so a provider that POSTs to the in-loop receiver cannot deadlock it. Spans are read back only after the grace wait.
+- Implication: `tests/test_tracing_receiver_node.py` runs the same traced eval under both CLIs, skipped without NODE_PROMPTFOO. Its stdlib provider (`tests/fixtures/tracing/otlp_posting_provider.py`) exports OTLP/JSON and OTLP/protobuf spans to the eval's receiver. The provider-posted span rows and the trace rows match Node's. Tracing telemetry (`record('feature_used')`) is not ported.
+- Modules: src/promptphoo/tracing/store.py, src/promptphoo/tracing/sanitize_attributes.py, src/promptphoo/tracing/evaluator_tracing.py, src/promptphoo/evaluator/run.py, src/promptphoo/cli/import_.py, src/promptphoo/db/import_export.py, tests/test_tracing_store.py, tests/test_tracing_sanitize_attributes.py, tests/test_tracing_evaluator_tracing.py, tests/test_tracing_receiver_node.py, tests/fixtures/tracing/otlp_posting_provider.py
+- Commits: `3b43b7d`
+
+## 53. `export` emits `traces` as upstream does, and trace parity compares them
+- Decision:
+  - `create_output_data` adds `traces` right after `runtimeOptions`. The traces come from `get_trace_store().get_traces_by_evaluation(evalId)` with attributes sanitized, and the key is left out when there are none.
+  - `project_traces_for_output` ports projectTracesForOutput:
+    - PROMPTFOO_STRIP_METADATA drops trace metadata;
+    - PROMPTFOO_STRIP_TEST_VARS drops `metadata.vars`, and the metadata too if nothing is left;
+    - stripping prompt text or response output removes the `promptfoo.request.body` / `promptfoo.response.body` span attributes, and an emptied `attributes` goes with them.
+  - A failed fetch logs upstream's warning ("Failed to fetch traces for output <id>; traces omitted from export: <err>") and writes the file without traces. Blob export scans these traces, as upstream's does.
+  - `tools/parity.py` no longer ignores `traces` for the trace-assertions fixture. Exported spans are compared by the name path from the root, without span ids or times, and traces and spans are sorted. Node's and Python's 2 traces and 23 spans then match.
+- Rationale: This closes the gap D42 left open: a traced eval no longer loses its traces on a Python export or re-export.
+- Assumption: Within one trace, two spans with the same name path have the same attributes and status, so sorting them gives a stable order.
+- Implication: `tests/test_tracing_receiver_node.py` checks that Node's `export` of the Python-written eval equals Python's (and the reverse), apart from `exportedAt` and `nodeVersion`. It also checks that import followed by export in either runtime keeps `traces`. `tests/test_output_traces.py` ports upstream's trace cases from the output and JSON-export tests.
+- Modules: src/promptphoo/output/writer.py, tools/parity.py, tests/test_output_traces.py
+- Commits: `3b43b7d`
+
 ## 54. Trace assertions read the trace store through the assertion context; the evaluator gives each traced step a W3C trace context
 - Decision:
   - `assertions/trace.py` ports traceUtils.ts and the `trace-span-count`, `trace-span-duration` and `trace-error-spans` handlers with upstream's error strings and thresholds. As upstream, they read the raw `assertion.value` and ignore a `not-` prefix. The attribute filter compares with JS `===`, so `1` never matches `true`.
   - `run_assertion` / `run_assertions` port loadTraceData: they poll `get_trace_store().get_trace(traceId, {sanitizeAttributes: false})` until the span count is stable, with the `PROMPTFOO_TRACE_FETCH_*` env bounds, preload once per test, and set `context["trace"]` = `{traceId, evaluationId, testCaseId, metadata, spans}` for every trace-aware assertion (`trace-*`, `trajectory:*`, `python`, `file://` / `package:` values). The trajectory assertions already read `context["trace"]`, so they now grade real spans. Grader calls get a child `traceparent` in their call context.
   - `evaluator/run.py` ports createRunEvalTest's `tracingEnabled`/`evaluationId` metadata stamp, generateTraceContextIfNeeded before the target call (`traceparent`, `evaluationId`, `testCaseId` on the call context), collectExternalTraceAfterProviderCall when `tracing.provider` is external, `traceId` for the assertions, and getTraceId/getTraceLinkage (`traceId`, `evaluationId`) on success and error rows.
   - `tracing/trace_context.py` ports fetchTraceContext (external provider, else the local store), extractTraceIdFromTraceparent and the TraceContextData shape. In-flight external fetches are shared per config object (`id()` of the dict, as upstream's WeakMap key). `tracing/span_filter.py`, `tracing/tool_attributes.py` and `tracing/span_roles.py` port their upstream files; `trajectory.py` now imports the tool-attribute keys and `matches_pattern` from them instead of keeping copies.
-  - Shims, each headed `# SHIM: replaced by the trace-store branch at merge`: `tracing/store.py` (a faithful TraceStore over the drizzle `traces`/`spans` tables), `tracing/sanitize_attributes.py` and `tracing/evaluator_tracing.py`. The last one has only the trace-context half of evaluatorTracing.ts, with no OTLP receiver and no OpenTelemetry root span, so its trace and span ids are random as when Node's root span is invalid.
+  - Shims (since replaced, see D52), each headed `# SHIM: replaced by the trace-store branch at merge`: `tracing/store.py` (a faithful TraceStore over the drizzle `traces`/`spans` tables), `tracing/sanitize_attributes.py` and `tracing/evaluator_tracing.py`. The last one has only the trace-context half of evaluatorTracing.ts, with no OTLP receiver and no OpenTelemetry root span, so its trace and span ids are random as when Node's root span is invalid.
   - `span_roles.py` keeps the role in a ContextVar. `get_active_traceparent` reads `ACTIVE_SPAN_CONTEXT`, which nothing sets yet, so grader calls always get a fresh child traceparent. Upstream's `withGraderSpan` around each assertion is not ported (an xfail in `tests/test_assertions_trace.py` records it).
 - Rationale: The assertions only need the stored spans, and upstream reads them from the store in the assertion step, not from fetchTraceContext. Porting that path exactly lets a target that writes spans by any route (OTLP, an external backend, or straight into the store) be graded the same way under Node and Python.
 - Assumption: Spans reach the `spans` table before grading or during the stable-poll window. promptfoo's own spans (test case, provider, grader) come from the spans branch; until it lands, a traced Python eval stores only the target's spans, so unfiltered `trace-*` patterns count fewer spans than Node does.
@@ -546,7 +610,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - Response bodies are read eagerly, and the byte limit is checked after the read. The Content-Length check and the Langfuse per-page byte budget are kept.
   - Tool spans whose input is JSON null get `tool.arguments: "null"`, which keeps Node's `JSON.stringify(null)`, because `get_normalized_tool_attributes` treats None as undefined.
   - `Date.parse` is approximated by `fetch.header_parser.date_parse`.
-  - The parity fixture `tests/fixtures/parity_tracing/trace-assertions.yaml` runs `span_writer.py`, a Python provider that inserts its spans with stdlib sqlite3 into `$PROMPTFOO_CONFIG_DIR/promptfoo.db` under its traceparent's trace id. Node's Python worker and promptphoo run the same code, and the gradings match byte for byte. `tools/parity.py` treats `traceId` as volatile and leaves out the top-level `traces` export for this fixture only (`IGNORED_TOP_KEYS`). That export holds promptfoo's own spans with random span ids.
+  - The parity fixture `tests/fixtures/parity_tracing/trace-assertions.yaml` runs `span_writer.py`, a Python provider that inserts its spans with stdlib sqlite3 into `$PROMPTFOO_CONFIG_DIR/promptfoo.db` under its traceparent's trace id. Node's Python worker and promptphoo run the same code, and the gradings match byte for byte. `tools/parity.py` treats `traceId` as volatile and leaves out the top-level `traces` export for this fixture only (`IGNORED_TOP_KEYS`). That export holds promptfoo's own spans with random span ids. The ignore is gone; `traces` are compared without span ids and times, see D53.
   - `tests/test_trace_assertions_e2e.py` runs the in-process variant, writing through `get_trace_store().add_spans`.
 - Rationale: A provider that writes through promptphoo's store cannot run under Node, but both CLIs read spans from the same SQLite table. Writing the rows directly gives a real cross-implementation check of the assertion path.
 - Assumption: Node and promptphoo both keep the database at `<configDir>/promptfoo.db` in WAL mode, and Node's spans for the test case, provider call and graders never match the fixture's `tool.*` / `llm.*` / `agent.*` patterns.
@@ -584,7 +648,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 ## 57. Span call sites follow upstream: test-case root, target, grader and GenAI provider spans
 - Decision:
   - `Evaluator.evaluate` initializes the tracer when env, suite, defaultTest or any test enables tracing, and flushes and shuts it down in `finally`.
-  - `generate_trace_context_if_needed` (the `tracing/evaluator_tracing.py` shim) starts the `promptfoo.test_case` root span, with upstream's attributes, and derives the traceparent from it. A traced step runs inside `with_test_case_span`, which sets status ERROR with the row's error as the message, under a provider-call tracing context (getActiveTraceparent, testIndex, withGraderSpan, withProviderSpan).
+  - `generate_trace_context_if_needed` (in `tracing/evaluator_tracing.py`, see D52) starts the `promptfoo.test_case` root span, with upstream's attributes, and derives the traceparent from it. A traced step runs inside `with_test_case_span`, which sets status ERROR with the row's error as the message, under a provider-call tracing context (getActiveTraceparent, testIndex, withGraderSpan, withProviderSpan).
   - The target call goes through `with_traced_provider_call`:
     - The span is named after the label, else the provider id, has CLIENT kind and role `target`.
     - The call context gets a child traceparent.

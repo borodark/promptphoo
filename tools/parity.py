@@ -74,13 +74,10 @@ EXPECTED = {
     "file-provider-env-7079.yaml": "needs --env-file from its smoke test: Node errors too",
 }
 # Top-level output keys a fixture leaves out of the comparison, with the reason.
-IGNORED_TOP_KEYS = {
-    "trace-assertions.yaml": (
-        {"traces"},
-        "the exported `traces` hold promptfoo's own spans and random span ids; the trace "
-        "assertions grade only the target's spans, which match (D55)",
-    ),
-}
+IGNORED_TOP_KEYS: dict[str, tuple[set[str], str]] = {}
+# Span fields that differ between any two runs: promptfoo's own spans get random ids and
+# wall-clock times. Spans are identified by their name path from the root instead.
+VOLATILE_SPAN_KEYS = {"spanId", "parentSpanId", "startTime", "endTime"}
 
 
 EVAL_ID = re.compile(r"eval-[A-Za-z0-9]{3}-\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d")
@@ -90,10 +87,42 @@ def _row_key(row):
     return (row.get("testIdx", 0), row.get("promptIdx", 0)) if isinstance(row, dict) else (0, 0)
 
 
+def normalize_traces(traces):
+    """Exported `traces`: each span keyed by the names on its path from the root, without
+    ids and times; traces in test-case order and spans in path order."""
+    if not isinstance(traces, list):
+        return traces
+    out = []
+    for trace in traces:
+        if not isinstance(trace, dict):
+            out.append(trace)
+            continue
+        spans = [s for s in trace.get("spans") or [] if isinstance(s, dict)]
+        by_id = {s.get("spanId"): s for s in spans}
+
+        def path(span, by_id=by_id):
+            names, seen = [], set()
+            while isinstance(span, dict) and id(span) not in seen:
+                seen.add(id(span))
+                names.append(span.get("name"))
+                span = by_id.get(span.get("parentSpanId"))
+            return names[::-1]
+
+        projected = [
+            {"path": path(s), **{k: v for k, v in s.items() if k not in VOLATILE_SPAN_KEYS}}
+            for s in spans
+        ]
+        projected.sort(key=lambda s: json.dumps(s, sort_keys=True))
+        out.append({**trace, "spans": projected})
+    return sorted(out, key=lambda t: json.dumps(normalize(t), sort_keys=True))
+
+
 def normalize(obj, top=True):
     if isinstance(obj, str):
         return EVAL_ID.sub("eval-<id>", obj)
     if isinstance(obj, dict):
+        if top and "traces" in obj:
+            obj = {**obj, "traces": normalize_traces(obj["traces"])}
         # Result rows arrive in completion order, which concurrency makes nondeterministic.
         if isinstance(obj.get("results"), list):
             obj = {**obj, "results": sorted(obj["results"], key=_row_key)}

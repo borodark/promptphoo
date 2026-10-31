@@ -120,3 +120,19 @@ def with_safe_mode(enabled: bool):
 
 def with_max_concurrency(value: int | None):
     return _scoped(_max_concurrency, value)
+
+
+# The OTLP receiver the running evaluation started (cliState.activeOtlpReceiver): a dict with
+# `host`, `port` and `acceptFormats`, or None. A plain global, as upstream's is.
+_active_otlp_receiver: dict[str, Any] | None = None
+
+
+def active_otlp_receiver() -> dict[str, Any] | None:
+    return _active_otlp_receiver
+
+
+def set_active_otlp_receiver(receiver: Mapping[str, Any] | None = None) -> None:
+    global _active_otlp_receiver
+    _active_otlp_receiver = (
+        {**receiver, "acceptFormats": list(receiver["acceptFormats"])} if receiver else None
+    )

@@ -1405,8 +1405,12 @@ class Evaluator:
             enabled = False if self.options.get("cache") is False else cache.is_cache_enabled()
             with cache.with_cache_enabled(enabled):
                 max_ms = self.options.get("maxEvalTimeMs") or envars.get_max_eval_time_ms()
+                from promptphoo.tracing import evaluator_tracing as et
+
+                receiver_acquired = False
                 otel_initialized = False
                 try:
+                    receiver_acquired = await et.start_otlp_receiver_if_needed(suite, self.store.id)
                     if _suite_tracing_enabled(suite):
                         from promptphoo.tracing.otel_config import get_default_otel_config
                         from promptphoo.tracing.otel_sdk import initialize_otel
@@ -1424,6 +1428,11 @@ class Evaluator:
                         logger.debug("[Evaluator] Flushing OTEL spans...")
                         await flush_otel()
                         await shutdown_otel()
+                    if receiver_acquired and et.is_otlp_receiver_started():
+                        # Give providers time to finish exporting spans.
+                        logger.debug("[Evaluator] Waiting for span exports to complete...")
+                        await asyncio.sleep(et.SPAN_EXPORT_GRACE_SECONDS)
+                    await et.stop_otlp_receiver_if_needed(receiver_acquired, self.store.id)
                     self._dispose_rate_limit_registry()
                     for provider in suite["providers"]:
                         try:

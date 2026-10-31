@@ -157,6 +157,7 @@ Each phase ends with its parity-harness subset passing.
 - Filesystem blob store with the same layout (`<configDir>/blobs/ab/cd/<sha>`) and the `blob_assets` / `blob_references` rows. Until then, behave as if `PROMPTFOO_INLINE_MEDIA=true` but still resolve `promptfoo://blob/` URIs when reading.
   - Done in `src/promptphoo/blobs/` (see D48, D49): the evaluator, EvalResult and import paths externalize media, `import` restores `blobAssets`, and `export --include-media` embeds them. tests/test_blobs_node.py checks files, rows, responses, exports and imports against Node.
 - An OTLP trace receiver and the trace-* assertions.
+  - The receiver, the trace store and trace export are done in `src/promptphoo/tracing/` and `output/writer.py` (see D51, D52, D53). tests/test_tracing_receiver_node.py checks the provider-posted spans, the trace rows and `export` against Node.
 
 **Out of scope:** redteam, web UI and server, code-scan, optimizer, MCP, model-audit, JS and Ruby hooks, golang and ruby providers, codex/realtime/agents providers, cloud (`promptfoo://provider`).
 
