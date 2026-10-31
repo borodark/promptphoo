@@ -76,7 +76,7 @@ def print_border() -> None:
 
 def print_resource_hint(resource: str) -> None:
     noun = "evaluation" if resource == "eval" else resource
-    shown = chalk(f"promptfoo show {resource} <id>", "green")
+    shown = chalk(f"promptphoo show {resource} <id>", "green")
     logger.info("Run %s to see details of a specific %s.", shown, noun)
 
 
@@ -178,7 +178,7 @@ def handle_eval(id_: str, exit_code: ExitCode) -> None:
     if not eval_:
         logger.error("No evaluation found with ID %s", id_)
         logger.info(
-            "Run %s to see available evaluation IDs.", chalk("promptfoo list evals", "green")
+            "Run %s to see available evaluation IDs.", chalk("promptphoo list evals", "green")
         )
         exit_code.fail()
         return
@@ -248,7 +248,7 @@ def show_latest_eval(exit_code: ExitCode) -> None:
         handle_eval(latest.id, exit_code)
         return
     logger.error("No eval found")
-    logger.info("Run %s to create one.", chalk("promptfoo eval", "green"))
+    logger.info("Run %s to create one.", chalk("promptphoo eval", "green"))
     exit_code.fail()
 
 
@@ -268,7 +268,7 @@ def handle_show(id_: str | None, exit_code: ExitCode) -> None:
         handle_dataset(id_, exit_code)
         return
     logger.error("No resource found with ID %s", id_)
-    green = [chalk(f"promptfoo list {r}", "green") for r in ("evals", "prompts", "datasets")]
+    green = [chalk(f"promptphoo list {r}", "green") for r in ("evals", "prompts", "datasets")]
     logger.info("Run %s, %s, or %s to see available IDs.", *green)
     exit_code.fail()
 

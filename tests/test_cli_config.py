@@ -1,4 +1,4 @@
-"""`promptfoo config` and the global config file: ports test/commands/config.test.ts and the
+"""`promptphoo config` and the global config file: ports test/commands/config.test.ts and the
 email/read/write cases of test/globalConfig/{globalConfig,accounts}.test.ts."""
 
 from __future__ import annotations
@@ -48,9 +48,9 @@ def test_set_email_refused_when_logged_in(home: Path, caplog):
     assert log(caplog) == [
         (
             "ERROR",
-            "Cannot update email while logged in. Email is managed through 'promptfoo auth "
-            "login'. Please use 'promptfoo auth logout' first if you want to use a different "
-            "email.",
+            "Cannot update email while logged in. Email is managed through Node promptfoo's "
+            "'promptfoo auth login'. Please use 'promptfoo auth logout' there first if you want to "
+            "use a different email.",
         )
     ]
     assert "account" not in stored(home)
@@ -128,7 +128,7 @@ def test_get_email(caplog):
 def test_get_email_unset(caplog):
     run(["config", "get", "email"])
     assert log(caplog) == [
-        ("INFO", 'No email set. Use "promptfoo config set email <email>" to set one.')
+        ("INFO", 'No email set. Use "promptphoo config set email <email>" to set one.')
     ]
 
 
@@ -138,8 +138,8 @@ def test_get_email_auth_guidance(monkeypatch: pytest.MonkeyPatch, caplog):
     assert log(caplog) == [
         (
             "INFO",
-            "Email is managed through 'promptfoo auth login'. Run 'promptfoo auth whoami' to "
-            "view the current account.",
+            "Email is managed through Node promptfoo's 'promptfoo auth login'. Run 'promptfoo auth "
+            "whoami' there to view the current account.",
         )
     ]
 

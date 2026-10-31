@@ -120,15 +120,14 @@ def _guidance_lines(p: Mapping[str, Any]) -> list[str]:
         or p.get("activelySharing")
     ):
         return []
-    lines = ["", f"» View results: {chalk('promptfoo view', 'green', 'bold')}"]
-    if not p.get("hasExplicitDisable"):
-        lines.append(
-            f"» Create shareable URL: {chalk('promptfoo share', 'green', 'bold')}"
-            if p.get("cloudEnabled")
-            else f"» Share with your team: {chalk('https://promptfoo.app', 'green', 'bold')}"
-        )
-    lines.append(f"» Feedback: {chalk('https://promptfoo.dev/feedback', 'green', 'bold')}")
-    return lines
+    # Upstream also suggests `promptfoo share` / promptfoo.app and promptfoo.dev/feedback; the
+    # port has no sharing and its feedback goes to its own tracker (D62).
+    view = chalk("npx promptfoo@latest view", "green", "bold")
+    return [
+        "",
+        f"» View results in Node promptfoo's web viewer (same database): {view}",
+        f"» Feedback on promptphoo: {chalk('promptphoo feedback', 'green', 'bold')}",
+    ]
 
 
 def _usage_details(usage: Mapping[str, Any], total: float) -> list[str]:

@@ -271,8 +271,8 @@ async def handle_example_download(
             else:
                 logger.info(
                     "No example downloaded. To get started, try:\n\n"
-                    "  promptfoo init --example    (browse and select an example)\n"
-                    "  promptfoo init              (create a basic project)"
+                    "  promptphoo init --example    (browse and select an example)\n"
+                    "  promptphoo init              (create a basic project)"
                 )
                 return example_name, 0
     if not example_name:
@@ -286,7 +286,7 @@ _SELECT_EXAMPLE = "\x00select"
 
 def register(cli: click.Group, default_config: dict[str, Any], default_config_path: str | None):
     @cli.command(
-        "init", help="Set up a new promptfoo project with prompts, providers, and test cases"
+        "init", help="Set up a new promptphoo project with prompts, providers, and test cases"
     )
     @click.argument("directory", required=False)
     @click.option(
@@ -311,14 +311,15 @@ def register(cli: click.Group, default_config: dict[str, Any], default_config_pa
             try:
                 use_redteam = onboarding.confirm(
                     'You specified "redteam" as the directory. Did you mean to write '
-                    '"promptfoo redteam init" instead?',
+                    '"npx promptfoo@latest redteam init" (Node promptfoo) instead?',
                     default=False,
                 )
             except click.Abort:
                 use_redteam = False
             if use_redteam:
                 logger.warning(
-                    'Please use "promptfoo redteam init" to initialize a red teaming project.'
+                    "Red teaming is not part of promptphoo. Use Node promptfoo: "
+                    '"npx promptfoo@latest redteam init".'
                 )
                 return
         try:

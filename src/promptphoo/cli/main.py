@@ -39,10 +39,13 @@ def setup_logging(verbose: bool = False) -> None:
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(
-    __version__, "-V", "--version", message=f"%(version)s (promptfoo {UPSTREAM_VERSION})"
+    __version__,
+    "-V",
+    "--version",
+    message=f"promptphoo %(version)s (compatible with promptfoo {UPSTREAM_VERSION})",
 )
 def cli() -> None:
-    """Python port of promptfoo: LLM eval & testing toolkit."""
+    """promptphoo: an unofficial Python port of the promptfoo eval CLI (LLM evals & testing)."""
 
 
 # Command modules under promptphoo.cli, registered in upstream's main.ts order. Each exposes
@@ -83,7 +86,7 @@ def main(argv: list[str] | None = None) -> None:
 
     logfiles.initialize_run_logging()
     try:
-        build_cli(args).main(args=args, prog_name="promptfoo")
+        build_cli(args).main(args=args, prog_name="promptphoo")
     finally:
         logfiles.print_error_information()
         logfiles.close_run_logging()

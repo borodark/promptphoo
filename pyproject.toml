@@ -28,8 +28,7 @@ dev = ["pytest>=8", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.5", "pyright
 
 [project.scripts]
 promptphoo = "promptphoo.cli.main:main"
-promptfoo = "promptphoo.cli.main:main"
-pf = "promptphoo.cli.main:main"
+ph = "promptphoo.cli.main:main"
 
 [build-system]
 requires = ["hatchling>=1.24"]

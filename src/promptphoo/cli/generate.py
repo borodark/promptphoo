@@ -46,7 +46,7 @@ async def _resolve_test_suite(
     if not config_path:
         raise GenerateError(
             "Could not find a config file. Pass --config path/to/promptfooconfig.yaml or run "
-            '"promptfoo init" to create one.'
+            '"promptphoo init" to create one.'
         )
     resolved = await resolve_configs({"config": [config_path]}, default_config, config_type)
     return resolved["test_suite"]
@@ -121,10 +121,10 @@ async def do_generate_dataset(options: dict[str, Any]) -> None:
         existing["tests"] = [*tests_array, *config_addition["tests"]]
         Path(config_path).write_text(jsyaml.dump(existing), encoding="utf-8")
         logger.info("Wrote %d new test cases to %s", len(results), config_path)
-        logger.info("Run promptfoo eval to run the generated tests")
+        logger.info("Run promptphoo eval to run the generated tests")
     else:
         logger.info(
-            "Copy the above test cases or run promptfoo generate dataset --write to write "
+            "Copy the above test cases or run promptphoo generate dataset --write to write "
             "directly to the config"
         )
 
@@ -177,10 +177,10 @@ async def do_generate_assertions(options: dict[str, Any]) -> None:
         }
         Path(config_path).write_text(jsyaml.dump(existing), encoding="utf-8")
         logger.info("Wrote %d new test cases to %s", len(results), config_path)
-        logger.info("Run promptfoo eval to run the generated assertions")
+        logger.info("Run promptphoo eval to run the generated assertions")
     else:
         logger.info(
-            "Copy the above test cases or run promptfoo generate assertions --write to write "
+            "Copy the above test cases or run promptphoo generate assertions --write to write "
             "directly to the config"
         )
 

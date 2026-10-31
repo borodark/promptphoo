@@ -436,7 +436,7 @@ def test_pause_then_resume(workdir, monkeypatch):
     assert record is not None
     db.close_db()
     assert f"⏸ Evaluation paused. ID: {record.id}" in result.output
-    assert f"» Resume with: promptfoo eval --resume {record.id}" in result.output
+    assert f"» Resume with: promptphoo eval --resume {record.id}" in result.output
     assert [r[0] for r in _rows(record.id)] == [0, 1]
     assert _metrics(record.id)[0]["testPassCount"] == 2
 

@@ -70,7 +70,7 @@ def _resolve_config_paths(
 ) -> tuple[list[str], dict[str, Any]]:
     hint = (
         f"Looked for promptfooconfig.{{{','.join(DEFAULT_CONFIG_EXTENSIONS)}}}. Run "
-        '"promptfoo init" or pass --config path/to/promptfooconfig.yaml.'
+        '"promptphoo init" or pass --config path/to/promptfooconfig.yaml.'
     )
     resolved: list[str] = []
     configless: list[str] = []
@@ -452,7 +452,7 @@ async def do_eval(
         border = "=" * terminal_max_width()
         logger.info("%s", border)
         logger.info("⏸ Evaluation paused. ID: %s", record.id)
-        logger.info("» Resume with: promptfoo eval --resume %s", record.id)
+        logger.info("» Resume with: promptphoo eval --resume %s", record.id)
         logger.info("%s", border)
         return record, 0
 

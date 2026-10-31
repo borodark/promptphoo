@@ -17,8 +17,8 @@ logger = logging.getLogger("promptphoo")
 
 SHARE_NOT_SUPPORTED = (
     "Sharing is not supported by promptphoo: results stay local and are never uploaded. "
-    "Use `promptfoo export <evalId> -o results.json` to save an eval to a file, or "
-    "`promptfoo view` from Node promptfoo to browse the same database."
+    "Use `promptphoo export <evalId> -o results.json` to save an eval to a file, or "
+    "`npx promptfoo@latest view` from Node promptfoo to browse the same database."
 )
 
 

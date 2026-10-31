@@ -23,8 +23,9 @@ EMAIL_RE = re.compile(
     r"(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}"
 )
 LOGGED_IN_ERROR = (
-    "Cannot update email while logged in. Email is managed through 'promptfoo auth login'. "
-    "Please use 'promptfoo auth logout' first if you want to use a different email."
+    "Cannot update email while logged in. Email is managed through Node promptfoo's "
+    "'promptfoo auth login'. Please use 'promptfoo auth logout' there first if you want to "
+    "use a different email."
 )
 
 
@@ -34,11 +35,11 @@ def get_email() -> int:
         logger.info(email)
     elif globalconfig.get_cloud_api_key():
         logger.info(
-            "Email is managed through 'promptfoo auth login'. Run 'promptfoo auth whoami' to "
-            "view the current account."
+            "Email is managed through Node promptfoo's 'promptfoo auth login'. Run 'promptfoo auth "
+            "whoami' there to view the current account."
         )
     else:
-        logger.info('No email set. Use "promptfoo config set email <email>" to set one.')
+        logger.info('No email set. Use "promptphoo config set email <email>" to set one.')
     return 0
 
 

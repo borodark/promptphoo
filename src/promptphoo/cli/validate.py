@@ -354,7 +354,7 @@ async def load_providers_for_testing(target: str | None, config: dict[str, Any])
     if not providers or (isinstance(providers, list) and not providers):
         logger.info(
             "No providers found in configuration to test. Add providers to your config or run "
-            "`promptfoo validate -t <provider-id>` to test a specific provider."
+            "`promptphoo validate -t <provider-id>` to test a specific provider."
         )
         return []
     if isinstance(providers, list):

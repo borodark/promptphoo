@@ -24,6 +24,7 @@ from typing import Any
 
 import pytest
 from click.testing import CliRunner
+from naming import as_promptphoo
 
 from promptphoo import db, paths
 from promptphoo.cli import delete as delete_mod
@@ -78,6 +79,7 @@ def invoke(*args: str, input: str | None = None) -> tuple[int, str]:  # noqa: A0
 
 
 def assert_same(want: str, got: str) -> None:
+    want = as_promptphoo(want)
     if want != got:
         diff = "".join(difflib.unified_diff(want.splitlines(1), got.splitlines(1), "node", "py"))
         pytest.fail("output differs from Node:\n" + diff)
@@ -165,8 +167,8 @@ def test_list_evals_table_oldest_first_with_vars(config_dir, monkeypatch):
     assert "│ first " in lines[3]
     assert f"│ {sha256('A {{x}} {{y}}')[:6]}   │" in lines[3]
     assert "│ x, y       │" in lines[3]
-    assert lines[-2] == "Run promptfoo show eval <id> to see details of a specific evaluation."
-    assert lines[-1] == "Run promptfoo show prompt <id> to see details of a specific prompt."
+    assert lines[-2] == "Run promptphoo show eval <id> to see details of a specific evaluation."
+    assert lines[-1] == "Run promptphoo show prompt <id> to see details of a specific prompt."
 
 
 def test_list_prompts_and_datasets_sorted_by_recent_eval(config_dir):

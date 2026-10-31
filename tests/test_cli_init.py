@@ -1,4 +1,4 @@
-"""`promptfoo init`: ports test/commands/init.test.ts and test/onboarding.test.ts.
+"""`promptphoo init`: ports test/commands/init.test.ts and test/onboarding.test.ts.
 
 The non-interactive files are compared byte for byte with what Node's `init --no-interactive`
 wrote (tests/fixtures/init_golden), and the config template with real Nunjucks renders
@@ -17,6 +17,7 @@ import httpx
 import pytest
 import respx
 from click.testing import CliRunner
+from naming import as_promptphoo
 
 from promptphoo import fetch, onboarding
 from promptphoo.cli import init as init_mod
@@ -50,11 +51,12 @@ def test_no_interactive_writes_node_files_byte_for_byte(tmp_path: Path, caplog):
     result = run(["init", "--no-interactive"])
     assert result.exit_code == 0
     for name in ("README.md", "promptfooconfig.yaml"):
-        assert (tmp_path / name).read_bytes() == (FIXTURES / "init_golden" / name).read_bytes()
+        golden = (FIXTURES / "init_golden" / name).read_text("utf-8")
+        assert (tmp_path / name).read_text("utf-8") == as_promptphoo(golden)
     messages = [r.getMessage() for r in caplog.records]
     assert messages[:2] == ["📝 Wrote README.md", "📝 Wrote promptfooconfig.yaml"]
     assert "✅ Setup complete! Next steps:\n" in messages
-    assert "  1. Run promptfoo eval to evaluate your prompts" in messages
+    assert "  1. Run promptphoo eval to evaluate your prompts" in messages
 
 
 def test_no_interactive_into_subdirectory(tmp_path: Path, caplog):
@@ -67,11 +69,11 @@ def test_no_interactive_into_subdirectory(tmp_path: Path, caplog):
     assert "  1. Run cd sub/dir" in messages
 
 
-def test_npx_spelling_in_readme(monkeypatch: pytest.MonkeyPatch):
+def test_readme_names_promptphoo_even_under_npx(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("npm_config_user_agent", "npx/10.0.0 node/v22")
     readme = onboarding.get_default_readme("rag")
     assert readme.startswith("# Promptfoo RAG evaluation\n")
-    assert "npx promptfoo@latest eval\n" in readme
+    assert "promptphoo eval\n" in readme
     assert "npx promptfoo@latest view\n" in readme
 
 
@@ -183,7 +185,7 @@ def test_wizard_eof_pauses_with_exit_130(caplog):
     result = run(["init"], input_="")
     assert result.exit_code == 130
     assert any(
-        "Initialization paused. To continue setup later, use the command: promptfoo init"
+        "Initialization paused. To continue setup later, use the command: promptphoo init"
         in r.getMessage()
         for r in caplog.records
     )
@@ -199,7 +201,7 @@ def test_wizard_redteam_is_not_supported(tmp_path: Path, caplog):
 def test_redteam_directory_confirmation(tmp_path: Path, caplog):
     result = run(["init", "redteam"], input_="y\n")
     assert result.exit_code == 0
-    assert 'Please use "promptfoo redteam init"' in caplog.text
+    assert 'Use Node promptfoo: "npx promptfoo@latest redteam init"' in caplog.text
     assert not (tmp_path / "redteam").exists()
 
 
@@ -404,7 +406,7 @@ def test_alias_resolution(tmp_path: Path, caplog):
     assert (tmp_path / "eval-g-eval" / "promptfooconfig.yaml").exists()
     assert "✅ Example project 'eval-g-eval' written to: eval-g-eval" in caplog.text
     assert "View the README at eval-g-eval/README.md or run:" in caplog.text
-    assert "`cd eval-g-eval && promptfoo eval`" in caplog.text
+    assert "`cd eval-g-eval && promptphoo eval`" in caplog.text
 
 
 def test_replacement_messaging(tmp_path: Path, caplog):
@@ -445,7 +447,7 @@ def test_declined_retry_shows_help(tmp_path: Path, caplog):
         result = run(["init", "--example", "config-%ZZ"], input_="n\n")
     assert result.exit_code == 0
     assert "Failed to fetch directory contents for refs:" in caplog.text
-    assert "No example downloaded. To get started, try:\n\n  promptfoo init --example" in (
+    assert "No example downloaded. To get started, try:\n\n  promptphoo init --example" in (
         caplog.text
     )
     assert "✅ Example project" not in caplog.text

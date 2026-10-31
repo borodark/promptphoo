@@ -6,6 +6,9 @@
 
 *All the evals that are fit to print*
 
+**This is not promptfoo.** It is an unofficial Python port, not affiliated with or supported by the promptfoo team.
+Report problems here, not to the promptfoo project.
+
 </div>
 
 ---
@@ -33,7 +36,7 @@ The port follows its original closely and makes no claim to improve on it. Where
 | Shared state | the same SQLite schema and drizzle migrations; Python and Node read each other's evals |
 | Status | **alpha**: expect rough edges, and please report them |
 
-**IN THIS EDITION** · [Getting started](#getting-started) · [What's covered](#whats-covered) · [What's not](#not-in-this-edition) · [Corrections & departures](#corrections-and-departures) · [Advisory](#advisory) · [Editorial](#editorial-translators-foreword) · [The back page](#the-back-page)
+**IN THIS EDITION** · [Getting started](#getting-started) · [Migrating from promptfoo](docs/MIGRATING.md) · [What's covered](#whats-covered) · [What's not](#not-in-this-edition) · [Corrections & departures](#corrections-and-departures) · [Advisory](#advisory) · [Editorial](#editorial-translators-foreword) · [The back page](#the-back-page)
 
 ---
 
@@ -48,13 +51,13 @@ python3 -m venv .venv && .venv/bin/pip install .
 .venv/bin/promptphoo eval
 ```
 
-The package installs three commands that do the same thing: `promptphoo`, `promptfoo` and `pf`. The last two are there for drop-in use, but they will shadow Node's `promptfoo` if both are on your `PATH`. Use `promptphoo` when you want to be explicit.
+The package installs two commands, `promptphoo` and its short form `ph`. It does not install `promptfoo` or `pf`, so it never shadows Node promptfoo, and you always know which tool you are running. Moving an existing promptfoo project over? Read the [migration guide](docs/MIGRATING.md).
 
 **No API key?** `examples/local-ollama/` runs the whole path locally: models under test, a model-graded rubric and embeddings. Pull the models it lists with `ollama pull` and run `promptphoo eval -c examples/local-ollama/promptfooconfig.yaml`.
 
 ## What's covered
 
-- **Commands:** `eval`, `init`, `validate`, `list`, `show`, `delete`, `export`, `import`, `retry`, `cache clear`, `config`, `logs`, `debug`, `generate dataset`, `generate assertions`.
+- **Commands** (as `promptphoo <command>` or `ph <command>`): `eval`, `init`, `validate`, `list`, `show`, `delete`, `export`, `import`, `retry`, `cache clear`, `config`, `logs`, `debug`, `generate dataset`, `generate assertions`.
 - **Eval flags:** the full set, including filters, `--repeat`, `--resume`, `--retry-errors`, `--filter-failing`, `--watch`, `-x` extension hooks (Python), `--grader` and `--suggest-prompts`.
 - **Prompts and tests:** text, chat JSON, YAML, Markdown, Jinja and CSV prompts; Python prompt functions; test files in YAML, JSON, JSONL and CSV, plus Python `generate_tests`; `defaultTest`; scenarios; `$ref`s.
 - **Providers:**

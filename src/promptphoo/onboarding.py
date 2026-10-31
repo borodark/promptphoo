@@ -257,7 +257,7 @@ def create_dummy_files(directory: str | None, interactive: bool = True) -> dict[
 
     if interactive:
         logger.info(
-            "\nWelcome to Promptfoo!\nWe'll set up a configuration file to get you started.\n"
+            "\nWelcome to promptphoo!\nWe'll set up a configuration file to get you started.\n"
         )
         action = select("What would you like to do?", [(n, v) for n, v, _d in ACTION_CHOICES])
         if action == "redteam":
@@ -354,7 +354,7 @@ def initialize_project(directory: str | None, interactive: bool = True) -> int:
             "\nInitialization paused. To continue setup later, use the command: "
             + promptfoo_command("init")
         )
-        logger.info("For help or feedback, visit https://www.promptfoo.dev/contact/")
+        logger.info("For help or feedback, run: promptphoo feedback")
         return 130
     out_directory = result["outDirectory"]
     run_command = promptfoo_command("eval")
@@ -363,12 +363,14 @@ def initialize_project(directory: str | None, interactive: bool = True) -> int:
     if out_directory == ".":
         logger.info("✅ Setup complete! Next steps:\n")
         logger.info(f"  1. Run {run_command} to evaluate your prompts")
-        logger.info(f"  2. Run {view_command} to view results in your browser")
+        logger.info(f"  2. Run {view_command} (Node promptfoo) to view results in your browser")
     else:
         logger.info(f"✅ Wrote promptfooconfig.yaml to ./{out_directory}\n")
         logger.info(f"  1. Run cd {out_directory}")
         logger.info(f"  2. Run {run_command} to evaluate your prompts")
-        logger.info(f"  3. Run {view_command} to view results in your browser")
+        logger.info(f"  3. Run {view_command} (Node promptfoo) to view results in your browser")
     logger.info("")
-    logger.info("  Docs: https://promptfoo.dev/docs/configuration/guide")
+    logger.info(
+        "  Config docs (promptfoo, same format): https://promptfoo.dev/docs/configuration/guide"
+    )
     return 0

@@ -251,7 +251,7 @@ def prepare_combined_config(config_paths: list[str]) -> dict[str, Any]:
         matches = glob_sync(resolved)
         if not matches:
             raise FileNotFoundError(
-                f'No configuration file found at {config_path}. Run "promptfoo init" to create '
+                f'No configuration file found at {config_path}. Run "promptphoo init" to create '
                 "one or pass --config path/to/promptfooconfig.yaml."
             )
         for match in matches:

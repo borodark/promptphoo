@@ -1,4 +1,4 @@
-"""`promptfoo validate`: ports test/commands/validate-exit-codes.test.ts,
+"""`promptphoo validate`: ports test/commands/validate-exit-codes.test.ts,
 validate-provider-tests.test.ts and validate-falsy-output.test.ts, plus the zod-style error
 rendering (expected strings captured from Node 0.125.1)."""
 
@@ -118,15 +118,15 @@ def test_missing_default_config_warns_and_exits_1(caplog):
     assert run(["validate"]).exit_code == 1
     [warning] = messages(caplog, "WARNING")
     assert warning.startswith("Failed to validate configuration: ⚠️  No promptfooconfig found")
-    assert "\n\npromptfoo eval -c path/to/promptfooconfig.yaml\n\n" in warning
-    assert warning.endswith("Or create a config with:\n\npromptfoo init")
+    assert "\n\npromptphoo eval -c path/to/promptfooconfig.yaml\n\n" in warning
+    assert warning.endswith("Or create a config with:\n\npromptphoo init")
 
 
 def test_config_resolution_error_is_prefixed(caplog):
     assert run(["validate", "-c", "missing.yaml"]).exit_code == 1
     assert messages(caplog, "ERROR") == [
         "Failed to validate configuration: No configuration file found at missing.yaml. Run "
-        '"promptfoo init" to create one or pass --config path/to/promptfooconfig.yaml.'
+        '"promptphoo init" to create one or pass --config path/to/promptfooconfig.yaml.'
     ]
 
 

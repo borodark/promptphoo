@@ -126,7 +126,7 @@ def export_logs(count: str | None = None, output: str | None = None) -> int:
         if not all_log_files:
             logger.error(
                 "No log files found in the logs directory. Logs are created when running commands "
-                'like "promptfoo eval".\nLog directory: %s',
+                'like "promptphoo eval".\nLog directory: %s',
                 log_dir,
             )
             return 1

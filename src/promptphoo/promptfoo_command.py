@@ -1,42 +1,18 @@
-"""Ports src/util/promptfooCommand.ts: how to spell the next command for the user.
+"""How to spell the next command for the user. Replaces src/util/promptfooCommand.ts.
 
-`process.execPath` is `sys.executable` here, so in practice only the npm environment variables
-can select the npx or brew spellings.
+Upstream spells it `promptfoo <sub>` or `npx promptfoo@latest <sub>` depending on how promptfoo
+was installed. promptphoo always names itself, so a user never mistakes one tool for the other;
+commands that only Node promptfoo has (`view`, `redteam`, `auth`) are spelled as Node commands,
+which work on the same ~/.promptfoo state (D62).
 """
 
 from __future__ import annotations
 
-import os
-import re
-import sys
-from typing import Literal
-
-InstallerType = Literal["npx", "brew", "npm-global", "unknown"]
-
-
-def detect_installer() -> InstallerType:
-    npm_exec_path = os.environ.get("npm_execpath", "")  # noqa: SIM112
-    npm_lifecycle_script = os.environ.get("npm_lifecycle_script", "")  # noqa: SIM112
-    exec_path = sys.executable or ""
-    if "npx" in npm_exec_path or "npx" in exec_path or "npx" in npm_lifecycle_script:
-        return "npx"
-    prefix = os.environ.get("npm_config_prefix", "")  # noqa: SIM112
-    ua = os.environ.get("npm_config_user_agent", "")  # noqa: SIM112
-    if (
-        re.search(r"Homebrew[/\\]Cellar", prefix, re.I)
-        or re.search(r"Homebrew[/\\]Cellar", exec_path, re.I)
-        or re.search(r"[/\\]Homebrew[/\\]", prefix, re.I)
-        or re.search(r"[/\\]Homebrew[/\\]", exec_path, re.I)
-    ):
-        return "brew"
-    if re.search(r"\bnpx/\d+", ua, re.I):
-        return "npx"
-    if re.search(r"\bnpm/\d+", ua, re.I):
-        return "npm-global"
-    return "unknown"
+CLI_NAME = "promptphoo"
+NODE_ONLY_COMMANDS = ("view", "redteam", "auth")
 
 
 def promptfoo_command(subcommand: str) -> str:
-    if detect_installer() == "npx":
-        return f"npx promptfoo@latest {subcommand}" if subcommand else "npx promptfoo@latest"
-    return f"promptfoo {subcommand}" if subcommand else "promptfoo"
+    if subcommand.split(" ", 1)[0] in NODE_ONLY_COMMANDS:
+        return f"npx promptfoo@latest {subcommand}"
+    return f"{CLI_NAME} {subcommand}" if subcommand else CLI_NAME

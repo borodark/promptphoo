@@ -420,25 +420,27 @@ def test_no_colors_without_tty(monkeypatch: pytest.MonkeyPatch) -> None:
 # --- guidance -------------------------------------------------------------------------------
 
 
+VIEW = "» View results in Node promptfoo's web viewer (same database): npx promptfoo@latest view"
+FEEDBACK = "» Feedback on promptphoo: promptphoo feedback"
+
+
 def test_guidance_when_writing_without_shareable_url() -> None:
+    # promptphoo names the Node viewer explicitly and never suggests promptfoo.app or
+    # promptfoo.dev/feedback (D62).
     output = render(writeToDatabase=True)
-    assert "» View results: promptfoo view" in output
-    assert "» Share with your team: https://promptfoo.app" in output
-    assert "» Feedback: https://promptfoo.dev/feedback" in output
+    assert VIEW in output
+    assert FEEDBACK in output
+    assert "promptfoo.app" not in output and "promptfoo.dev" not in output
 
 
-def test_share_guidance_with_cloud_enabled() -> None:
+def test_no_share_guidance_even_with_cloud_enabled() -> None:
     output = render(writeToDatabase=True, cloudEnabled=True)
-    assert "» View results: promptfoo view" in output
-    assert "» Create shareable URL: promptfoo share" in output
-    assert "https://promptfoo.app" not in output
+    assert VIEW in output
+    assert "share" not in output.lower()
 
 
-def test_no_share_guidance_when_explicitly_disabled() -> None:
-    output = render(writeToDatabase=True, hasExplicitDisable=True)
-    assert "» View results: promptfoo view" in output
-    assert "» Share with your team" not in output
-    assert "» Create shareable URL" not in output
+def test_guidance_same_when_sharing_explicitly_disabled() -> None:
+    assert render(writeToDatabase=True, hasExplicitDisable=True) == render(writeToDatabase=True)
 
 
 @pytest.mark.parametrize(
@@ -549,9 +551,8 @@ def test_full_layout() -> None:
     assert lines == [
         "✓ Eval complete (ID: eval-abc)",
         "",
-        "» View results: promptfoo view",
-        "» Share with your team: https://promptfoo.app",
-        "» Feedback: https://promptfoo.dev/feedback",
+        "» View results in Node promptfoo's web viewer (same database): npx promptfoo@latest view",
+        "» Feedback on promptphoo: promptphoo feedback",
         "",
         "Total Tokens: 1,234",
         "  Provider: 1,234 (1,000 prompt, 234 completion)",

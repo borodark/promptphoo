@@ -163,7 +163,7 @@ def list_log_files(log_type: str) -> None:
     if not files:
         logger.info(
             "No log files found.\n\n"
-            "Log files are created when running commands like promptfoo eval.\n"
+            "Log files are created when running commands like promptphoo eval.\n"
             f"Log directory: {logfiles.get_log_directory()}"
         )
         return
@@ -180,7 +180,7 @@ def list_log_files(log_type: str) -> None:
     widths = {"#": 4, "filename": 50, "type": 8, "size": 10, "modified": 22}
     logger.info(wrap_table(rows, widths))
     _print_border()
-    logger.info("Run promptfoo logs <filename> to view a specific log file.")
+    logger.info("Run promptphoo logs <filename> to view a specific log file.")
     logger.info(f"Log directory: {logfiles.get_log_directory()}")
 
 
@@ -242,12 +242,12 @@ def do_logs(
             if file:
                 logger.error(
                     f"Log file not found: {file}\n\n"
-                    "Run promptfoo logs --list to see available log files."
+                    "Run promptphoo logs --list to see available log files."
                 )
             else:
                 logger.error(
                     "No log files found.\n\n"
-                    "Log files are created when running commands like promptfoo eval.\n"
+                    "Log files are created when running commands like promptphoo eval.\n"
                     f"Log directory: {logfiles.get_log_directory()}"
                 )
             return 1

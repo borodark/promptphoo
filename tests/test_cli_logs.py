@@ -1,4 +1,4 @@
-"""Log files and `promptfoo logs`: ports test/commands/logs.test.ts, test/util/logs.test.ts and
+"""Log files and `promptphoo logs`: ports test/commands/logs.test.ts, test/util/logs.test.ts and
 the file-transport cases of test/logger.test.ts."""
 
 from __future__ import annotations
@@ -139,7 +139,7 @@ def test_print_error_information(home: Path, caplog):
     ]
 
 
-# --- promptfoo logs -------
+# --- promptphoo logs -------
 
 
 @pytest.mark.parametrize(
@@ -160,7 +160,7 @@ def test_option_validation(args: list[str], error: str, caplog):
 def test_no_log_files(home: Path, caplog):
     assert run(["logs"]).exit_code == 1
     assert msgs(caplog, "ERROR") == [
-        "No log files found.\n\nLog files are created when running commands like promptfoo "
+        "No log files found.\n\nLog files are created when running commands like promptphoo "
         f"eval.\nLog directory: {home / 'logs'}"
     ]
 
@@ -169,7 +169,7 @@ def test_unknown_file(home: Path, caplog):
     make_log(home, "promptfoo-debug-a.log", "x")
     assert run(["logs", "zzz"]).exit_code == 1
     assert msgs(caplog, "ERROR") == [
-        "Log file not found: zzz\n\nRun promptfoo logs --list to see available log files."
+        "Log file not found: zzz\n\nRun promptphoo logs --list to see available log files."
     ]
 
 
@@ -222,7 +222,7 @@ def test_list(args: list[str], home: Path, caplog):
     assert "│ 1  │ promptfoo-debug-a.log" in table
     assert "│ debug  │ 418 B    │" in table
     assert msgs(caplog)[-2:] == [
-        "Run promptfoo logs <filename> to view a specific log file.",
+        "Run promptphoo logs <filename> to view a specific log file.",
         f"Log directory: {home / 'logs'}",
     ]
 
