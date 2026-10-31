@@ -229,6 +229,22 @@ def _filter_truncate(
     return text + ("..." if end is None else end)
 
 
+_NUNJUCKS_ESCAPES = {"&": "&amp;", '"': "&quot;", "'": "&#39;", "<": "&lt;", ">": "&gt;",
+                     "\\": "&#92;"}  # fmt: skip
+_NUNJUCKS_ESCAPE_RE = re.compile(r"[&\"'<>\\]")
+
+
+def _filter_escape(value: Any) -> Any:
+    """Nunjucks `escape`/`e`: its own entity table (`&quot;`, `&#92;`), idempotent on safe
+    strings. Jinja's markupsafe writes `&#34;` and leaves backslashes alone."""
+    import markupsafe
+
+    if isinstance(value, markupsafe.Markup):
+        return value
+    text = "" if value is None or isinstance(value, jinja2.Undefined) else js_string(value)
+    return markupsafe.Markup(_NUNJUCKS_ESCAPE_RE.sub(lambda m: _NUNJUCKS_ESCAPES[m[0]], text))
+
+
 def _filter_default(value: Any, default: Any = "", boolean: bool = False) -> Any:
     if isinstance(value, jinja2.Undefined) or (boolean and not js_truthy(value)):
         return default
@@ -257,6 +273,8 @@ class NunjucksCompatEnvironment(jinja2.Environment):
             truncate=_filter_truncate,
             default=_filter_default,
             d=_filter_default,
+            escape=_filter_escape,
+            e=_filter_escape,
             safe=lambda v: v,
         )
 

@@ -1,0 +1,60 @@
+{
+  "id": "eval-legacy-table-backed",
+  "createdAt": "2024-01-02T03:04:05.000Z",
+  "author": "legacy-author",
+  "config": {
+    "description": "legacy import",
+    "redteam": {},
+    "tracing": {
+      "enabled": true,
+      "provider": {
+        "id": "tempo",
+        "endpoint": "https://tempo.example.com",
+        "auth": { "token": "imported-legacy-secret" },
+        "headers": {
+          "Authorization": "Bearer imported-header-secret",
+          "X-Scope-OrgID": "tenant-a"
+        }
+      }
+    },
+    "prompts": ["Tell me about {{topic}}"],
+    "providers": ["echo"],
+    "tests": [{ "vars": { "topic": "legacy" } }]
+  },
+  "results": {
+    "version": 2,
+    "timestamp": "2024-01-02T03:04:05.000Z",
+    "results": [
+      {
+        "prompt": { "raw": "Tell me about legacy", "label": "Tell me about {{topic}}" },
+        "vars": { "topic": "legacy" },
+        "response": { "output": "Tell me about legacy" },
+        "success": true,
+        "score": 1,
+        "latencyMs": 3,
+        "provider": { "id": "echo" }
+      }
+    ],
+    "table": {
+      "head": {
+        "prompts": [
+          { "raw": "Tell me about {{topic}}", "label": "Tell me about {{topic}}", "provider": "echo" }
+        ],
+        "vars": ["topic"]
+      },
+      "body": [
+        {
+          "outputs": [
+            { "pass": true, "score": 1, "text": "Tell me about legacy", "prompt": "Tell me about legacy", "latencyMs": 3 }
+          ],
+          "vars": ["legacy"]
+        }
+      ]
+    },
+    "stats": {
+      "successes": 1,
+      "failures": 0,
+      "tokenUsage": { "total": 0, "prompt": 0, "completion": 0, "cached": 0 }
+    }
+  }
+}
