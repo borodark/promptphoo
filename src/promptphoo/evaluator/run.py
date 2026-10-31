@@ -296,7 +296,7 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
             active = test["provider"] if is_api_provider(test.get("provider")) else provider
             context = {
                 "vars": vars_,
-                "prompt": {**prompt_for_render, "config": prompt_config},
+                "prompt": _context_prompt(prompt_for_render, prompt_config),
                 "filters": step.filters,
                 "originalProvider": provider,
                 "test": test,
@@ -415,6 +415,18 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
             }
         )
         return [row]
+
+
+def _context_prompt(prompt: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
+    """The prompt as Node's call context shows it: `config` sits before `template`."""
+    out: dict[str, Any] = {}
+    for key, value in prompt.items():
+        if key == "template" and "config" not in out:
+            out["config"] = config
+        if key != "config":
+            out[key] = value
+    out.setdefault("config", config)
+    return out
 
 
 def _normalize_cached_target_response(response: dict[str, Any]) -> dict[str, Any]:
@@ -750,12 +762,12 @@ class Evaluator:
         prompts, columns_by_provider = self._build_prompt_columns()
         await self.store.append_prompts(prompts)
 
-        var_names: set[str] = set()
+        var_names: dict[str, None] = {}  # insertion-ordered like a JS Set
         default = get_default_test(suite) or {}
         for test in tests:
             test["vars"] = {**(default.get("vars") or {}), **(test.get("vars") or {})}
             await _apply_input_transform(test, (default.get("options") or {}).get("transformVars"))
-            var_names.update(test["vars"])
+            var_names.update(dict.fromkeys(test["vars"]))
 
         concurrency = options.get("maxConcurrency") or DEFAULT_MAX_CONCURRENCY
         steps = await self._build_run_options(tests, columns_by_provider)
@@ -781,7 +793,7 @@ class Evaluator:
         serial = [s for s in steps if (s.test.get("options") or {}).get("runSerially")]
         concurrent = [s for s in steps if not (s.test.get("options") or {}).get("runSerially")]
         index_of = {id(s): i for i, s in enumerate(steps)}
-        all_vars: set[str] = set(var_names)
+        all_vars: dict[str, None] = dict(var_names)
         processed: set[int] = set()
         progress = options.get("progressCallback")
         state = {"complete": 0}
@@ -806,7 +818,7 @@ class Evaluator:
                 rows = [self._timeout_row(step, timeout_ms, e)]
             processed.add(idx)
             for row in rows:
-                all_vars.update(row.get("vars") or {})
+                all_vars.update(dict.fromkeys(row.get("vars") or {}))
                 self._track_row_stats(row)
                 state["complete"] += 1
                 try:
@@ -829,7 +841,7 @@ class Evaluator:
         await asyncio.gather(*(limited(s) for s in concurrent))
 
         await self.store.append_prompts(prompts)
-        self.store.set_vars(sorted(all_vars, key=list(all_vars).index))
+        self.store.set_vars(list(all_vars))
         self.store.set_duration_ms(round((time.time() - start) * 1000))
         if self.store.persisted:
             await self.store.save()

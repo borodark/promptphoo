@@ -17,7 +17,7 @@ from typing import Any
 
 from promptphoo import cli_state, envars
 from promptphoo.files import glob_sync, maybe_load_from_external_file
-from promptphoo.jsvalues import js_string, json_stringify
+from promptphoo.jsvalues import is_truthy, js_string, json_stringify
 from promptphoo.refs import dereference
 from promptphoo.templating import read_filters, render_env_only_in_object
 from promptphoo.testcases import (
@@ -582,7 +582,7 @@ async def _resolve_loaded_config(
 
     def pick(key: str) -> Any:
         value = file_config.get(key)
-        return value if value else default_config.get(key)
+        return value if is_truthy(value) else default_config.get(key)
 
     base_path = os.path.abspath(
         file_config.get("basePath")

@@ -254,7 +254,7 @@ async def _create_api_provider(
     provider.transform = options.get("transform")
     provider.delay = options.get("delay")
     provider.inputs = options.get("inputs")
-    provider.label = provider.label or render(options.get("label") or "") or None
+    provider.label = provider.label or render(options.get("label") or "")
     provider.prompts = options.get("prompts")
     return provider
 

@@ -121,7 +121,11 @@ async def do_eval(
         cli_state.set_safe_mode(True)
 
     if config.get("evaluateOptions"):
-        evaluate_options = {**evaluate_options, **config["evaluateOptions"]}
+        evaluate_options = {
+            **evaluate_options,
+            **config["evaluateOptions"],
+            "eventSource": evaluate_options.get("eventSource"),
+        }
 
     iterations = _first_defined(
         cmd.get("repeat"), command_line_options.get("repeat"), evaluate_options.get("repeat")
@@ -217,6 +221,7 @@ async def do_eval(
     }
     if delay > 0:
         options["delay"] = delay
+    options = {k: v for k, v in options.items() if v is not None}
 
     if cmd.get("grader"):
         default_test = test_suite.get("defaultTest")
@@ -480,7 +485,12 @@ def register(cli: click.Group, default_config: dict[str, Any], default_config_pa
             cli_state.set_safe_mode(True)
         try:
             _, exit_code = asyncio.run(
-                do_eval(cmd, default_config, default_config_path, dict(evaluate_options))
+                do_eval(
+                    cmd,
+                    default_config,
+                    default_config_path,
+                    {**evaluate_options, "eventSource": "cli"},
+                )
             )
         except EvalRunError as e:
             logger.error("%s", e)

@@ -492,7 +492,7 @@ class Eval:
             conn = db.get_db()
             conn.row_factory = _row_factory
             rows = conn.execute(
-                "SELECT * FROM eval_results WHERE eval_id = ? ORDER BY test_idx, prompt_idx",
+                "SELECT * FROM eval_results WHERE eval_id = ?",  # Node: no ORDER BY
                 (self.id,),
             ).fetchall()
             self.results = [EvalResult.from_db_row(r) for r in rows]
