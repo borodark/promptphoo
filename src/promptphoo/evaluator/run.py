@@ -25,7 +25,7 @@ from promptphoo.evaluator.build import (
 from promptphoo.evaluator.render import FILE_METADATA_KEY, collect_file_metadata, render_prompt
 from promptphoo.filters import filter_by_range
 from promptphoo.jsonutil import js_json_parse
-from promptphoo.jsvalues import json_stringify
+from promptphoo.jsvalues import UNDEFINED, json_stringify
 from promptphoo.providers import canonicalize_provider_id, load_api_provider
 from promptphoo.providers.base import ApiProvider, is_api_provider
 from promptphoo.templating import template_references_variable
@@ -599,7 +599,9 @@ class Evaluator:
                 if not is_allowed_prompt(prompt, allowed):
                     continue
                 columns.append((len(prompts), prompt))
-                completed = {k: v for k, v in prompt.items() if k != "function"}
+                # Node prompt objects carry `id` first (often undefined), so it serializes first.
+                completed = {"id": None, **{k: v for k, v in prompt.items() if k != "function"}}
+                completed.setdefault("config", UNDEFINED)  # Node prompts carry config: undefined
                 completed.update(
                     id=generate_id_from_prompt(prompt), provider=key, label=prompt.get("label"),
                     metrics=create_default_prompt_metrics(),

@@ -28,7 +28,7 @@ from importlib import resources
 from typing import Any, TypeGuard
 
 from promptphoo import UPSTREAM_VERSION
-from promptphoo.jsvalues import is_truthy, js_string, json_stringify, to_fixed
+from promptphoo.jsvalues import UNDEFINED, is_truthy, js_string, json_stringify, to_fixed
 from promptphoo.output import jsyaml
 from promptphoo.output.csv_export import fetch_results_batched, stream_eval_csv
 from promptphoo.output.junit import write_junit_xml_output
@@ -371,7 +371,7 @@ def _render_html(eval_record: Any) -> str:
 
 
 def _sanitize_for_xml(obj: Any) -> Any:
-    if obj is None:
+    if obj is None or obj is UNDEFINED:
         return ""
     if isinstance(obj, list | tuple):
         return [_sanitize_for_xml(v) for v in obj]

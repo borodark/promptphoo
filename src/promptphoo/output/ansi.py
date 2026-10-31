@@ -62,6 +62,18 @@ def color_enabled() -> bool:
     return tty and os.environ.get("TERM") != "dumb"
 
 
+def table_color_enabled() -> bool:
+    """Table borders/headers (@colors/colors in promptfoo's CLI) are coloured even when stdout is
+    piped: something in promptfoo's process enables @colors globally. Observed against 0.125.1,
+    only FORCE_COLOR=0 (parseInt) or --no-color turns them off; NO_COLOR does not."""
+    force = os.environ.get("FORCE_COLOR")
+    if force is not None:
+        # `FORCE_COLOR.length === 0 || parseInt(FORCE_COLOR, 10) !== 0` (NaN counts as on)
+        m = re.match(r"\s*[+-]?\d+", force)
+        return force == "" or m is None or int(m.group()) != 0
+    return not any(flag in sys.argv for flag in ("--no-color", "--no-colors", "--color=false"))
+
+
 def _encase_crlf(string: str, prefix: str, postfix: str) -> str:
     """chalk's stringEncaseCRLFWithFirstIndex: close styles before each line break."""
     out = []
@@ -99,7 +111,7 @@ def colors(text: str, styles: Sequence[str], enabled: bool | None = None) -> str
     if not styles:
         return text
     if enabled is None:
-        enabled = color_enabled()
+        enabled = table_color_enabled()
     if not enabled or not text:
         return text
     # wrapWithStyleColors walks styles from last to first building `colors.a.b`, so the

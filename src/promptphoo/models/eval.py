@@ -13,7 +13,7 @@ from typing import Any
 
 from promptphoo import db, envars, sanitizer
 from promptphoo.evaluator.run import ResultFailureReason, generate_id_from_prompt, sha256
-from promptphoo.jsvalues import json_stringify
+from promptphoo.jsvalues import UNDEFINED, json_stringify
 from promptphoo.models import result_sanitize as rs
 from promptphoo.paths import get_config_directory_path
 from promptphoo.tokens import (
@@ -63,6 +63,10 @@ def get_author(override: str | None = None) -> str | None:
     if logged_in and email:
         return email
     return override or email or envars.get_env_string("PROMPTFOO_AUTHOR") or None
+
+
+def _or_undefined(value: Any) -> Any:
+    return UNDEFINED if value is None else value
 
 
 class EvalResult:
@@ -194,10 +198,9 @@ class EvalResult:
         out: dict[str, Any] = {"cost": self.cost}
         if self.response and self.response.get("incurredCost") is not None:
             out["incurredCost"] = self.response["incurredCost"]
-        if self.description:
-            out["description"] = self.description
-        if self.error:
-            out["error"] = self.error
+        # Node always sets these keys (undefined when empty); XML output shows them as empty tags.
+        out["description"] = self.description or UNDEFINED
+        out["error"] = self.error or UNDEFINED
         out["gradingResult"] = (
             None
             if flags["shouldStripGradingResult"]
@@ -505,14 +508,11 @@ class Eval:
             "failures": 0,
             "errors": 0,
             "tokenUsage": create_empty_token_usage(),
+            # Node always sets these keys, undefined when unknown.
+            "durationMs": _or_undefined(self.duration_ms),
+            "generationDurationMs": _or_undefined(self.generation_duration_ms),
+            "evaluationDurationMs": _or_undefined(self.evaluation_duration_ms),
         }
-        for key, value in (
-            ("durationMs", self.duration_ms),
-            ("generationDurationMs", self.generation_duration_ms),
-            ("evaluationDurationMs", self.evaluation_duration_ms),
-        ):
-            if value is not None:
-                stats[key] = value
         for prompt in self.prompts:
             metrics = prompt.get("metrics") or {}
             stats["successes"] += metrics.get("testPassCount") or 0
