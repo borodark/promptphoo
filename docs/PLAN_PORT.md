@@ -95,7 +95,7 @@ Each module mirrors its TypeScript source:
 - A registry of `(prefix-match, factory)` pairs ports `src/providers/registry.ts`, along with the id grammar `prefix:modelType:model` and the five config shapes (`src/util/providerRef.ts`).
 - Load-time `{{ env.X }}` rendering follows `src/providers/index.ts:108-314`.
 - `ApiProvider` is a Protocol with `id()` and `async call_api(prompt, context, options)`, mirroring `src/types/providers.ts:139`.
-- The 42 OpenAI-compatible wrappers become a single `OpenAICompatibleProvider` plus a data table of `{prefix, base_url, key_env}`.
+- The 42 OpenAI-compatible wrappers become a single `OpenAICompatibleProvider` plus a data table of `{prefix, base_url, key_env}`. As built (see D31), the table covers only the pure routing wrappers; families with their own behaviour keep a small subclass each under `providers/compatible/`.
 
 ## Phases
 Each phase ends with its parity-harness subset passing.
