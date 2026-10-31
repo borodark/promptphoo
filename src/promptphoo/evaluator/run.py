@@ -1,7 +1,9 @@
-"""The eval loop. Ports runEval / Evaluator from src/evaluator.ts (the non-redteam, untraced
-path). The select-best / max-score pass is in evaluator/comparison.py and the extension hooks
-in evaluator/extensions.py. Derived metrics and tracing are not ported yet; configs that use
-them warn explicitly.
+"""The eval loop. Ports runEval / Evaluator from src/evaluator.ts (the non-redteam path). The
+select-best / max-score pass is in evaluator/comparison.py and the extension hooks in
+evaluator/extensions.py. Derived metrics are not ported yet; configs that use them warn
+explicitly. Tracing gives each step a W3C trace context, external trace collection and the
+trace id that the assertions load their spans for (see D54); promptfoo's own OpenTelemetry
+spans are not recorded here.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ import asyncio
 import copy
 import hashlib
 import logging
+import re
 import time
 import traceback
 import uuid
@@ -438,6 +441,7 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
 
     latency_ms = 0.0
     prompt_for_render = dict(prompt)
+    trace_context: dict[str, Any] | None = None
     try:
         rendered_prompt = await render_prompt(prompt_for_render, vars_, step.filters, provider)
         prompt_config = _merge_prompt_config(prompt_for_render.get("config"), test.get("options"))
@@ -452,11 +456,9 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
         except ValueError:
             rendered_json = None
 
-        trace_context = (
-            None
-            if test.get("providerOutput") is not None
-            else await _generate_trace_context(step, prompt_for_render)
-        )
+        if test.get("providerOutput") is None:
+            target = test["provider"] if is_api_provider(test.get("provider")) else provider
+            trace_context = await _generate_trace_context(step, target, prompt_for_render)
 
         async def run_execution() -> list[dict[str, Any]]:
             nonlocal latency_ms
@@ -488,15 +490,22 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
                     context["traceparent"] = trace_context.get("traceparent")
                     context["evaluationId"] = trace_context.get("evaluationId")
                     context["testCaseId"] = trace_context.get("testCaseId")
-                response = await _call_active_provider(
-                    active,
-                    rendered_prompt,
-                    context,
-                    step.rate_limit_registry,
-                    trace_context=trace_context,
-                    prompt_label=prompt_for_render.get("label"),
-                    test_idx=step.test_idx,
-                )
+                provider_response: dict[str, Any] | None = None
+                try:
+                    provider_response = await _call_active_provider(
+                        active,
+                        rendered_prompt,
+                        context,
+                        step.rate_limit_registry,
+                        trace_context=trace_context,
+                        prompt_label=prompt_for_render.get("label"),
+                        test_idx=step.test_idx,
+                    )
+                finally:
+                    await _collect_external_trace_after_provider_call(
+                        step, provider_response, trace_context
+                    )
+                response = provider_response  # type: ignore[assignment]
                 if not isinstance(response, dict):
                     raise TypeError(f"Provider returned {type(response).__name__}, expected a dict")
             latency_ms = round((time.monotonic() - start) * 1000)
@@ -556,13 +565,14 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
             ret["testCase"] = test
             ret["promptId"] = prompt.get("id") or ""
             ret["tokenUsage"] = create_empty_token_usage()
+            ret.update(get_trace_linkage(trace_context, step.eval_id))
             if not ret["metadata"].get("sessionIds") and not ret["metadata"].get("sessionId"):
                 session = _session_id(response, persisted_vars)
                 if session is not None:
                     ret["metadata"]["sessionId"] = session
 
             await _apply_response_outcome(step, ret, response, rendered_prompt, persisted_vars,
-                                          latency_ms, trace_context)  # fmt: skip
+                                          latency_ms, get_trace_id(trace_context))  # fmt: skip
             if response.get("tokenUsage"):
                 accumulate_response_token_usage(ret["tokenUsage"], response)
             store_as = (test.get("options") or {}).get("storeOutputAs")
@@ -602,9 +612,150 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
                         **({"providerLabel": provider.label} if provider.label else {}),
                     },
                 },
+                **get_trace_linkage(trace_context, step.eval_id),
             }
         )
         return [row]
+
+
+# --- tracing (evaluator.ts getTraceId / getTraceLinkage / collectExternalTrace...) ---------
+
+_HEX2 = re.compile(r"[0-9a-f]{2}\Z")
+_TRACE_ID = re.compile(r"[0-9a-f]{32}\Z")
+_PARENT_ID = re.compile(r"[0-9a-f]{16}\Z")
+_ALL_ZEROS = re.compile(r"0+\Z")
+
+
+def get_trace_id(trace_context: dict[str, Any] | None) -> str | None:
+    """The trace id of a valid W3C traceparent, else None (malformed ids are never linked)."""
+    traceparent = (trace_context or {}).get("traceparent")
+    if not traceparent:
+        return None
+    parts = traceparent.split("-")
+    version, trace_id, parent_id, flags = [*parts, "", "", ""][:4]
+    valid_part_count = len(parts) == 4 if version == "00" else len(parts) >= 4
+    valid_trace_id = bool(_TRACE_ID.match(trace_id)) and not _ALL_ZEROS.match(trace_id)
+    valid_parent_id = bool(_PARENT_ID.match(parent_id)) and not _ALL_ZEROS.match(parent_id)
+    if (
+        not _HEX2.match(version)
+        or version == "ff"
+        or not valid_part_count
+        or not valid_trace_id
+        or not valid_parent_id
+        or not _HEX2.match(flags)
+    ):
+        logger.warning("[Evaluator] Malformed traceparent; dropping trace linkage on this row.")
+        return None
+    return trace_id
+
+
+def get_trace_linkage(trace_context: dict[str, Any] | None, eval_id: str | None) -> dict[str, Any]:
+    trace_id = get_trace_id(trace_context)
+    # Only set evaluationId when a trace context exists, so its presence means "traced".
+    evaluation_id = (
+        (trace_context.get("evaluationId") or eval_id) if trace_context is not None else None
+    )
+    out: dict[str, Any] = {}
+    if trace_id:
+        out["traceId"] = trace_id
+    if evaluation_id:
+        out["evaluationId"] = evaluation_id
+    return out
+
+
+def is_tracing_enabled_for_test(test_suite: dict[str, Any], test: dict[str, Any]) -> bool:
+    return (
+        envars.get_env_bool("PROMPTFOO_TRACING_ENABLED", False)
+        or (test.get("metadata") or {}).get("tracingEnabled") is True
+        or (test_suite.get("tracing") or {}).get("enabled") is True
+    )
+
+
+def create_run_eval_test(
+    test_suite: dict[str, Any], test: dict[str, Any], vars_: Any, eval_id: str
+) -> dict[str, Any]:
+    """createRunEvalTest: a traced test carries tracingEnabled and its evaluationId."""
+    base = {**test, "vars": vars_}
+    if not is_tracing_enabled_for_test(test_suite, test):
+        return base
+    return {
+        **base,
+        "metadata": {**(test.get("metadata") or {}), "tracingEnabled": True,
+                     "evaluationId": eval_id},
+    }  # fmt: skip
+
+
+async def _generate_trace_context(
+    step: RunEvalOptions, active_provider: ApiProvider, prompt: dict[str, Any]
+) -> dict[str, Any] | None:
+    from promptphoo.tracing.evaluator_tracing import generate_trace_context_if_needed
+
+    return await generate_trace_context_if_needed(
+        step.test,
+        step.evaluate_options,
+        step.test_idx,
+        step.prompt_idx,
+        step.test_suite,
+        {
+            "providerId": active_provider.id(),
+            "promptLabel": prompt.get("label"),
+            "repeatIndex": step.repeat_index,
+        },
+    )
+
+
+async def _collect_external_trace_after_provider_call(
+    step: RunEvalOptions, response: dict[str, Any] | None, trace_context: dict[str, Any] | None
+) -> None:
+    """collectExternalTraceAfterProviderCall: pull the target's spans from an external
+    backend into the local store, retrying while a trace-aware assertion waits on them."""
+    tracing = step.test_suite.get("tracing") or {}
+    if not tracing.get("provider"):
+        return
+    from promptphoo.assertions.index import has_trace_aware_assertions
+    from promptphoo.tracing.providers import is_external_trace_provider
+    from promptphoo.tracing.trace_context import fetch_trace_context
+
+    if not is_external_trace_provider(tracing.get("provider")):
+        return
+    trace_id = get_trace_id(trace_context)
+    if not trace_id:
+        return
+    if response is not None and response.get("cached"):
+        logger.debug(
+            "[Evaluator] Skipping external trace fetch for cached response traceId=%s", trace_id
+        )
+        return
+    needs_trace_for_grading = (
+        response is not None
+        and not response.get("error")
+        and response.get("output") is not None
+        and has_trace_aware_assertions(step.test.get("assert"))
+    )
+    try:
+        logger.debug("[Evaluator] Fetching traces from external provider for traceId=%s", trace_id)
+        trace = await fetch_trace_context(
+            trace_id,
+            {
+                "providerConfig": tracing.get("provider"),
+                "queryDelay": tracing.get("queryDelay"),
+                "maxRetries": 5 if needs_trace_for_grading else 0,
+                "retryDelayMs": 1000,
+                "includeInternalSpans": True,
+                "sanitizeAttributes": True,
+                "redactAttributes": ((tracing.get("otlp") or {}).get("http") or {}).get(
+                    "redactAttributes"
+                ),
+            },
+        )
+        if trace:
+            logger.debug("[Evaluator] Successfully fetched traces for traceId=%s", trace_id)
+        else:
+            logger.debug("[Evaluator] No external traces found for traceId=%s", trace_id)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.warning("[Evaluator] Failed to fetch external traces: %s", e)
 
 
 async def _call_active_provider(
@@ -682,28 +833,6 @@ async def _invoke_target(
     )
 
 
-async def _generate_trace_context(
-    step: RunEvalOptions, prompt_for_render: dict[str, Any]
-) -> dict[str, Any] | None:
-    """generateTraceContextIfNeeded for one step: the test-case root span and trace record."""
-    from promptphoo.tracing.evaluator_tracing import generate_trace_context_if_needed
-
-    test = step.test
-    provider = test["provider"] if is_api_provider(test.get("provider")) else step.provider
-    return await generate_trace_context_if_needed(
-        test,
-        step.evaluate_options,
-        step.test_idx,
-        step.prompt_idx,
-        step.test_suite,
-        {
-            "providerId": provider.id(),
-            "promptLabel": prompt_for_render.get("label"),
-            "repeatIndex": step.repeat_index,
-        },
-    )
-
-
 async def _run_with_test_case_span(
     trace_context: dict[str, Any] | None,
     test_idx: int,
@@ -731,42 +860,6 @@ async def _run_with_test_case_span(
         },
         lambda: with_test_case_span(trace_context.get("rootSpan"), run_execution),
     )
-
-
-def _trace_id(trace_context: dict[str, Any] | None) -> str | None:
-    """getTraceId: the trace id of a well-formed version-00 traceparent."""
-    traceparent = (trace_context or {}).get("traceparent")
-    if not traceparent:
-        return None
-    parts = traceparent.split("-")
-    if len(parts) == 4 and len(parts[1]) == 32:
-        return parts[1]
-    return None
-
-
-def _is_tracing_enabled_for_test(test_suite: dict[str, Any], test_case: dict[str, Any]) -> bool:
-    return (
-        envars.get_env_bool("PROMPTFOO_TRACING_ENABLED", False)
-        or (test_case.get("metadata") or {}).get("tracingEnabled") is True
-        or (test_suite.get("tracing") or {}).get("enabled") is True
-    )
-
-
-def _create_run_eval_test(
-    test_suite: dict[str, Any], test_case: dict[str, Any], vars_: Any, eval_id: str
-) -> dict[str, Any]:
-    """createRunEvalTest: traced tests carry tracingEnabled and the eval id in metadata."""
-    base_test = {**test_case, "vars": vars_}
-    if not _is_tracing_enabled_for_test(test_suite, test_case):
-        return base_test
-    return {
-        **base_test,
-        "metadata": {
-            **(test_case.get("metadata") or {}),
-            "tracingEnabled": True,
-            "evaluationId": eval_id,
-        },
-    }
 
 
 def _suite_tracing_enabled(test_suite: dict[str, Any]) -> bool:
@@ -824,7 +917,7 @@ async def _apply_response_outcome(
     rendered_prompt: str,
     vars_: dict[str, Any],
     latency_ms: float,
-    trace_context: dict[str, Any] | None = None,
+    trace_id: str | None = None,
 ) -> None:
     if response.get("error"):
         ret["error"] = response["error"]
@@ -868,7 +961,7 @@ async def _apply_response_outcome(
             latency_ms=response.get("latencyMs") if response.get("latencyMs") is not None
             else latency_ms,
             assert_scoring_function=test.get("assertScoringFunction"),
-            trace_id=_trace_id(trace_context),
+            trace_id=trace_id,
         ),
     )  # fmt: skip
     if not check["pass"]:
@@ -1209,8 +1302,8 @@ class Evaluator:
                                     provider=provider,
                                     prompt={**prompt, "raw": prefix + prompt["raw"] + suffix,
                                             "template": prompt.get("template", prompt["raw"])},
-                                    test=_create_run_eval_test(suite, test, vars_,
-                                                               self.store.id),
+                                    test=create_run_eval_test(suite, test, vars_,
+                                                              self.store.id),
                                     test_suite=suite,
                                     test_idx=test_idx,
                                     prompt_idx=prompt_idx,
