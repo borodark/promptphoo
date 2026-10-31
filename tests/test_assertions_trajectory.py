@@ -1,9 +1,11 @@
-"""Ports test/assertions/trajectory.test.ts (summarizeTrajectoryForJudge and the model-graded
-trajectory:goal-success cases are not ported)."""
+"""Ports test/assertions/trajectory.test.ts (the model-graded trajectory:goal-success cases
+are in test_assertions_modelgraded.py)."""
 
 from __future__ import annotations
 
+import asyncio
 import copy
+import inspect
 import json
 from typing import Any
 
@@ -391,7 +393,9 @@ def test_throws_when_trace_data_is_not_available(base_type: str):
     with pytest.raises(
         AssertionValueError, match=f"No trace data available for {base_type} assertion"
     ):
-        HANDLERS[base_type](params)
+        result = HANDLERS[base_type](params)
+        if inspect.isawaitable(result):
+            asyncio.run(result)  # type: ignore[arg-type]
 
 
 def test_tool_used_passes_when_required_tool_present():
@@ -1093,24 +1097,23 @@ def test_step_count_rejects_invalid_values(value: Any, message: str):
 # --- trajectory:goal-success -------------------------------------------------------------------
 
 
-def test_goal_success_is_not_implemented_yet():
-    with pytest.raises(NotImplementedError, match="Phase 4"):
-        handle_trajectory_goal_success(make_params("trajectory:goal-success", "Refund the order"))
-
-
 def test_goal_success_without_trace():
     with pytest.raises(
         AssertionValueError,
         match="No trace data available for trajectory:goal-success assertion",
     ):
-        handle_trajectory_goal_success(
-            make_params("trajectory:goal-success", "Refund the order", trace=None)
+        asyncio.run(
+            handle_trajectory_goal_success(
+                make_params("trajectory:goal-success", "Refund the order", trace=None)
+            )
         )
 
 
 def test_goal_success_rejects_invalid_value():
     with pytest.raises(AssertionValueError) as exc:
-        handle_trajectory_goal_success(make_params("trajectory:goal-success", {"goal": "  "}))
+        asyncio.run(
+            handle_trajectory_goal_success(make_params("trajectory:goal-success", {"goal": "  "}))
+        )
     assert str(exc.value) == (
         "trajectory:goal-success assertion must have a string value or an object with a goal "
         "property"
