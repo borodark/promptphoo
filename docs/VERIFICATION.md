@@ -25,6 +25,7 @@ bug. Please report it.
 | Anthropic live | Both CLIs call api.anthropic.com directly on nine configs | [phase 2](#phase-2-live) | Same pass/error outcome on every config except one live-variance row; identical error texts; costs equal to the float | `9d64258` |
 | Response cache | A second identical run is served from cache | features config run twice | 4,072 of 4,072 tokens cached on the rerun | `9d64258` |
 | Key handling | The API key never lands on disk | `grep -rlF -f <keyfile>` over every output, log, recording and database | Found in no file | `9d64258` |
+| Test isolation | A flaky failure in `test_trace_assertions_e2e.py` (about 1 full run in 5) | Reproduced deterministically: a test that leaves the shared DB connection open makes the next eval on that worker write into the wrong database | Fixed in `tests/conftest.py` (D60); 3 consecutive full runs clean | after `3e6099e` |
 
 Total spend for the Anthropic tests was about $1.
 
@@ -105,9 +106,6 @@ listed in [`SCOPE.md`](SCOPE.md#known-upstream-bugs-reproduced).
 - Live OpenAI, Azure OpenAI, Google and Bedrock calls. These providers are covered by mocked HTTP
   tests (respx) and Node goldens, not by a live run.
 - Remote test sources (URLs, `https://` CSVs) and heavy concurrency against rate limits.
-- Flakiness: `tests/test_trace_assertions_e2e.py::test_trace_assertions_grade_spans_written_by_the_provider`
-  failed once in a parallel run (`-n auto`) and passed on every rerun, alone and in the full
-  suite. It is timing-sensitive under load and has not been fixed yet.
 
 ## How to reproduce
 

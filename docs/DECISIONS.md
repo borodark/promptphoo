@@ -751,6 +751,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Every state path goes through `paths.get_config_directory_path` or one of the two env vars cleared here.
 - Modules: tests/conftest.py, tests/test_providers_bedrock.py, tests/test_providers_http.py, tests/test_providers_google.py
 - Commits: `9ffd3ec`
+- Note: The fixture also closes the database connection before and after every test. The connection is a module global, so one left open by an earlier test on the same xdist worker sent the next eval's writes to that test's database; `test_trace_assertions_e2e.py` failed about once in five full runs because of it.
 
 ## 61. Safer defaults than upstream: sandboxed templates, TLS verified, no feedback upload
 - Decision: Three deliberate departures from upstream, made before the public alpha.

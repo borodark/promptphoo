@@ -16,7 +16,14 @@ def _isolate_promptfoo_state(tmp_path_factory: pytest.TempPathFactory, monkeypat
     for name in _STATE_DIR_ENV:
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(paths, "_override", None)
+    # The database connection is a module global opened once against the config directory of
+    # the moment. A connection left open by an earlier test on the same worker would point
+    # this test's writes at that test's database, so close it on both sides.
+    from promptphoo import db
+
+    db.close_db()
     yield config_dir
+    db.close_db()
 
 
 @pytest.fixture(autouse=True)
