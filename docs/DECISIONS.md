@@ -348,7 +348,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Node writes no other nondeterministic export field. `platform`/`arch` are equal on one machine, and the eval_results read order is SQLite's for the same query on the same file.
 - Implication: `tests/test_import_export_node.py` checks all of this when `NODE_PROMPTFOO` is set. `tests/test_import_export.py` checks it offline against `tests/fixtures/import_export/node-v4-export.json`, which Node wrote. A traced eval loses `traces` on a Python re-export until Phase 6.
 - Modules: src/promptphoo/cli/export.py, src/promptphoo/cli/import_.py, src/promptphoo/db/import_export.py, src/promptphoo/importers/parse.py, src/promptphoo/importers/openai_evals.py, src/promptphoo/output/export_to_file.py, src/promptphoo/sanitizer.py, src/promptphoo/templating.py, src/promptphoo/db/__init__.py, tests/test_import_export.py, tests/test_import_export_node.py
-- Commits:
+- Commits: `a4dfc5e`
 
 ## 43. Embedded blob assets: validated like upstream, then dropped until the blob store exists
 - Decision: `import` checks `blobAssets` exactly as upstream checks them: the shape check, the `collectBlobHashes` reference scan (depth 64, 100 000-char strings), the 50 MB limit and the base64 length bound, Node-lenient base64 decoding, size and sha256 checks, and the same error messages. The checks run before the `--force` delete. Valid, referenced assets are then skipped with one warning instead of being stored, and `blob_assets`/`blob_references` stay empty. `export eval --include-media` is accepted and does nothing, so no `blobAssets` are emitted.
@@ -356,4 +356,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Until Phase 6, users who need media round-trips import with Node. The eval's `promptfoo://blob/` references are kept verbatim, so a later Phase 6 store (or Node) can resolve them.
 - Implication: Phase 6 replaces `import_blob_assets` with `storeBlob` plus `recordBlobReference(location='import')`, and fills `blobAssets` in `create_output_data` when `include_media` is set.
 - Modules: src/promptphoo/cli/import_.py, src/promptphoo/cli/export.py
-- Commits:
+- Commits: `a4dfc5e`
