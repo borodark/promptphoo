@@ -44,7 +44,7 @@ extend-exclude = ["src/promptphoo/_data"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["SIM102"]
+ignore = ["SIM102", "SIM105"]
 
 [tool.pyright]
 include = ["src", "tools"]

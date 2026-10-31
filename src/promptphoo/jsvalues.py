@@ -86,9 +86,12 @@ def _prepare(value: Any) -> Any:
             return None
         return _JsNumber(value) if value.is_integer() and abs(value) < 1e21 else value
     if isinstance(value, dict):
-        return {str(k): _prepare(v) for k, v in value.items() if v is not UNDEFINED}
+        # JSON.stringify drops undefined and function-valued properties.
+        return {
+            str(k): _prepare(v) for k, v in value.items() if v is not UNDEFINED and not callable(v)
+        }
     if isinstance(value, list | tuple):
-        return [None if v is UNDEFINED else _prepare(v) for v in value]
+        return [None if v is UNDEFINED or callable(v) else _prepare(v) for v in value]
     if hasattr(value, "model_dump"):
         return _prepare(value.model_dump(by_alias=True, exclude_none=False))
     return str(value)
