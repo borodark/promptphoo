@@ -347,6 +347,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Every hook context is JSON-serializable through `json_stringify` (providers through `to_json`). A hook that needs a live provider object cannot get one, as under Node's Python runner.
 - Implication: `python-prompt-with-extension.yaml` now passes parity, so its EXPECTED entry is gone.
 - Modules: src/promptphoo/evaluator/extensions.py, src/promptphoo/evaluator/run.py, src/promptphoo/cli/eval.py, tools/parity.py
+- Commits: `597e573`
 
 ## 39. --watch polls file stamps instead of using chokidar or a watch library
 - Decision:
@@ -358,6 +359,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Assumption: Users watch a small set of files, so a 0.5 s poll is fast enough and costs nothing noticeable.
 - Implication: Upstream's quirk of watching a `file://prompt.py:fn` prompt as the literal path `prompt.py:fn` (which never changes) is kept.
 - Modules: src/promptphoo/cli/watch.py, src/promptphoo/cli/eval.py
+- Commits: `597e573`
 
 ## 46. --suggest-prompts is ported; a rejected suggestion run exits 1 without the empty summary
 - Decision:
@@ -366,6 +368,7 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
   - The eval-flag audit against commander's options also changed: `--tag` now merges `commandLineOptions.tags` under the CLI tags (upstream `runtimeTagsForEval`), `--verbose` is accepted on `eval`, and `-w`, `-x` and `--suggest-prompts` have their help texts. Out-of-range numeric flags fail with click's usage error (exit 2) rather than upstream's "Invalid command options" (exit 1).
 - Rationale: The interactive question makes suggestions a terminal feature, so the empty summary after a refusal carries no information.
 - Modules: src/promptphoo/suggestions.py, src/promptphoo/cli/eval.py, src/promptphoo/evaluator/run.py
+- Commits: `597e573`
 
 ## 47. generate dataset/assertions keep upstream's prompts by porting dedent over the raw template segments
 - Decision:
@@ -377,3 +380,4 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: Retyping the prompt texts by hand would drift from upstream in whitespace and escapes. Generated raw segments plus a dedent port stay exact and can be regenerated on an upstream sync.
 - Assumption: Upstream keeps writing these prompts as `dedent` template literals. A switch to plain strings would need the generator changed.
 - Modules: src/promptphoo/cli/generate.py, src/promptphoo/synthesis/__init__.py, src/promptphoo/synthesis/dataset.py, src/promptphoo/synthesis/assertions.py, src/promptphoo/synthesis/templates.py, src/promptphoo/config/load.py, tools/gen_synthesis_templates.py, tools/synthesis_golden.mjs
+- Commits: `597e573`
