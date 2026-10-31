@@ -70,8 +70,16 @@ def safe_mode() -> bool:
     return _safe_mode.get()
 
 
+def set_safe_mode(value: bool) -> None:
+    _safe_mode.set(value)
+
+
 def max_concurrency() -> int | None:
     return _max_concurrency.get()
+
+
+def set_max_concurrency(value: int | None) -> None:
+    _max_concurrency.set(value)
 
 
 @contextmanager
