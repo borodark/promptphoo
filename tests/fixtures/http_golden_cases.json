@@ -1,0 +1,208 @@
+[
+  {
+    "name": "json body with templated header and json transform",
+    "path": "/chat",
+    "config": {
+      "method": "POST",
+      "headers": {"Content-Type": "application/json", "X-Custom": "{{ who | upper }}"},
+      "body": {"messages": [{"role": "user", "content": "{{prompt}}"}], "n": 2},
+      "transformResponse": "json.choices[0].message.content"
+    },
+    "prompt": "hello \"world\"\nbye",
+    "vars": {"who": "me"},
+    "response": {"status": 200, "body": "{\"choices\":[{\"message\":{\"content\":\"hi there\"}}]}"}
+  },
+  {
+    "name": "default content type for object body and no transform",
+    "path": "/default",
+    "config": {"method": "POST", "body": {"q": "{{prompt}}", "id": "{{ id }}"}},
+    "prompt": "p1",
+    "vars": {"id": 42},
+    "response": {"status": 200, "body": "{\"answer\":\"yes\"}"}
+  },
+  {
+    "name": "string body is form encoded and trimmed",
+    "path": "/form",
+    "config": {"method": "POST", "body": "  q={{prompt}}&lang=en  "},
+    "prompt": "abc",
+    "response": {"status": 200, "body": "plain text answer"}
+  },
+  {
+    "name": "GET with query params and api key in query",
+    "path": "/search?existing=1%202",
+    "config": {
+      "method": "GET",
+      "queryParams": {"q": "{{prompt}}", "page": "2"},
+      "auth": {"type": "api_key", "keyName": "api-key", "value": "secret value", "placement": "query"},
+      "transformResponse": "json.items.length"
+    },
+    "prompt": "what is up?",
+    "response": {"status": 200, "body": "{\"items\":[1,2,3]}"}
+  },
+  {
+    "name": "bearer and api key header",
+    "path": "/bearer",
+    "config": {
+      "method": "POST",
+      "headers": {"X-Trace": "{{ trace }}"},
+      "body": {"input": "{{prompt}}"},
+      "auth": {"type": "bearer", "token": "tok-{{ user }}"},
+      "transformResponse": "text"
+    },
+    "prompt": "x",
+    "vars": {"user": "bob", "trace": "t1"},
+    "response": {"status": 200, "body": "{\"ok\":true}"}
+  },
+  {
+    "name": "basic auth",
+    "path": "/basic",
+    "config": {
+      "method": "PUT",
+      "body": {"input": "{{prompt}}"},
+      "auth": {"type": "basic", "username": "user", "password": "p@ss:word"}
+    },
+    "prompt": "y",
+    "response": {"status": 201, "statusText": "Created", "body": "{\"output\":\"made\",\"tokenUsage\":{\"total\":5,\"prompt\":2,\"completion\":3}}"}
+  },
+  {
+    "name": "raw POST request with escaped prompt",
+    "path": "/raw",
+    "raw": true,
+    "config": {
+      "request": "POST {{path}} HTTP/1.1\nHost: {{host}}\nContent-Type: application/json\nContent-Length: 999\nX-Name: {{ name }}\n\n{\"prompt\": \"{{prompt}}\", \"n\": 1}",
+      "transformResponse": "json.reply"
+    },
+    "prompt": "line1\nline \"two\"",
+    "vars": {"name": "alice"},
+    "response": {"status": 200, "body": "{\"reply\":\"raw ok\"}"}
+  },
+  {
+    "name": "raw GET request with spaces in query",
+    "path": "/rawget",
+    "raw": true,
+    "config": {
+      "request": "GET {{path}}?q={{prompt}}&x=a b HTTP/1.1\nHost: {{host}}\nAccept: application/json\n",
+      "transformResponse": "json"
+    },
+    "prompt": "hello world",
+    "response": {"status": 200, "body": "{\"got\":\"it\"}"}
+  },
+  {
+    "name": "transform returns provider response object with token estimation",
+    "path": "/estimate",
+    "config": {
+      "method": "POST",
+      "body": {"prompt": "{{prompt}}"},
+      "tokenEstimation": {"enabled": true},
+      "transformResponse": "({ output: json.text, metadata: { source: 'svc' } })"
+    },
+    "prompt": "one two three four",
+    "response": {"status": 200, "body": "{\"text\":\"alpha beta\"}"}
+  },
+  {
+    "name": "validateStatus rejects 500",
+    "path": "/fail",
+    "config": {"method": "POST", "body": {"p": "{{prompt}}"}, "validateStatus": "status < 500"},
+    "prompt": "boom",
+    "response": {"status": 500, "statusText": "Internal Server Error", "body": "server exploded"}
+  },
+  {
+    "name": "non-2xx accepted by default",
+    "path": "/notfound",
+    "config": {"method": "POST", "body": {"p": "{{prompt}}"}},
+    "prompt": "nf",
+    "response": {"status": 404, "statusText": "Not Found", "body": "{\"error\":\"missing\"}"}
+  },
+  {
+    "name": "request transform object merged into body",
+    "path": "/reqtransform",
+    "config": {
+      "method": "POST",
+      "headers": {"content-type": "application/json"},
+      "body": {"model": "m1"},
+      "transformRequest": "({ messages: [{ role: 'user', content: prompt }], user: vars.user })"
+    },
+    "prompt": "hey",
+    "vars": {"user": "u9"},
+    "response": {"status": 200, "body": "\"just a string\""}
+  },
+  {
+    "name": "session parser from headers",
+    "path": "/session",
+    "config": {
+      "method": "POST",
+      "body": {"p": "{{prompt}}", "session": "{{ sessionId }}"},
+      "sessionParser": "data.headers['x-session-id']",
+      "transformResponse": "json.msg"
+    },
+    "prompt": "s",
+    "vars": {"sessionId": "old"},
+    "response": {"status": 200, "headers": {"x-session-id": "sess-123"}, "body": "{\"msg\":\"hello\"}"}
+  },
+  {
+    "name": "array body and dumped nested vars",
+    "path": "/array",
+    "config": {
+      "method": "POST",
+      "body": [{"names": "{{ names | dump }}", "q": "{{prompt}}"}, "{{prompt}}"]
+    },
+    "prompt": "arr",
+    "vars": {"names": [{"first": "Jane"}, {"first": "John"}]},
+    "response": {"status": 200, "body": "[1,2]"}
+  },
+  {
+    "name": "url path templating and stringified json body",
+    "path": "/users/{{ userId }}/profile",
+    "config": {
+      "method": "POST",
+      "headers": {"Content-Type": "application/json"},
+      "body": "{\"text\": \"{{prompt}}\", \"count\": 3}"
+    },
+    "prompt": "multi\nline",
+    "vars": {"userId": "u-1"},
+    "response": {"status": 200, "body": "{\"done\":1}"}
+  },
+  {
+    "name": "json response with falsy data falls back to text",
+    "path": "/zero",
+    "config": {"method": "POST", "body": {"p": "{{prompt}}"}},
+    "prompt": "z",
+    "response": {"status": 200, "body": "0"}
+  },
+  {
+    "name": "debug metadata with secret header",
+    "path": "/debug",
+    "debug": true,
+    "config": {
+      "method": "POST",
+      "headers": {"Authorization": "Bearer sk-abcdefghijklmnopqrstuvwxyz123456", "X-Plain": "v"},
+      "body": {"q": "{{prompt}}", "api_key": "abc"},
+      "transformRequest": "prompt + '!'"
+    },
+    "prompt": "dbg",
+    "response": {"status": 200, "body": "{\"r\":1}"}
+  },
+  {
+    "name": "debug metadata in raw mode",
+    "path": "/rawdebug",
+    "raw": true,
+    "debug": true,
+    "config": {
+      "request": "POST {{path}} HTTP/1.1\nHost: {{host}}\nContent-Type: application/json\nX-Api-Key: {{ key }}\n\n{\"q\": \"{{prompt}}\"}"
+    },
+    "prompt": "rd",
+    "vars": {"key": "k-123"},
+    "response": {"status": 200, "body": "{\"r\":2}"}
+  },
+  {
+    "name": "transform returns error object",
+    "path": "/errobj",
+    "config": {
+      "method": "POST",
+      "body": {"q": "{{prompt}}"},
+      "transformResponse": "({ error: 'bad: ' + json.code, output: json.code })"
+    },
+    "prompt": "e",
+    "response": {"status": 200, "body": "{\"code\":\"E42\"}"}
+  }
+]

@@ -454,6 +454,12 @@ class URL:
     def search_params_entries(self) -> list[tuple[str, str]]:
         return [(k, v) for k, v in form_urlencoded_parse(self.query or "")]
 
+    def search_params_append(self, name: str, value: str) -> None:
+        """`url.searchParams.append(name, value)`: the whole query is re-serialized."""
+        pairs = form_urlencoded_parse(self.query or "")
+        pairs.append([name, value])
+        self.query = form_urlencoded_serialize(pairs) or None
+
     def search_params_set(self, name: str, value: str) -> None:
         pairs = form_urlencoded_parse(self.query or "")
         found = False

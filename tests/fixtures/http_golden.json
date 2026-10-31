@@ -1,0 +1,930 @@
+[
+  {
+    "name": "json body with templated header and json transform",
+    "request": {
+      "method": "POST",
+      "url": "/chat",
+      "headers": {
+        "content-type": "application/json",
+        "x-custom": "ME",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"messages\":[{\"role\":\"user\",\"content\":\"hello \\\"world\\\"\\nbye\"}],\"n\":2}"
+    },
+    "response": {
+      "raw": "{\"choices\":[{\"message\":{\"content\":\"hi there\"}}]}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": "hi there",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "default content type for object body and no transform",
+    "request": {
+      "method": "POST",
+      "url": "/default",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"q\":\"p1\",\"id\":\"42\"}"
+    },
+    "response": {
+      "raw": "{\"answer\":\"yes\"}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": {
+        "answer": "yes"
+      },
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "string body is form encoded and trimmed",
+    "request": {
+      "method": "POST",
+      "url": "/form",
+      "headers": {
+        "content-type": "application/x-www-form-urlencoded",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "q=abc&lang=en"
+    },
+    "response": {
+      "raw": "plain text answer",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": "plain text answer",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "GET with query params and api key in query",
+    "request": {
+      "method": "GET",
+      "url": "/search?existing=1+2&q=what+is+up%3F&page=2&api-key=secret+value",
+      "headers": {
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": ""
+    },
+    "response": {
+      "raw": "{\"items\":[1,2,3]}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": 3,
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "bearer and api key header",
+    "request": {
+      "method": "POST",
+      "url": "/bearer",
+      "headers": {
+        "content-type": "application/json",
+        "x-trace": "t1",
+        "authorization": "Bearer tok-bob",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"input\":\"x\"}"
+    },
+    "response": {
+      "raw": "{\"ok\":true}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": "{\"ok\":true}",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "basic auth",
+    "request": {
+      "method": "PUT",
+      "url": "/basic",
+      "headers": {
+        "content-type": "application/json",
+        "authorization": "Basic dXNlcjpwQHNzOndvcmQ=",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"input\":\"y\"}"
+    },
+    "response": {
+      "raw": "{\"output\":\"made\",\"tokenUsage\":{\"total\":5,\"prompt\":2,\"completion\":3}}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 201,
+          "statusText": "Created"
+        }
+      },
+      "output": {
+        "output": "made",
+        "tokenUsage": {
+          "total": 5,
+          "prompt": 2,
+          "completion": 3
+        }
+      },
+      "tokenUsage": {
+        "total": 5,
+        "prompt": 2,
+        "completion": 3
+      }
+    }
+  },
+  {
+    "name": "raw POST request with escaped prompt",
+    "request": {
+      "method": "POST",
+      "url": "/raw",
+      "headers": {
+        "content-type": "application/json",
+        "x-name": "alice",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"prompt\": \"line1\\nline \\\"two\\\"\", \"n\": 1}"
+    },
+    "response": {
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": "raw ok",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "raw GET request with spaces in query",
+    "request": {
+      "method": "GET",
+      "url": "/rawget?q=hello%20world&x=a%20b",
+      "headers": {
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": ""
+    },
+    "response": {
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": {
+        "got": "it"
+      },
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "transform returns provider response object with token estimation",
+    "request": {
+      "method": "POST",
+      "url": "/estimate",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"prompt\":\"one two three four\"}"
+    },
+    "response": {
+      "raw": "{\"text\":\"alpha beta\"}",
+      "cached": false,
+      "metadata": {
+        "source": "svc"
+      },
+      "output": "alpha beta",
+      "tokenUsage": {
+        "prompt": 6,
+        "completion": 3,
+        "total": 9,
+        "numRequests": 1
+      }
+    }
+  },
+  {
+    "name": "validateStatus rejects 500",
+    "request": {
+      "method": "POST",
+      "url": "/fail",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"p\":\"boom\"}"
+    },
+    "error": "HTTP call failed with status 500 Internal Server Error: server exploded"
+  },
+  {
+    "name": "non-2xx accepted by default",
+    "request": {
+      "method": "POST",
+      "url": "/notfound",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"p\":\"nf\"}"
+    },
+    "response": {
+      "raw": "{\"error\":\"missing\"}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 404,
+          "statusText": "Not Found"
+        }
+      },
+      "output": {
+        "error": "missing"
+      },
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "request transform object merged into body",
+    "request": {
+      "method": "POST",
+      "url": "/reqtransform",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"model\":\"m1\",\"messages\":[{\"role\":\"user\",\"content\":\"hey\"}],\"user\":\"u9\"}"
+    },
+    "response": {
+      "raw": "\"just a string\"",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": "just a string",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "session parser from headers",
+    "request": {
+      "method": "POST",
+      "url": "/session",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"p\":\"s\",\"session\":\"old\"}"
+    },
+    "response": {
+      "raw": "{\"msg\":\"hello\"}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "sessionId": "sess-123",
+      "output": "hello",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "array body and dumped nested vars",
+    "request": {
+      "method": "POST",
+      "url": "/array",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "[{\"names\":[{\"first\":\"Jane\"},{\"first\":\"John\"}],\"q\":\"arr\"},\"arr\"]"
+    },
+    "response": {
+      "raw": "[1,2]",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": [
+        1,
+        2
+      ],
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "url path templating and stringified json body",
+    "request": {
+      "method": "POST",
+      "url": "/users/u-1/profile",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"text\":\"multi\\nline\",\"count\":3}"
+    },
+    "response": {
+      "raw": "{\"done\":1}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": {
+        "done": 1
+      },
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "json response with falsy data falls back to text",
+    "request": {
+      "method": "POST",
+      "url": "/zero",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"p\":\"z\"}"
+    },
+    "response": {
+      "raw": "0",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "output": "0",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "debug metadata with secret header",
+    "request": {
+      "method": "POST",
+      "url": "/debug",
+      "headers": {
+        "content-type": "application/json",
+        "authorization": "Bearer sk-abcdefghijklmnopqrstuvwxyz123456",
+        "x-plain": "v",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"q\":\"dbg!\",\"api_key\":\"abc\"}"
+    },
+    "response": {
+      "raw": "{\"r\":1}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK",
+          "requestHeaders": {
+            "content-type": "application/json",
+            "authorization": "[REDACTED]",
+            "x-plain": "v"
+          }
+        },
+        "transformedRequest": "dbg!",
+        "finalRequestBody": {
+          "q": "dbg!",
+          "api_key": "[REDACTED]"
+        }
+      },
+      "output": {
+        "r": 1
+      },
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "debug metadata in raw mode",
+    "request": {
+      "method": "POST",
+      "url": "/rawdebug",
+      "headers": {
+        "content-type": "application/json",
+        "x-api-key": "k-123",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"q\": \"rd\"}"
+    },
+    "response": {
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK",
+          "requestHeaders": {
+            "host": "golden.test",
+            "content-type": "application/json",
+            "x-api-key": "[REDACTED]"
+          }
+        },
+        "transformedRequest": "POST /rawdebug HTTP/1.1\nhost: golden.test\ncontent-type: application/json\nx-api-key: [REDACTED]\n\n{\"q\":\"rd\"}",
+        "finalRequestBody": "{\"q\":\"rd\"}"
+      },
+      "raw": "{\"r\":2}",
+      "output": {
+        "r": 2
+      },
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "transform returns error object",
+    "request": {
+      "method": "POST",
+      "url": "/errobj",
+      "headers": {
+        "content-type": "application/json",
+        "x-promptfoo-version": "0.125.1"
+      },
+      "body": "{\"q\":\"e\"}"
+    },
+    "response": {
+      "raw": "{\"code\":\"E42\"}",
+      "cached": false,
+      "metadata": {
+        "http": {
+          "status": 200,
+          "statusText": "OK"
+        }
+      },
+      "error": "bad: E42",
+      "output": "E42",
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 0,
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      }
+    }
+  }
+]

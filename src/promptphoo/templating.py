@@ -268,6 +268,9 @@ class NunjucksCompatEnvironment(jinja2.Environment):
         return _JsSemantics().visit(tree)
 
     def getattr(self, obj: Any, attribute: str) -> Any:
+        # JS property access: an own key wins over a dict method (`json.items`, `data.keys`).
+        if isinstance(obj, Mapping) and attribute in obj:
+            return obj[attribute]
         if attribute == "length" and isinstance(obj, str | list | tuple | Mapping):
             if not (isinstance(obj, Mapping) and "length" in obj):
                 return len(obj)

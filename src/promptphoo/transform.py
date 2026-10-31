@@ -28,6 +28,7 @@ INLINE_STRING_LABEL = "[inline transform]"
 FILE_TRANSFORM_LABEL = "[file transform]"
 
 _UNSUPPORTED = re.compile(r"=>|\bfunction\b|\breturn\b|\bconst\b|\blet\b|\bvar\b|;|(?<!\?)\?(?!\?)")
+_OBJECT_KEY = re.compile(r"([{,]\s*)([A-Za-z_$][\w$]*)\s*:")
 _STRING = re.compile(r"""("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)""")
 
 
@@ -82,16 +83,21 @@ def _translate_js_expression(code: str) -> str:
         part = part.replace("&&", " and ").replace("||", " or ").replace("??", " or ")  # approx.
         part = re.sub(r"!(?!=)", " not ", part)
         part = re.sub(r"\bnull\b|\bundefined\b", "none", part)
+        # JS object-literal keys (`{output: x}`) become string keys. A bare `?` is rejected
+        # above, so `name:` right after `{` or `,` can only be an object key.
+        part = _OBJECT_KEY.sub(r'\1"\2":', part)
         out.append(part)
     return "".join(out)
 
 
-def _inline_function(code: str, input_name: str) -> Callable[..., Any]:
-    if cli_state.safe_mode():
-        raise ValueError(
-            "Inline transform execution is disabled in safe mode. Please use a file reference "
-            'instead (e.g. "file://path/to/transform.py").'
-        )
+def compile_inline_expression(code: str) -> Callable[..., Any]:
+    """Compile a JS-style single-expression string. The result is called with the expression's
+    free variables as keyword arguments, e.g. `fn(json=..., text=..., context=...)`; `JSON` and
+    `process.env` are always in scope.
+
+    Raises ValueError for statements, arrow functions and other unsupported JavaScript, and
+    jinja2.TemplateSyntaxError for a malformed expression.
+    """
     if "\n" in code.strip():
         raise ValueError(
             "Multi-line JavaScript transforms are not supported by promptphoo; "
@@ -101,11 +107,22 @@ def _inline_function(code: str, input_name: str) -> Callable[..., Any]:
         _translate_js_expression(code.strip()), undefined_to_none=True
     )
 
+    def fn(**names: Any) -> Any:
+        return expression(**{"JSON": _Json, "process": {"env": dict(os.environ)}, **names})
+
+    return fn
+
+
+def _inline_function(code: str, input_name: str) -> Callable[..., Any]:
+    if cli_state.safe_mode():
+        raise ValueError(
+            "Inline transform execution is disabled in safe mode. Please use a file reference "
+            'instead (e.g. "file://path/to/transform.py").'
+        )
+    expression = compile_inline_expression(code)
+
     def fn(value: Any, context: Any) -> Any:
-        return expression(
-            **{input_name: value, "context": context, "JSON": _Json,
-               "process": {"env": dict(os.environ)}}
-        )  # fmt: skip
+        return expression(**{input_name: value, "context": context})
 
     return fn
 
