@@ -11,7 +11,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
-from promptphoo.jsvalues import json_stringify, number_to_string, to_fixed
+from promptphoo.jsvalues import js_sum, json_stringify, number_to_string, to_fixed
 from promptphoo.output.xmlbuilder import XMLBuilder
 
 MAX_JUNIT_NAME_LENGTH = 512
@@ -205,7 +205,7 @@ def create_junit_xml(eval_record: Any) -> str:
     tests = sum(len(s["testcases"]) for s in suites)
     failures = sum(s["failures"] for s in suites)
     errors = sum(s["errors"] for s in suites)
-    total_ms = sum(s["timeMs"] for s in suites)
+    total_ms = js_sum(s["timeMs"] for s in suites)
     timestamp = _iso(getattr(eval_record, "created_at", None))
     builder = XMLBuilder(format=True, ignore_attributes=False, indent_by="  ")
     testsuites = []

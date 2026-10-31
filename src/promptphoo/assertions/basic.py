@@ -13,7 +13,14 @@ from promptphoo.assertions.base import AssertionParams, GradingResult, invariant
 from promptphoo.csvtests import parse_comma_separated_values
 from promptphoo.jsonutil import extract_json_objects, js_deep_equal, js_json_parse
 from promptphoo.jsregex import compile_js_regex
-from promptphoo.jsvalues import js_string, json_stringify, number_to_string, to_fixed, to_precision
+from promptphoo.jsvalues import (
+    js_string,
+    js_sum,
+    json_stringify,
+    number_to_string,
+    to_fixed,
+    to_precision,
+)
 from promptphoo.yamlload import load_yaml
 
 n = number_to_string
@@ -310,7 +317,7 @@ def handle_finish_reason(p: AssertionParams) -> GradingResult:
 def _perplexity(log_probs: list[float] | None, kind: str) -> float:
     if not log_probs:
         raise ValueError(f"{kind} assertion does not support providers that do not return logProbs")
-    return math.exp(-(sum(log_probs) / len(log_probs)))
+    return math.exp(-(js_sum(log_probs) / len(log_probs)))
 
 
 def handle_perplexity(p: AssertionParams) -> GradingResult:

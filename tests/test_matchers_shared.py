@@ -199,3 +199,26 @@ class TestScoreAndVectorHelpers:
         assert try_parse('{"a": 1}') == {"a": 1}
         assert try_parse("not json") == "not json"
         assert try_parse("NaN") == "NaN"
+
+
+def test_cosine_similarity_matches_node_bit_for_bit():
+    # Expected values printed by Node with upstream's reduce-based cosineSimilarity. Python 3.12's
+    # sum() uses compensated summation and gave 0.9999994978908286 here.
+    seed = 7
+
+    def rnd() -> float:
+        nonlocal seed
+        seed = (seed * 75 + 74) % 65537
+        return seed / 65537 - 0.5
+
+    a = [rnd() for _ in range(768)]
+    b = [x + rnd() * 1e-3 for x in a]
+    assert cosine_similarity(a, b) == 0.9999994978908282
+    assert cosine_similarity(a, a) == 1
+
+
+def test_js_sum_adds_left_to_right_like_reduce():
+    from promptphoo.jsvalues import js_sum
+
+    assert js_sum([0.1] * 10) == 0.9999999999999999  # [0.1 x10].reduce((a, b) => a + b, 0)
+    assert js_sum([]) == 0

@@ -117,6 +117,9 @@ def test_default_request_and_response():
     assert headers["x-api-key"] == "test-api-key"
     assert headers["anthropic-version"] == "2023-06-01"
     assert "anthropic-beta" not in headers
+    # Upstream sends this request through the Anthropic SDK, not fetchWithProxy, so it carries no
+    # x-promptfoo-version header (found comparing live requests from both runtimes).
+    assert "x-promptfoo-version" not in headers
     assert result["output"] == "Hello"
     assert result["tokenUsage"] == {"total": 15, "prompt": 10, "completion": 5}
     assert result["finishReason"] == "stop"

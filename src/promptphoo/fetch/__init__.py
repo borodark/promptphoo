@@ -8,7 +8,9 @@ re-exported here) or `fetch_with_retries` (a raw response). Requests go through 
 Options are a RequestInit-like dict: `method`, `headers`, `body` (str or bytes), plus the
 FetchOptions extras `compress`, `disableTransientRetries` and `getAuthHeaders`. Two Python
 additions: `timeout` (seconds, forwarded to httpx) and `dispatcher` (a caller-owned
-`httpx.AsyncClient`, the analogue of an undici dispatcher, e.g. for mTLS).
+`httpx.AsyncClient`, the analogue of an undici dispatcher, e.g. for mTLS). A third,
+`sdkTransport`, marks a request that upstream sends through a vendor SDK's own HTTP client
+rather than fetchWithProxy, so it carries no `x-promptfoo-version` header.
 
 Differences from Node:
 - Response bodies are read eagerly inside the request deadline, so a body-stream failure is
@@ -348,7 +350,10 @@ def _headers_to_record(headers: Any) -> dict[str, str]:
 
 
 def get_fetch_with_proxy_headers(url: Any, options: FetchOptions) -> dict[str, str]:
-    return {**_headers_to_record(options.get("headers")), "x-promptfoo-version": VERSION}
+    headers = _headers_to_record(options.get("headers"))
+    if options.get("sdkTransport"):
+        return headers
+    return {**headers, "x-promptfoo-version": VERSION}
 
 
 def _get_header(headers: dict[str, str] | None, name: str) -> str | None:
@@ -483,7 +488,9 @@ async def fetch_with_proxy(url: str, options: FetchOptions | None = None) -> Fet
     if not isinstance(url, str) or not url:
         raise JsError("Invalid URL")
 
-    request_options = {k: v for k, v in options.items() if k != "getAuthHeaders"}
+    request_options = {
+        k: v for k, v in options.items() if k not in ("getAuthHeaders", "sdkTransport")
+    }
     get_auth_headers = options.get("getAuthHeaders")
     final_options: FetchOptions = {
         **request_options,

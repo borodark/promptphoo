@@ -287,6 +287,8 @@ async def post_anthropic(
                 "method": "POST",
                 "headers": provider.build_request_headers(request_headers),
                 "body": json_stringify(body),
+                # Upstream calls Anthropic through its SDK, which never adds x-promptfoo-version.
+                "sdkTransport": True,
             },
             timeout_ms,
             "json",

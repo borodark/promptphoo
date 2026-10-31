@@ -15,6 +15,7 @@ from promptphoo.fetch_context import (
     is_response_headers_observer_error,
     is_response_headers_observer_error_response,
 )
+from promptphoo.jsvalues import js_sum
 from promptphoo.scheduler import clock
 from promptphoo.scheduler.adaptive_concurrency import (
     WARNING_THRESHOLD,
@@ -486,7 +487,7 @@ class ProviderRateLimitState(EventEmitter):
             "failedRequests": self._failed_requests,
             "rateLimitHits": self._rate_limit_hits,
             "retriedRequests": self._retried_requests,
-            "avgLatencyMs": sum(ordered) / n if n > 0 else 0,
+            "avgLatencyMs": js_sum(ordered) / n if n > 0 else 0,
             # Percentiles: for n elements, pX is at index floor((n-1) * X/100)
             "p50LatencyMs": ordered[math.floor((n - 1) * 0.5)] if n > 0 else 0,
             "p99LatencyMs": ordered[math.floor((n - 1) * 0.99)] if n > 0 else 0,

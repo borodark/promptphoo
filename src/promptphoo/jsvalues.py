@@ -10,6 +10,7 @@ import json
 import math
 import re
 import secrets
+from collections.abc import Iterable
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -162,6 +163,19 @@ def json_stringify(value: Any, indent: int | str | None = None) -> str:
             out,
         )
     return out
+
+
+def js_sum(values: Iterable[float]) -> float:
+    """`values.reduce((acc, v) => acc + v, 0)`: plain left-to-right addition.
+
+    Python 3.12's built-in sum() adds floats with compensated summation, so its result can differ
+    from JavaScript's in the last bit (sum([0.1] * 10) is 1.0; the JS reduce gives
+    0.9999999999999999). Use this wherever a float total must match Node.
+    """
+    acc: float = 0
+    for value in values:
+        acc += value
+    return acc
 
 
 def is_truthy(value: Any) -> bool:

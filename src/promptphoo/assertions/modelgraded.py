@@ -11,7 +11,7 @@ from typing import Any
 
 from promptphoo.assertions.base import AssertionParams, GradingResult, Handler, invariant
 from promptphoo.assertions.rag_defaults import finalize_graded_assertion
-from promptphoo.jsvalues import is_truthy, json_stringify
+from promptphoo.jsvalues import is_truthy, js_sum, json_stringify
 from promptphoo.tokens import accumulate_token_usage, create_empty_token_usage
 
 
@@ -170,7 +170,7 @@ async def handle_g_eval(params: AssertionParams) -> GradingResult:
             if resp.get("metadata") is not None:
                 out["metadata"] = resp["metadata"]
             return out
-        average = sum(r["score"] for r in responses) / len(responses)
+        average = js_sum(r["score"] for r in responses) / len(responses)
         return {
             "assertion": assertion,
             "pass": (average >= threshold) != inverse,

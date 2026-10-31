@@ -8,6 +8,7 @@ from typing import Any
 
 from promptphoo.assertions.refusal import JS_WHITESPACE, js_trim
 from promptphoo.jsonutil import js_json_parse
+from promptphoo.jsvalues import js_sum
 
 
 def normalize_matcher_token_usage(token_usage: dict[str, Any] | None) -> dict[str, Any]:
@@ -85,8 +86,8 @@ def dot_product(vec_a: list[float], vec_b: list[float]) -> float:
 
 def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     product = dot_product(vec_a, vec_b)
-    mag_a = math.sqrt(sum(v * v for v in vec_a))
-    mag_b = math.sqrt(sum(v * v for v in vec_b))
+    mag_a = math.sqrt(js_sum(v * v for v in vec_a))
+    mag_b = math.sqrt(js_sum(v * v for v in vec_b))
     if mag_a == 0 or mag_b == 0:
         return 0
     return product / (mag_a * mag_b)
