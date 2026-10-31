@@ -267,9 +267,10 @@ def delete_eval(eval_id: str) -> None:
 
 
 def notify_evaluations_deleted(eval_ids: list[str]) -> None:
-    """notifyEvaluationsDeleted. The Python signal file has only the update form (see db)."""
-    del eval_ids
-    db.update_signal_file()
+    """notifyEvaluationsDeleted: write the delete-form signal, as `delete` does."""
+    from promptphoo.db.queries import update_signal_file_for_deleted_evals
+
+    update_signal_file_for_deleted_evals(eval_ids)
 
 
 # --- traces -------------------------------------------------------------------------------

@@ -401,6 +401,34 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Modules: src/promptphoo/cli/watch.py, src/promptphoo/cli/eval.py
 - Commits: `597e573`
 
+## 40. list/show/delete queries: upstream's prefix lookups and in-memory grouping, ported as is
+- Decision:
+  - `db/queries.py` ports the read and delete helpers of `src/util/database.ts` (`getPrompts`, `getTestCases`, `getPromptFromHash`, `getDatasetFromHash`, `getEvalFromId`, `deleteEval`, `deleteEvals`, `deleteAllEvals`), `deleteTraceRecordsForEvals` and `EvalQueries.getVarsFromEvals`. `models/eval.py` gained `Eval.get_many` (upstream `Eval.getMany`) and `Eval.get_table`, appended without touching the existing methods.
+  - Upstream's quirks are kept: prompts and datasets are grouped in memory over the newest 100 evals; `getEvalFromId` matches an id prefix, but `show <prefix>` and `delete <prefix>` then look the prefix up as an exact id and fail with upstream's messages; `Eval.getMany` does not read the `results` column, so a legacy v3 eval lists with no prompts and never appears under `list prompts`.
+  - `localeCompare` sorts use `locale_compare_key` (case-folded, then lower case first), which agrees with ICU root collation on eval ids and hex hashes.
+  - Deleting an eval removes spans, traces, join rows and results in upstream's order. `blob_references` rows go through their `ON DELETE CASCADE` foreign key, and `blob_assets` stay, as upstream.
+  - The delete signal is written as `{"type":"delete","deletedEvalIds":[...],"timestamp":...}` (no ids for "all"), without upstream's coalescing with a signal pending from the last few hundred milliseconds.
+  - Query helpers open their own cursor with `row_factory = None`, because `Eval.find_by_id` leaves a dict row factory on the shared connection.
+  - Not ported: `getEvalSummaries` and the standalone-eval cache, which only the web server and MCP use.
+- Rationale: Users and scripts see the prefix behaviour and the sort orders, and the goldens recorded from Node pin them.
+- Assumption: Eval ids contain only ASCII letters, digits, `-` and `:`, so the casefold key orders them as ICU does.
+- Implication: A promptphoo `delete` followed within a moment by another write does not merge both into one signal, so a running Node viewer may miss the delete until its next refresh.
+- Modules: src/promptphoo/db/queries.py, src/promptphoo/models/eval.py
+- Commits: `89b55d0`
+
+## 41. list/show/delete output is checked byte for byte against goldens recorded from Node
+- Decision:
+  - `cli/list_.py`, `cli/show.py` and `cli/delete.py` port `src/commands/list.ts`, `show.ts` and `delete.ts` on top of the existing `wrap_table` / `generate_table` ports. Commander's `show [id]` and `delete <id>`, which also have subcommands, are click groups (`IdOrSubcommandGroup`) that send a first argument naming no subcommand to a hidden default command. Every command runs the startup migrations, as `main.ts` does, and exits with upstream's `process.exitCode`.
+  - `tools/list_show_golden.py` runs real Node on three echo evals plus one imported legacy v3 eval, and writes the DB rows of each stage and Node's output for 37 commands to `tests/fixtures/list_show/golden.json`. `tests/test_cli_list_show_delete.py` loads those rows into a migrated DB and compares promptphoo's output byte for byte, ANSI table colours included, and the table row counts after Node's delete sequence.
+  - Node's logger writes errors to stdout, while promptphoo's handler sends them to stderr, so the comparison uses the merged stream. Node's "There were some errors during the operation. See logs for more details." footer, with its per-run log file paths, is cut from the goldens, because promptphoo writes no log files.
+  - `delete eval all` asks `? <message> (Y/n)` on stdout and reads one line with @inquirer/confirm's rules: an empty answer is yes (its default), otherwise only an answer starting with `y` is. Inquirer's cursor redraws and `✔` summary line are not reproduced. At end of input nothing is deleted and the exit code is 1, as Node exits on its unsettled prompt. `-y/--yes` skips the prompt; it is a promptphoo addition that Node does not accept.
+  - Interop tests that run real Node (both writers, both readers, and deletes on copies of one DB) are skipped unless `NODE_PROMPTFOO` is set.
+- Rationale: Recorded goldens keep the parity check in the default test run without Node, while the gated tests catch drift against a live CLI.
+- Assumption: Node 0.125.1 is the reference. Regenerate the goldens with the tool after an upstream bump.
+- Implication: Scripts that pipe an answer into `delete eval all` get the same result and exit code under both CLIs; only the terminal rendering of the prompt differs.
+- Modules: src/promptphoo/cli/list_.py, src/promptphoo/cli/show.py, src/promptphoo/cli/delete.py, tools/list_show_golden.py, tests/test_cli_list_show_delete.py, tests/fixtures/list_show/golden.json
+- Commits: `89b55d0`
+
 ## 42. export and import write and read Node's exact files and rows; only three fields are nondeterministic
 - Decision:
   - `cli/export.py` ports `src/commands/export.ts`. `export eval <id|latest>` goes through `output.writer` (`-o` takes every `eval -o` format) or prints `createOutputData` as two-space JSON. `export logs` (`-n/--count`, `-o/--output`) rebuilds upstream's hand-rolled tar (same 512-byte headers, padding and two zero blocks) inside one zlib gzip stream at level 9. `getLogDirectory`/`getLogFiles` from `src/util/logs.ts` are private to that module.
