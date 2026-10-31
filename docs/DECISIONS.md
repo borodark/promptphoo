@@ -182,3 +182,14 @@ The phases and module layout are in [PLAN_PORT.md](PLAN_PORT.md). How to port is
 - Rationale: The fetch and scheduler branches each ported `retryContext.ts`, so a `maxRetries: 0` set by the scheduler never reached `fetch_with_retries`.
 - Modules: src/promptphoo/fetch_context.py, src/promptphoo/fetch/__init__.py, src/promptphoo/scheduler/rate_limit_registry.py
 - Commits: `d13755e`
+
+## 23. The Responses provider rejects streaming and background polling
+- Decision:
+  - `openai:responses` raises a clear error for `stream: true`. A `background: true` request that comes back queued or in progress returns an error instead of polling.
+  - Background responses that complete synchronously, or come back cancelled or failed, are handled with upstream's messages and evicted from the cache.
+  - `config.mcp` is not rejected, because upstream's Responses provider ignores it too. Hosted `type: mcp` tools pass through to the API.
+- Rationale: Upstream's SSE reader and its background polling, coalescing and cancellation code is about 700 lines that eval runs rarely need. A loud error is better than silently changing the request.
+- Assumption: Eval configs seldom set `stream` or `background` on Responses providers.
+- Implication: Azure Responses inherits these limits until streaming and polling are ported.
+- Modules: src/promptphoo/providers/openai/responses.py, src/promptphoo/providers/responses/stream.py
+- Commits: `9ef43b9`

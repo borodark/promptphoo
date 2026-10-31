@@ -14,6 +14,7 @@ from promptphoo.providers.openai import (
     OpenAiCompletionProvider,
     OpenAiEmbeddingProvider,
     OpenAiModerationProvider,
+    OpenAiResponsesProvider,
     create_provider,
 )
 from promptphoo.providers.openai.generic import (
@@ -305,21 +306,30 @@ def test_options_are_preserved():
 
 
 @pytest.mark.parametrize(
-    "path",
+    ("path", "model"),
     [
-        "openai:responses",
-        "openai:responses:gpt-5.4",
-        "openai:gpt-5.6",
-        "openai:gpt-6-sol",
-        "openai:gpt-6.1-sol-2026-09-29",
-        "openai:gpt-7-mini",
-        "openai:gpt-5.5-pro",
-        "openai:gpt-daybreak-blue-latest",
+        ("openai:responses", "gpt-6-sol"),
+        ("openai:responses:gpt-5.4", "gpt-5.4"),
+        ("openai:responses:gpt-5-mini", "gpt-5-mini"),
+        ("openai:gpt-5.6", "gpt-5.6"),
+        ("openai:gpt-6-sol", "gpt-6-sol"),
+        ("openai:gpt-6.1-sol-2026-09-29", "gpt-6.1-sol-2026-09-29"),
+        ("openai:gpt-7-mini", "gpt-7-mini"),
+        ("openai:gpt-5.5-pro", "gpt-5.5-pro"),
+        ("openai:gpt-daybreak-blue-latest", "gpt-daybreak-blue-latest"),
     ],
 )
-def test_responses_routes_not_implemented_yet(path):
-    with pytest.raises(NotImplementedError, match="Phase 3 wave 2"):
-        create_provider(path, {})
+def test_responses_routes(path, model):
+    built = create_provider(path, {})
+    assert type(built) is OpenAiResponsesProvider
+    assert built.model_name == model
+    assert built.id() == f"openai:{model}"
+
+
+def test_responses_route_uses_config_model():
+    built = create_provider("openai:responses", {"config": {"model": "gpt-5.4-mini"}})
+    assert type(built) is OpenAiResponsesProvider
+    assert built.model_name == "gpt-5.4-mini"
 
 
 @pytest.mark.parametrize(
