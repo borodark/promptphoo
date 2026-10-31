@@ -1,7 +1,8 @@
 """OpenRouter chat provider. Ports src/providers/openrouter.ts and the `openrouter:` factory in
 src/providers/registry.ts.
 
-Not ported: tracing spans, abort signals and the response-header observer.
+Calls run inside a GenAI tracing span (see D57). Not ported: abort signals and the
+response-header observer.
 """
 
 from __future__ import annotations

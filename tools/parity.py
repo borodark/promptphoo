@@ -64,9 +64,9 @@ UNSUPPORTED = re.compile(
     r"|\bredteam:",
 )
 UNSUPPORTED_SUFFIXES = {".js", ".cjs", ".mjs", ".ts"}
-# Fixtures that fail for a known reason: a later phase, or Node itself rejects the input.
+# Fixtures that fail for a known reason: an out-of-scope feature, or Node rejects the input too.
 EXPECTED = {
-    "defaulttest-llm-rubric-vars.yaml": "grader is a .cjs provider: JS hooks are not supported (D1 scope)",  # noqa: E501
+    "defaulttest-llm-rubric-vars.yaml": "grader is a .cjs provider: JS hooks are not supported (D3)",  # noqa: E501
     "openai-custom-api-key-envar.yaml": "openai:assistant: is not supported (D1 scope)",
     "defaulttest-llm-rubric-vars-tests.yaml": "test data, not a config: Node errors too",
     "tests-external.yaml": "test data, not a config: Node errors too",

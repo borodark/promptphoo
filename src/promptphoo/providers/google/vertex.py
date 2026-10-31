@@ -3,7 +3,8 @@ src/providers/google/vertex.ts.
 
 Express mode (an API key, no OAuth config) posts directly with `x-goog-api-key`. Otherwise
 requests go through `GoogleAuthClient` (google-auth ADC, service-account JSON or keyFilename).
-Claude-on-Vertex needs the Anthropic message helpers and is not ported yet.
+Claude on Vertex (`vertex:claude-*`) is not ported and returns an error pointing to the
+`anthropic:` provider.
 """
 
 from __future__ import annotations
@@ -276,8 +277,8 @@ class VertexChatProvider(GoogleGenericProvider):
 
     async def call_claude_api(self, prompt: str, context: dict[str, Any] | None = None) -> dict:
         return {
-            "error": f"Claude models on Vertex AI ({self.id()}) are not supported by promptphoo "
-            "yet. Use the anthropic: provider instead."
+            "error": f"Claude models on Vertex AI ({self.id()}) are not supported by promptphoo. "
+            "Use the anthropic: provider instead."
         }
 
     async def call_gemini_api(

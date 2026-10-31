@@ -1,4 +1,4 @@
-"""Synthesis prompts and helpers. Ports test/testCases/synthesis*.test.ts and
+"""Synthesis prompts and helpers. Ports test/testCase/synthesis.test.ts and
 test/assertions/synthesis.test.ts cases; prompt texts are checked against
 tests/fixtures/synthesis_golden.json, written by tools/synthesis_golden.mjs from upstream's own
 template functions and the real npm dedent."""

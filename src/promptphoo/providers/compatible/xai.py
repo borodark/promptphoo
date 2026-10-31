@@ -1,8 +1,8 @@
 """xAI (Grok) chat provider. Ports src/providers/xai/chat.ts and the `xai:` factory in
 src/providers/registry.ts.
 
-`xai:responses:`, `xai:image:`, `xai:video:` and `xai:voice:` need the Responses API, image,
-video and voice providers, which promptphoo does not port; they fail with a clear error.
+`xai:responses:`, `xai:image:`, `xai:video:` and `xai:voice:` need upstream's xAI Responses,
+image, video and voice providers, which promptphoo does not port; they fail with a clear error.
 """
 
 from __future__ import annotations
@@ -729,7 +729,7 @@ def create_provider(provider_path: str, options: dict[str, Any]) -> Any:
         raise not_supported(
             provider_path,
             "The xAI Responses provider",
-            "It needs the OpenAI Responses API port; use xai:<model> for chat completions.",
+            "It is not ported; use xai:<model> for chat completions.",
         )
     if model_type == "voice":
         raise not_supported(provider_path, "The xAI voice provider")

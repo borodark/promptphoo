@@ -1,6 +1,6 @@
 """Azure chat, completion and embedding providers against respx-mocked endpoints. Ports the
 deterministic cases of test/providers/azure/{chat,completion,embedding}.test.ts and
-configTests.ts/sharedChecks.ts."""
+configTests.ts and sharedChecks.ts."""
 
 from __future__ import annotations
 

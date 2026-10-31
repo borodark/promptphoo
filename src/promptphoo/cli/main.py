@@ -46,7 +46,7 @@ def cli() -> None:
 
 
 # Command modules under promptphoo.cli, registered in upstream's main.ts order. Each exposes
-# `register(cli, default_config, default_config_path)`; a module not yet ported is skipped.
+# `register(cli, default_config, default_config_path)`.
 _COMMAND_MODULES = (
     "eval", "init", "share", "cache", "config", "debug", "delete", "export", "generate",
     "feedback", "import_", "list_", "logs", "retry", "validate", "show",

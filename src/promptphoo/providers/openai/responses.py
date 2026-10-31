@@ -2,10 +2,10 @@
 src/providers/openai/responses.ts.
 
 Not ported (see D23): streaming (`stream: true`) and background-mode polling are rejected with a
-clear error; tracing spans and abort signals are omitted. A background request that completes
-synchronously, or comes back cancelled/failed, is still handled as upstream handles it.
-Hosted tools (web_search, file_search, code_interpreter, remote `type: mcp`) pass through to
-the API unchanged, as upstream does; the processor renders their output items.
+clear error, and abort signals are omitted. Calls run inside a GenAI tracing span (see D57). A
+background request that completes synchronously, or comes back cancelled/failed, is still handled as
+upstream handles it. Hosted tools (web_search, file_search, code_interpreter, remote `type: mcp`)
+pass through to the API unchanged, as upstream does; the processor renders their output items.
 """
 
 from __future__ import annotations

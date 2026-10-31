@@ -1,7 +1,7 @@
 """OpenAI Chat Completions provider. Ports src/providers/openai/chat.ts.
 
-Not ported: MCP tool injection (rejected with a clear error), tracing spans, abort signals and
-the streaming response-header observer.
+Calls run inside a GenAI tracing span (see D57). Not ported: MCP tool injection (rejected with a
+clear error), abort signals and the streaming response-header observer.
 """
 
 from __future__ import annotations

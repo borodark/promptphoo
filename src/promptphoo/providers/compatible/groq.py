@@ -143,14 +143,8 @@ class GroqProvider(OpenAiChatCompletionProvider):
 
 
 def _create_groq_responses_provider(model_name: str, options: dict[str, Any]) -> Any:
-    try:
-        responses = importlib.import_module("promptphoo.providers.openai.responses")
-    except ImportError as err:
-        raise NotImplementedError(
-            f"The groq:responses provider (groq:responses:{model_name}) needs the OpenAI "
-            "Responses API provider, which is not ported yet. Use groq:<model> for Chat "
-            "Completions meanwhile."
-        ) from err
+    # Imported lazily: the Responses provider pulls in the OpenAI chat stack.
+    responses = importlib.import_module("promptphoo.providers.openai.responses")
     base: type = responses.OpenAiResponsesProvider
 
     class GroqResponsesProvider(base):  # type: ignore[valid-type, misc]

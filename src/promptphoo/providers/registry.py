@@ -72,7 +72,7 @@ PROVIDER_FACTORIES: list[tuple[Callable[[str], bool], Factory]] = [
 
 
 def _lazy(target: str) -> Factory:
-    """A factory living in `module:function`, imported on first use (Phase 3 provider families)."""
+    """A factory living in `module:function`, imported on first use (network families)."""
 
     def create(path: str, options: dict[str, Any]) -> Any:
         module_name, attr = target.split(":")
@@ -98,7 +98,7 @@ FAMILY_FACTORIES: list[tuple[Callable[[str], bool], str]] = [
 ]
 
 # Network provider families. Each module exposes `create_provider(path, options)`. The
-# OpenAI-compatible entries follow upstream providerMap order (see D23).
+# OpenAI-compatible entries follow upstream providerMap order (see D31).
 NETWORK_FACTORIES: list[tuple[Callable[[str], bool], str]] = [
     (_prefixed("abliteration:"), f"{_COMPAT}.abliteration:create_provider"),
     (_prefixed("ai21:"), f"{_COMPAT}.skipped:create_provider"),

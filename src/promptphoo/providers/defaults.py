@@ -6,8 +6,8 @@ Selection order (first match wins): Azure OpenAI, Anthropic, Google AI Studio, G
 moderation provider, and `set_default_completion_providers` / `set_default_embedding_providers`
 override the result.
 
-Families that promptphoo has not ported yet (Mistral, xAI, Voyage, Azure Content Safety) are
-imported lazily; when the module is missing the branch is skipped, as if its credentials were
+The families promptphoo has no default bundle for (Mistral, xAI, Voyage, Azure Content Safety)
+are imported lazily; when the module is missing the branch is skipped, as if its credentials were
 absent. Codex defaults are out of scope (see D33).
 """
 
@@ -53,7 +53,7 @@ def _optional(module_name: str, attr: str) -> Any:
     return getattr(module, attr, None)
 
 
-# TODO(mistral): the Mistral provider is not ported (the OpenAI-compatible table skips it).
+# The Mistral provider is not ported (see D31), so this branch is always skipped.
 def _get_mistral_providers() -> Any:
     return _optional("promptphoo.providers.mistral.defaults", "get_mistral_providers")
 
@@ -62,17 +62,18 @@ def _get_mistral_embedding_provider_class() -> Any:
     return _optional("promptphoo.providers.mistral", "MistralEmbeddingProvider")
 
 
-# TODO(xai): xAI defaults need the xAI chat and Responses providers (OpenAI-compatible branch).
+# xAI chat is ported (providers/compatible/xai.py), but its default bundle needs the xAI Responses
+# provider, which is not (see D31). The branch is skipped.
 def _get_xai_providers() -> Any:
     return _optional("promptphoo.providers.xai.defaults", "get_xai_providers")
 
 
-# TODO(voyage): the Voyage embedding provider is not ported.
+# The Voyage embedding provider is not ported, so Anthropic setups get no Voyage embedder.
 def _get_voyage_embedding_provider_class() -> Any:
     return _optional("promptphoo.providers.voyage", "VoyageEmbeddingProvider")
 
 
-# TODO(azure-moderation): Azure Content Safety is not ported (see D24).
+# Azure Content Safety moderation is not ported (see D24), so the moderation swap is skipped.
 def _get_azure_moderation_provider_class() -> Any:
     return _optional("promptphoo.providers.azure.moderation", "AzureModerationProvider")
 

@@ -1,7 +1,8 @@
 """Azure OpenAI chat completions, including "on your data" (`data_sources`). Ports
 src/providers/azure/chat.ts.
 
-Not ported: MCP tool injection (rejected with a clear error) and tracing spans.
+Calls run inside a GenAI tracing span (see D57). Not ported: MCP tool injection (rejected with
+a clear error).
 """
 
 from __future__ import annotations
