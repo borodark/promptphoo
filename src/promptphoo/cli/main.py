@@ -42,14 +42,31 @@ def cli() -> None:
     """Python port of promptfoo: LLM eval & testing toolkit."""
 
 
+# Command modules under promptphoo.cli, registered in upstream's main.ts order. Each exposes
+# `register(cli, default_config, default_config_path)`; a module not yet ported is skipped.
+_COMMAND_MODULES = (
+    "eval", "init", "share", "cache", "config", "debug", "delete", "export", "generate",
+    "feedback", "import_", "list_", "logs", "retry", "validate", "show",
+)  # fmt: skip
+
+
 def build_cli(argv: list[str]) -> click.Group:
+    import importlib
+
     from promptphoo.cli import eval as eval_cmd
 
     skip_default = any(a in ("-h", "--help", "-V", "--version") for a in argv[:1])
     default_config, default_config_path = (
         ({}, None) if skip_default else (eval_cmd.load_default_config())
     )
-    eval_cmd.register(cli, default_config, default_config_path)
+    for name in _COMMAND_MODULES:
+        try:
+            module = importlib.import_module(f"promptphoo.cli.{name}")
+        except ModuleNotFoundError as err:
+            if err.name != f"promptphoo.cli.{name}":
+                raise
+            continue
+        module.register(cli, default_config, default_config_path)
     return cli
 
 
