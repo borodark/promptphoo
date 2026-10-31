@@ -1,0 +1,10 @@
+description: A model missing from upstream's price table (claude-haiku-5-5)
+prompts: ['Answer in one word: {{q}}']
+providers:
+  - id: anthropic:messages:claude-haiku-5-5
+    config: { max_tokens: 50 }
+tests:
+  - vars: { q: 'What colour is a clear daytime sky?' }
+    assert:
+      - type: icontains
+        value: blue

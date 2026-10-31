@@ -1,0 +1,75 @@
+description: Anthropic feature matrix (Node vs Python wire parity)
+
+prompts:
+  - id: plain
+    label: plain
+    raw: 'Answer in one short sentence: {{question}}'
+  - id: file://chat.json
+    label: chat
+
+providers:
+  - id: anthropic:messages:claude-haiku-4-5
+    label: haiku-4-5
+    config: { temperature: 0, max_tokens: 200 }
+  - id: anthropic:messages:claude-sonnet-5
+    label: sonnet-5
+    config: { temperature: 0, max_tokens: 200 }
+
+defaultTest:
+  options:
+    provider:
+      text: anthropic:messages:claude-sonnet-5
+      embedding: ollama:embeddings:nomic-embed-text
+
+tests:
+  - description: facts, rubric, similarity, cost and latency
+    vars: { question: What is the capital of Japan? }
+    assert:
+      - type: icontains
+        value: Tokyo
+      - type: llm-rubric
+        value: Names Tokyo as the capital, in a single sentence
+      - type: similar
+        value: The capital of Japan is Tokyo.
+        threshold: 0.6
+        provider: ollama:embeddings:nomic-embed-text
+      - type: cost
+        threshold: 0.01
+      - type: latency
+        threshold: 60000
+
+  - description: factuality, closed QA and g-eval
+    vars: { question: How many continents are there by the most common convention? }
+    assert:
+      - type: factuality
+        value: There are seven continents.
+      - type: model-graded-closedqa
+        value: States that there are seven continents
+      - type: g-eval
+        value: The answer is correct, concise and does not hedge unnecessarily
+        threshold: 0.6
+
+  - description: chat memory and transform
+    vars: { question: What is my name? Reply with just the name. }
+    options:
+      transform: output.trim().toLowerCase()
+    assert:
+      - type: contains
+        value: ada
+        metric: memory
+
+  - description: select-best across providers
+    vars: { question: Give a one-line definition of entropy. }
+    assert:
+      - type: select-best
+        value: The clearest and most accurate one-line definition
+      - type: word-count
+        value: { max: 60 }
+
+  - description: refusal check stays negative on a harmless request
+    vars: { question: Suggest a name for a pet goldfish. }
+    assert:
+      - type: not-is-refusal
+      - type: answer-relevance
+        threshold: 0.5
+

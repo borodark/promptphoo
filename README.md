@@ -21,7 +21,9 @@ Report problems here, not to the promptfoo project.
 
 **DETROIT** — promptphoo, a Python 3 port of the [promptfoo](https://github.com/promptfoo/promptfoo) eval core, is now available as an alpha. It reads the same `promptfooconfig.yaml`, accepts the same `eval` flags, and writes to the same `~/.promptfoo` database as promptfoo 0.125.1, so an evaluation can start in Node and finish in Python, or the other way round.
 
-In a test run entirely on one graphics card, both runtimes evaluated two Ollama models with a local grader and local embeddings. The model outputs were identical, and so was every one of the 18 assertion scores, from `llm-rubric` and `g-eval` to embedding similarities such as 0.819.
+In a test run entirely on one graphics card, both runtimes evaluated two Ollama models with a local grader and local embeddings. The model outputs were identical, and so was every one of the 18 assertion scores, from `llm-rubric` and `g-eval` to embedding similarities such as 0.819. On a repeat run, 17 of 18 matched; the eighteenth differed only because one model worded its answer differently that time.
+
+Against the live Anthropic API, every one of the 69 requests promptphoo sent matched a request Node sent for the same tests, headers included, and both runtimes reached the same verdicts on nine configurations, from tool use and extended thinking to a bad key. The whole live test cost about a dollar. *Full results: the [verification report](docs/VERIFICATION.md).*
 
 The port follows its original closely and makes no claim to improve on it. Where it departs, the departure is recorded. *Editorial: the [Translator's Foreword](#editorial-translators-foreword), below.*
 
@@ -34,6 +36,8 @@ The port follows its original closely and makes no claim to improve on it. Where
 | Tests | about 6,500 passing, including Node-interop suites that run when `NODE_PROMPTFOO` is set |
 | Node parity | 63 upstream smoke fixtures byte-identical after normalizing ids, timestamps and latency |
 | Shared state | the same SQLite schema and drizzle migrations; Python and Node read each other's evals |
+| Live check | Anthropic: 69 of 69 requests identical to Node's on the wire; same verdicts on 9 live configs ([report](docs/VERIFICATION.md)) |
+| Not yet checked | Python 3.11 and 3.13, macOS, Windows, live OpenAI/Azure/Google/Bedrock (mocked tests only) |
 | Status | **alpha**: expect rough edges, and please report them |
 
 **IN THIS EDITION** · [Getting started](#getting-started) · [Migrating from promptfoo](docs/MIGRATING.md) · [What's covered](#whats-covered) · [What's not](#not-in-this-edition) · [Corrections & departures](#corrections-and-departures) · [Advisory](#advisory) · [Editorial](#editorial-translators-foreword) · [The back page](#the-back-page)
@@ -129,6 +133,7 @@ NODE_PROMPTFOO="node /path/to/promptfoo/dist/src/main.js" .venv/bin/python tools
 ```
 
 - `tools/parity.py` runs upstream's smoke fixtures through both CLIs and diffs the normalized JSON. Its outputs land in `.parity/`.
+- `tools/live/run_anthropic.sh` repeats the live Anthropic comparison (it spends about $1 of API credit). What was verified, how, and what wasn't is in [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 - With `NODE_PROMPTFOO` set, the interop suites also run. They check that each CLI reads the other's databases, exports, imports, blobs and traces.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) has the porting rule, the decision-log format and the commit conventions.
 - `src/promptphoo/_data/` holds upstream assets that are vendored unchanged, or generated from upstream by Node: migrations, the config schema, grading prompts and init templates. The scripts under `tools/` regenerate them.

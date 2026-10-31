@@ -102,6 +102,7 @@ Two differences:
 | Response cache | `~/.promptfoo/cache/cache.json` | `~/.promptfoo/cache/cache-py.json` | Your first promptphoo runs call providers again, so expect fresh API costs once |
 | `feedback` command | Posts to promptfoo's servers | Sends nothing; points to promptphoo's issue tracker | — |
 | Commands in messages | `promptfoo eval`, `promptfoo view` | `promptphoo eval`; `npx promptfoo@latest view` for the Node-only viewer | — |
+| `model-graded-closedqa` with an Anthropic grader | Always fails (`400 at least one message is required`) | The same: upstream's bug is kept | Use `llm-rubric`, or an OpenAI grader for closed QA |
 
 Environment variables (`OPENAI_API_KEY`, `PROMPTFOO_*`), exit codes and
 `PROMPTFOO_PASS_RATE_THRESHOLD` work the same way.
@@ -115,7 +116,8 @@ promptphoo eval -c promptfooconfig.yaml --no-cache -o py.json
 ```
 
 With deterministic assertions, results should match exactly. Model-graded ones match when the
-models are deterministic (temperature 0 and a fixed seed). If you find a difference that
+models are deterministic (temperature 0 and a fixed seed). That is how promptphoo itself was
+checked; the results are in [`VERIFICATION.md`](VERIFICATION.md). If you find a difference that
 `docs/DECISIONS.md` doesn't explain, please report it as a bug.
 
 ## 5. Shared results database

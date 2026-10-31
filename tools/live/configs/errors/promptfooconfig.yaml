@@ -1,0 +1,9 @@
+description: Error paths (bad model name; the bad-key run sets a fake key)
+prompts: ['Say hi']
+providers:
+  - id: anthropic:messages:claude-does-not-exist-9
+    config: { max_tokens: 20 }
+  - id: anthropic:messages:claude-haiku-4-5
+    config: { max_tokens: 20 }
+tests:
+  - assert: [{ type: icontains, value: hi }]

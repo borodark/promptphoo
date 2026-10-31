@@ -770,3 +770,26 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Alternatives: Keep the aliases as the drop-in default (rejected for the reason above). Install the aliases through an extra (rejected: extras cannot add console scripts). Users who want the drop-in add a shell alias themselves; docs/MIGRATING.md shows how and says not to do so on shared machines.
 - Implication: Node golden outputs (list/show, init files) differ only in command spelling; tests/naming.py maps Node's spelling to promptphoo's so everything else is still compared byte for byte. Marking Python-written evals in the shared database was considered and left out: the only free-form column, `runtime_options`, feeds Node's `--resume`.
 - Modules: pyproject.toml, src/promptphoo/promptfoo_command.py, src/promptphoo/cli/main.py, src/promptphoo/output/summary.py, src/promptphoo/onboarding.py, src/promptphoo/cli/*.py, tests/naming.py, docs/MIGRATING.md, README.md
+
+## 63. Float sums follow JavaScript's order: `jsvalues.js_sum`, never `sum()`
+- Decision: Every sum of floats that reaches a score, a cost or an output goes through `jsvalues.js_sum`, a plain left-to-right loop like JavaScript's `reduce((a, b) => a + b, 0)`. Cosine similarity, perplexity, the model-graded average, the scheduler's average latency and JUnit's total time use it.
+- Rationale: Since Python 3.12, `sum()` of floats uses compensated (Neumaier) summation, which is more accurate than JavaScript's and therefore different in the last bit. The live Anthropic replay found it: a `similar` score of 0.9999994978908282 in Node came out ...286 in Python, and `sum([0.1] * 10)` is 1.0 where JavaScript gives 0.9999999999999999. Last-bit differences flip thresholds and break byte-identical output.
+- Alternatives: `math.fsum` was rejected for the same reason; matching Node, not accuracy, is the goal.
+- Assumption: Upstream sums with `reduce` or a loop in array order. Sums of integers can still use `sum()`.
+- Modules: src/promptphoo/jsvalues.py, src/promptphoo/matchers/shared.py, src/promptphoo/assertions/basic.py, src/promptphoo/assertions/modelgraded.py, src/promptphoo/scheduler/provider_rate_limit_state.py, src/promptphoo/output/junit.py
+- Commits: `9d64258`
+
+## 64. Anthropic requests carry no `x-promptfoo-version` header
+- Decision: The fetch layer takes a Python-only option, `sdkTransport`. When it is set, `get_fetch_with_proxy_headers` returns the caller's headers without adding `x-promptfoo-version`, and the option is stripped before the request is sent. The Anthropic provider sets it.
+- Rationale: Upstream calls Anthropic through the official SDK, which uses its own transport and never passes through `fetchWithProxy`, so Node never sends the header there. promptphoo calls Anthropic through the shared fetch layer, which adds the header for every other provider. The live wire comparison showed the extra header.
+- Assumption: Other providers that use an SDK upstream (Bedrock, Google's auth client) are checked the same way when they get a live run.
+- Modules: src/promptphoo/fetch/__init__.py, src/promptphoo/providers/anthropic/generic.py
+- Commits: `9d64258`
+
+## 65. Live verification records Node's exchanges and replays them to promptphoo
+- Decision: Live checks against a real API live in `tools/live/`, outside the test suite. A local proxy records Node promptfoo's requests and responses, keyed by path and canonical JSON body, and then replays them to promptphoo, which runs with a dummy key. Every request promptphoo sends must match a recorded one, and every result row is compared exactly. A second phase runs both CLIs live and compares only outcomes, because model outputs vary. Results are written up in docs/VERIFICATION.md.
+- Rationale: Two live runs never see the same model outputs, so comparing them directly cannot separate a port bug from model variance. Replaying Node's responses makes the comparison exact and costs nothing to repeat. The replay found three port bugs that 6,500 mocked tests and 63 parity fixtures had not.
+- Alternatives: Live tests inside pytest, behind a marker, were rejected: they spend money, need keys, and the suite must stay offline (respx mocks).
+- Assumption: Duplicate requests get their recordings in recorded order. If the two runtimes issue identical requests in different orders, rows can swap answers; the report says when that happened.
+- Implication: The proxy never writes `x-api-key` or `authorization`, and the runner reads the key from a file only inside the commands that need it, then scans every output for it.
+- Modules: tools/live/anthropic_proxy.py, tools/live/run_anthropic.sh, tools/live/compare_replay.py, tools/live/compare_live.py, tools/live/configs/matrix/promptfooconfig.yaml, docs/VERIFICATION.md

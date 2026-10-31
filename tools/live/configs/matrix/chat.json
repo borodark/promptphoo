@@ -1,0 +1,6 @@
+[
+  {"role": "system", "content": "You are a terse assistant. Answer in at most one sentence."},
+  {"role": "user", "content": "My name is Ada."},
+  {"role": "assistant", "content": "Nice to meet you, Ada."},
+  {"role": "user", "content": "{{question}}"}
+]

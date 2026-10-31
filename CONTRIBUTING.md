@@ -46,6 +46,19 @@ export NODE_PROMPTFOO="node /path/to/promptfoo/dist/src/main.js"
 - Several golden files under `tests/fixtures/` were recorded from Node by the scripts in
   `tools/`. Regenerate them with those scripts after an upstream bump.
 
+**Live checks.** Unit tests never touch the network. `tools/live/run_anthropic.sh` compares the
+two CLIs against the real Anthropic API, spending about $1 (D65). Phase 1 records Node's
+exchanges through a local proxy and replays them to promptphoo, so every request and result row
+can be diffed exactly; phase 2 runs both live and compares outcomes. Keep the key in a file and
+pass its path:
+
+```bash
+ANTHROPIC_KEY_FILE=~/path/to/key tools/live/run_anthropic.sh    # results in .live/
+```
+
+It needs Ollama with `nomic-embed-text` for the embedding assertions. Record what you verified in
+[`docs/VERIFICATION.md`](docs/VERIFICATION.md).
+
 ## Porting rule: read upstream first
 
 1. Read the upstream TypeScript before writing any Python, and port it faithfully: keep Node's

@@ -53,3 +53,12 @@ downloaded. promptphoo treats them as data, with these protections (decision D61
 Results are stored in `~/.promptfoo/promptfoo.db` (or `PROMPTFOO_CONFIG_DIR`), shared with Node
 promptfoo, and responses are cached in `~/.promptfoo/cache/cache-py.json`. Both can contain your
 prompts and model outputs in plain text. Treat that directory like any other file holding work data.
+A key supplied through the environment is not written there (checked below).
+
+## How key handling was checked
+
+The live Anthropic verification (`tools/live/`, results in
+[docs/VERIFICATION.md](docs/VERIFICATION.md)) reads the key from a file only inside the commands
+that use it. Its recording proxy drops `x-api-key` and `authorization` before writing anything.
+After the run, every output, log, recording, cache and database it produced was searched for the
+key, and it appeared in none of them.

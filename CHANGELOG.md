@@ -37,3 +37,11 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
 - **A name of its own.** Only `promptphoo` and `ph` are installed, and every message names
   promptphoo, so it is never mistaken for Node promptfoo (D62). Moving a project over is covered
   in [`docs/MIGRATING.md`](docs/MIGRATING.md).
+- **Fixed by live verification.** A `?` inside a YAML flow mapping (`{ q: What is it? }`) now
+  parses as js-yaml does; Anthropic requests no longer carry an `x-promptfoo-version` header
+  (D64); float sums follow JavaScript's left-to-right order, so cosine similarities and averages
+  match Node to the last bit (D63).
+- **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
+  base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
+  matched Node's on the wire. Results, method and what was not checked are in
+  [`docs/VERIFICATION.md`](docs/VERIFICATION.md); `tools/live/` reruns the Anthropic part.

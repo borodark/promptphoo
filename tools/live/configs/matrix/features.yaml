@@ -1,0 +1,66 @@
+description: Anthropic provider features (Node vs Python wire parity)
+
+prompts:
+  - 'Answer: {{question}}'
+
+providers:
+  - id: anthropic:messages:claude-haiku-4-5
+    label: stop-and-truncate
+    config:
+      temperature: 0
+      max_tokens: 12
+      stop_sequences: ['STOP']
+  - id: anthropic:messages:claude-sonnet-5
+    label: tools
+    config:
+      temperature: 0
+      max_tokens: 300
+      tools:
+        - name: get_weather
+          description: Get the current weather for a city
+          input_schema:
+            type: object
+            properties:
+              city: { type: string }
+              unit: { type: string, enum: [celsius, fahrenheit] }
+            required: [city]
+      tool_choice: { type: auto }
+  - id: anthropic:messages:claude-sonnet-5
+    label: structured
+    config:
+      max_tokens: 400
+      output_format:
+        type: json_schema
+        schema:
+          type: object
+          properties:
+            answer: { type: string }
+            confidence: { type: number }
+          required: [answer, confidence]
+          additionalProperties: false
+  - id: anthropic:messages:claude-sonnet-5
+    label: thinking
+    config:
+      max_tokens: 3000
+      thinking: { type: enabled, budget_tokens: 1024 }
+      showThinking: false
+
+tests:
+  - vars: { question: 'Count from one to thirty in words, separated by commas.' }
+    assert:
+      - type: finish-reason
+        value: length
+        metric: truncation
+  - vars: { question: 'What is the weather in Paris right now?' }
+    assert:
+      - type: tool-call-f1
+        value: [get_weather]
+        metric: tools
+      - type: is-json
+        metric: structured
+  - vars: { question: 'A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?' }
+    assert:
+      - type: icontains-any
+        value: ['0.05', '5 cents', 'five cents']
+      - type: llm-rubric
+        value: Concludes that the ball costs five cents
