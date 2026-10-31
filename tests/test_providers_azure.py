@@ -840,7 +840,6 @@ def test_factory_via_registry():
         ("azure:chat", ValueError, r"Azure chat provider requires a deployment name\. "
          r"Use azure:chat:<deployment>\."),
         ("azure:completion", ValueError, "Azure completion provider requires"),
-        ("azure:responses:gpt-4.1", NotImplementedError, "Phase 3 wave 2b"),
         ("azure:assistant:asst_1", ValueError, "not supported by promptphoo"),
         ("azure:foundry-agent:a", ValueError, "not supported by promptphoo"),
         ("azure:image:dalle", ValueError, "not supported by promptphoo"),
