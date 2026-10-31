@@ -1,4 +1,4 @@
-"""`promptfoo feedback [message]`. Replaces src/commands/feedback.ts and src/feedback.ts.
+"""`promptphoo feedback [message]`. Replaces src/commands/feedback.ts and src/feedback.ts.
 
 Upstream posts the message, and optionally the user's email, to api.promptfoo.dev. promptphoo is
 an independent port, so that would send feedback about this tool to a company that does not

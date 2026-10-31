@@ -84,7 +84,7 @@ Every place where promptphoo deliberately behaves differently from Node is logge
 
 ## Advisory
 
-- **Safer defaults than upstream** (decision D61): TLS certificates are verified unless `PROMPTFOO_INSECURE_SSL=true`; templates are sandboxed; `promptfoo feedback` sends nothing anywhere. See [SECURITY.md](SECURITY.md).
+- **Safer defaults than upstream** (decision D61): TLS certificates are verified unless `PROMPTFOO_INSECURE_SSL=true`; templates are sandboxed; `promptphoo feedback` sends nothing anywhere. See [SECURITY.md](SECURITY.md).
 - **Hooks are code.** Python hooks, `exec:` providers and transforms run with your user's permissions, exactly as they do in Node. Only evaluate configs you trust.
 - **Test data is templated, but sandboxed.** Prompts and var values are rendered as templates, as upstream does. The sandbox stops them reaching Python internals, but they can still read environment variables through `{{ env.X }}` and send them to a provider. `PROMPTFOO_DISABLE_TEMPLATING=true` turns templating off.
 - **Tracing's OTLP receiver** listens on localhost only while an eval with tracing enabled is running.

@@ -42,7 +42,7 @@ downloaded. promptphoo treats them as data, with these protections (decision D61
   `PROMPTFOO_CA_CERT_PATH` at its CA certificate. `PROMPTFOO_INSECURE_SSL=true` turns
   verification off; use it only on networks you control.
 - **No telemetry, and no feedback upload.** promptphoo sends nothing to promptfoo's servers.
-  `promptfoo feedback` only tells you where to open an issue. The network calls promptphoo makes
+  `promptphoo feedback` only tells you where to open an issue. The network calls promptphoo makes
   are to the providers, graders and URLs your configuration names.
 - **The tracing receiver** (OTLP, used only when tracing is enabled) listens on `127.0.0.1` while
   an eval runs, without authentication, with a 10 MB request limit. Setting its host to `0.0.0.0`
