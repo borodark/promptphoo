@@ -793,3 +793,4 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Duplicate requests get their recordings in recorded order. If the two runtimes issue identical requests in different orders, rows can swap answers; the report says when that happened.
 - Implication: The proxy never writes `x-api-key` or `authorization`, and the runner reads the key from a file only inside the commands that need it, then scans every output for it.
 - Modules: tools/live/anthropic_proxy.py, tools/live/run_anthropic.sh, tools/live/compare_replay.py, tools/live/compare_live.py, tools/live/configs/matrix/promptfooconfig.yaml, docs/VERIFICATION.md
+- Commits: `8bcdf44`
