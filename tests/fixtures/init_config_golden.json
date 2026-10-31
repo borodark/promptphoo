@@ -1,0 +1,134 @@
+[
+ {
+  "ctx": {
+   "prompts": [
+    "Write a tweet about {{topic}}",
+    "Write a concise, funny tweet about {{topic}}"
+   ],
+   "providers": [
+    "openai:gpt-6-luna",
+    "openai:gpt-6-sol"
+   ],
+   "type": "compare",
+   "language": "not_sure"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Write a tweet about {{topic}}\"\n  - \"Write a concise, funny tweet about {{topic}}\"\n  \n\nproviders:\n  - \"openai:gpt-6-luna\"\n  - \"openai:gpt-6-sol\"\n  \n\ntests:\n  - vars:\n      topic: bananas\n\n  - vars:\n      topic: avocado toast\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the word \"avocado\"\n      - type: icontains\n        value: avocado\n\n      # Prefer shorter outputs\n      - type: javascript\n        value: 1 / (output.length + 1)\n\n  - vars:\n      topic: new york city\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is funny\n\n"
+ },
+ {
+  "ctx": {
+   "prompts": [
+    "Write a tweet about {{topic}}"
+   ],
+   "providers": [
+    {
+     "id": "vertex:gemini-3.8-flash",
+     "config": {
+      "region": "global"
+     }
+    },
+    "vertex:gemini-2.5-pro",
+    "x"
+   ],
+   "type": "compare",
+   "language": "not_sure"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Write a tweet about {{topic}}\"\n  \n\nproviders:\n  - {\"id\":\"vertex:gemini-3.8-flash\",\"config\":{\"region\":\"global\"}}\n  - \"vertex:gemini-2.5-pro\"\n  - \"x\"\n  \n\ntests:\n  - vars:\n      topic: bananas\n\n  - vars:\n      topic: avocado toast\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the word \"avocado\"\n      - type: icontains\n        value: avocado\n\n      # Prefer shorter outputs\n      - type: javascript\n        value: 1 / (output.length + 1)\n\n  - vars:\n      topic: new york city\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is funny\n\n"
+ },
+ {
+  "ctx": {
+   "prompts": [
+    "Write a customer service response to:\n\n{{inquiry}}\n\nUse these documents:\n\n{{context}}"
+   ],
+   "providers": [
+    "file://provider.py"
+   ],
+   "type": "rag",
+   "language": "python"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Write a customer service response to:\\n\\n{{inquiry}}\\n\\nUse these documents:\\n\\n{{context}}\"\n  \n\nproviders:\n  - \"file://provider.py\"\n  \n\ntests:\n  - vars:\n      inquiry: \"I have a problem with my order\"\n      context: file://context.py\n\n  - vars:\n      inquiry: \"I want to return my widget\"\n      # See how to use dynamic context to e.g. use a vector store https://promptfoo.dev/docs/guides/evaluate-rag/#using-dynamic-context\n      context: file://context.py\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the phrase \"return label\"\n      - type: icontains\n        value: \"return label\"\n\n      # Prefer shorter outputs\n      - type: python\n        value: 1 / (len(output) + 1)\n\n  - vars:\n      inquiry: \"I need help with my account\"\n      context: |\n        You can also hardcode context directly in the configuration.\n        Username: Foobar\n        Account ID: 123456\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is friendly and empathetic\n"
+ },
+ {
+  "ctx": {
+   "prompts": [
+    "Write a customer service response to:\n\n{{inquiry}}\n\nUse these documents:\n\n{{context}}"
+   ],
+   "providers": [
+    "exec:provider.sh"
+   ],
+   "type": "rag",
+   "language": "javascript"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Write a customer service response to:\\n\\n{{inquiry}}\\n\\nUse these documents:\\n\\n{{context}}\"\n  \n\nproviders:\n  - \"exec:provider.sh\"\n  \n\ntests:\n  - vars:\n      inquiry: \"I have a problem with my order\"\n      context: file://context.js\n\n  - vars:\n      inquiry: \"I want to return my widget\"\n      # See how to use dynamic context to e.g. use a vector store https://promptfoo.dev/docs/guides/evaluate-rag/#using-dynamic-context\n      context: file://context.js\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the phrase \"return label\"\n      - type: icontains\n        value: \"return label\"\n\n      # Prefer shorter outputs\n      - type: javascript\n        value: 1 / (output.length + 1)\n\n  - vars:\n      inquiry: \"I need help with my account\"\n      context: |\n        You can also hardcode context directly in the configuration.\n        Username: Foobar\n        Account ID: 123456\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is friendly and empathetic\n"
+ },
+ {
+  "ctx": {
+   "prompts": [
+    "Write a customer service response to:\n\n{{inquiry}}\n\nUse these documents:\n\n{{context}}"
+   ],
+   "providers": [
+    "https://example.com/api/generate"
+   ],
+   "type": "rag",
+   "language": "not_sure"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Write a customer service response to:\\n\\n{{inquiry}}\\n\\nUse these documents:\\n\\n{{context}}\"\n  \n\nproviders:\n  - \"https://example.com/api/generate\"\n  \n\ntests:\n  - vars:\n      inquiry: \"I have a problem with my order\"\n      context: file://context.py\n\n  - vars:\n      inquiry: \"I want to return my widget\"\n      # See how to use dynamic context to e.g. use a vector store https://promptfoo.dev/docs/guides/evaluate-rag/#using-dynamic-context\n      context: file://context.py\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the phrase \"return label\"\n      - type: icontains\n        value: \"return label\"\n\n      # Prefer shorter outputs\n      - type: javascript\n        value: 1 / (output.length + 1)\n\n  - vars:\n      inquiry: \"I need help with my account\"\n      context: |\n        You can also hardcode context directly in the configuration.\n        Username: Foobar\n        Account ID: 123456\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is friendly and empathetic\n"
+ },
+ {
+  "ctx": {
+   "prompts": [
+    "Fulfill this user helpdesk ticket: {{inquiry}}"
+   ],
+   "providers": [
+    {
+     "id": "openai:chat:gpt-6-sol",
+     "config": {
+      "reasoning_effort": "none",
+      "tools": [
+       {
+        "type": "function",
+        "function": {
+         "name": "get_current_weather"
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "type": "agent",
+   "language": "not_sure"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Fulfill this user helpdesk ticket: {{inquiry}}\"\n  \n\nproviders:\n  - {\"id\":\"openai:chat:gpt-6-sol\",\"config\":{\"reasoning_effort\":\"none\",\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_current_weather\"}}]}}\n  \n\ntests:\n  - vars:\n      inquiry: \"I have a problem with my order\"\n      context: file://context.py\n\n  - vars:\n      inquiry: \"I want to return my widget\"\n      # See how to use dynamic context to e.g. use a vector store https://promptfoo.dev/docs/guides/evaluate-rag/#using-dynamic-context\n      context: file://context.py\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the phrase \"return label\"\n      - type: icontains\n        value: \"return label\"\n\n      # Prefer shorter outputs\n      - type: javascript\n        value: 1 / (output.length + 1)\n\n  - vars:\n      inquiry: \"I need help with my account\"\n      context: |\n        You can also hardcode context directly in the configuration.\n        Username: Foobar\n        Account ID: 123456\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is friendly and empathetic\n"
+ },
+ {
+  "ctx": {
+   "prompts": [
+    "Fulfill this user helpdesk ticket: {{inquiry}}"
+   ],
+   "providers": [
+    {
+     "id": "vertex:gemini-3.8-flash",
+     "config": {
+      "region": "global"
+     }
+    },
+    "vertex:gemini-2.5-pro"
+   ],
+   "type": "agent",
+   "language": "python"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Fulfill this user helpdesk ticket: {{inquiry}}\"\n  \n\nproviders:\n  - {\"id\":\"vertex:gemini-3.8-flash\",\"config\":{\"region\":\"global\"}}\n  - \"vertex:gemini-2.5-pro\"\n  \n\ntests:\n  - vars:\n      inquiry: \"I have a problem with my order\"\n      context: file://context.py\n\n  - vars:\n      inquiry: \"I want to return my widget\"\n      # See how to use dynamic context to e.g. use a vector store https://promptfoo.dev/docs/guides/evaluate-rag/#using-dynamic-context\n      context: file://context.py\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the phrase \"return label\"\n      - type: icontains\n        value: \"return label\"\n\n      # Prefer shorter outputs\n      - type: python\n        value: 1 / (len(output) + 1)\n\n  - vars:\n      inquiry: \"I need help with my account\"\n      context: |\n        You can also hardcode context directly in the configuration.\n        Username: Foobar\n        Account ID: 123456\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is friendly and empathetic\n"
+ },
+ {
+  "ctx": {
+   "prompts": [
+    "Fulfill this user helpdesk ticket: {{inquiry}}"
+   ],
+   "providers": [
+    "file://provider.js"
+   ],
+   "type": "agent",
+   "language": "javascript"
+  },
+  "out": "# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json\n\n# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide\n\ndescription: \"My eval\"\n\nprompts:\n  - \"Fulfill this user helpdesk ticket: {{inquiry}}\"\n  \n\nproviders:\n  - \"file://provider.js\"\n  \n\ntests:\n  - vars:\n      inquiry: \"I have a problem with my order\"\n      context: file://context.js\n\n  - vars:\n      inquiry: \"I want to return my widget\"\n      # See how to use dynamic context to e.g. use a vector store https://promptfoo.dev/docs/guides/evaluate-rag/#using-dynamic-context\n      context: file://context.js\n    assert:\n      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs\n\n      # Make sure output contains the phrase \"return label\"\n      - type: icontains\n        value: \"return label\"\n\n      # Prefer shorter outputs\n      - type: javascript\n        value: 1 / (output.length + 1)\n\n  - vars:\n      inquiry: \"I need help with my account\"\n      context: |\n        You can also hardcode context directly in the configuration.\n        Username: Foobar\n        Account ID: 123456\n    assert:\n      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded\n      - type: llm-rubric\n        value: ensure that the output is friendly and empathetic\n"
+ }
+]
