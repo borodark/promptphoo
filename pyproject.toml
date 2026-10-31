@@ -1,0 +1,56 @@
+[project]
+name = "promptphoo"
+version = "0.1.0"
+description = "Python 3 port of the promptfoo eval core (drop-in compatible CLI and state)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+  "click>=8.1",
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "jinja2>=3.1",
+  "httpx>=0.27",
+  "jsonschema>=4.22",
+  "rapidfuzz>=3.9",
+  "rich>=13.7",
+  "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+nlp = ["nltk>=3.8"]
+sql = ["sqlglot>=25"]
+bedrock = ["boto3>=1.34"]
+vertex = ["google-auth>=2.29"]
+pdf = ["pypdf>=4.2"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.5", "pyright>=1.1.370"]
+
+[project.scripts]
+promptphoo = "promptphoo.cli.main:main"
+promptfoo = "promptphoo.cli.main:main"
+pf = "promptphoo.cli.main:main"
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/promptphoo"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["src/promptphoo/_data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+include = ["src", "tools"]
+exclude = ["src/promptphoo/_data"]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
