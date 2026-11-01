@@ -28,6 +28,10 @@ The test suite never touches your real `~/.promptfoo`: an autouse fixture in
 `tools/check_refs.py` checks that the file paths and `D<n>` references in the docs, docstrings
 and comments resolve. Pass `--upstream <path>` to also check the upstream TypeScript paths.
 
+`tools/port_map.py` regenerates [`docs/PORT_MAP.md`](docs/PORT_MAP.md) from the module
+docstrings, so name the upstream files a module ports in its docstring. It reads upstream's
+0.125.1 tag from `../promptfoo` (or `--upstream <path>`); `--check` fails when the map is stale.
+
 ## Checking against Node
 
 Parity and interop checks need a reference Node promptfoo 0.125.1. Install the published package
