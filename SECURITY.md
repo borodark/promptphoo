@@ -33,7 +33,26 @@ downloaded. promptphoo treats them as data, with these protections (decision D61
   (`{{ env.OPENAI_API_KEY }}`) and place them in a prompt, which is then sent to the provider under
   test. If you evaluate datasets you did not write against providers you do not control, set
   `PROMPTFOO_DISABLE_TEMPLATING=true`, or run with only the keys that eval needs.
-- Inline transforms are refused entirely in safe mode.
+- **Model output is never a template.** An output kept with `storeOutputAs` goes into the next
+  prompt as plain text. Upstream renders it, so a model steered by injected content could answer
+  `{{ env.OPENAI_API_KEY }}` or `file:///path` and have the key or the file's contents sent in
+  the next prompt (D73).
+
+**Outside safe mode, test files are trusted like the config.** A CSV `__expected` cell such as
+`python: ...` is a Python assertion, a var such as `file:///any/path` is read from disk (a `.py`
+path runs its `get_var`), and a YAML or JSON test file can name an `exec:` grader. This is
+upstream's behaviour. **For datasets you did not write, use `--safe-mode`** (or
+`commandLineOptions: {safeMode: true}`), which makes test files data (D74):
+
+- Tests read from test files (CSV, JSON, JSONL, YAML, scenario test files) are checked before
+  anything in them is loaded. The eval stops with a message if one has a `python`, `javascript`
+  or `ruby` assertion (including `not-` forms), names a script provider (`exec:`, `python:`,
+  `file://`, ...), refers to any `file://` path or `$ref` file, loads its vars from files, or
+  lists another test file.
+- Inline Python assertions and inline transforms are refused everywhere, as upstream refuses
+  inline JavaScript. A `file://` hook named in the config still runs: the config is code.
+- Safe mode does not stop a var value from reading `{{ env.* }}` (see above), and does not refuse
+  `webhook` assertions or HTTP graders in test data, which can send outputs to a URL.
 
 ## Network defaults
 
@@ -53,7 +72,16 @@ downloaded. promptphoo treats them as data, with these protections (decision D61
 Results are stored in `~/.promptfoo/promptfoo.db` (or `PROMPTFOO_CONFIG_DIR`), shared with Node
 promptfoo, and responses are cached in `~/.promptfoo/cache/cache-py.json`. Both can contain your
 prompts and model outputs in plain text. Treat that directory like any other file holding work data.
-A key supplied through the environment is not written there (checked below).
+
+- **A key supplied through the environment is not written there** (checked below). **A key
+  written inline in a config** (`apiKey: sk-...`, an `Authorization` header) **is**: the config
+  is stored verbatim in the `evals` table, as upstream stores it. Output files, `export` and the
+  logs scrub it. Keep keys in the environment.
+- **Owner-only files.** promptphoo creates the state directory 0700 and its database, cache,
+  logs, blobs and `promptfoo.yaml` 0600, and narrows an existing world-readable database to 0600
+  (D75). Node creates them with your umask, usually readable by every local user, and promptphoo
+  leaves an existing directory's mode alone. To close an existing one:
+  `chmod 700 ~/.promptfoo`.
 
 ## How key handling was checked
 

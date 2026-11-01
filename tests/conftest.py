@@ -34,3 +34,14 @@ def _reset_blob_storage_provider():
     from promptphoo.blobs import reset_blob_storage_provider
 
     reset_blob_storage_provider()
+
+
+@pytest.fixture(autouse=True)
+def _reset_safe_mode():
+    """`eval --safe-mode` sets safe mode for the process, as upstream's cliState does. Reset it so
+    one test's safe mode cannot leak into the next."""
+    from promptphoo import cli_state
+
+    cli_state.set_safe_mode(False)
+    yield
+    cli_state.set_safe_mode(False)

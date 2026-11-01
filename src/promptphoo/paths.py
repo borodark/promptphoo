@@ -19,5 +19,7 @@ def get_config_directory_path(create: bool = False) -> str:
         or os.path.join(os.path.expanduser("~"), ".promptfoo")
     )
     if create:
-        os.makedirs(path, exist_ok=True)
+        from promptphoo.private_files import make_private_dirs
+
+        make_private_dirs(path)  # 0700 when created (D75)
     return path

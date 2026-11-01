@@ -23,6 +23,7 @@ from promptphoo.blobs.blob_refs import BLOB_HASH_REGEX
 from promptphoo.blobs.constants import BLOB_SCHEME, DEFAULT_FILESYSTEM_SUBDIR
 from promptphoo.blobs.types import BlobStoreResult, StoredBlob
 from promptphoo.jsvalues import json_stringify
+from promptphoo.private_files import make_private_dirs, open_private
 
 logger = logging.getLogger("promptphoo")
 
@@ -63,7 +64,7 @@ class FilesystemBlobStorageProvider:
 
     def _ensure_directory(self) -> None:
         if not os.path.exists(self.base_path):
-            os.makedirs(self.base_path, exist_ok=True)
+            make_private_dirs(self.base_path)
             logger.debug("[BlobFS] Created blob directory %s", self.base_path)
 
     def _assert_valid_hash(self, hash_: str) -> None:
@@ -90,7 +91,7 @@ class FilesystemBlobStorageProvider:
     def store(self, data: bytes, mime_type: str) -> BlobStoreResult:
         hash_ = hashlib.sha256(data).hexdigest()
         file_path = self.get_file_path(hash_)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        make_private_dirs(os.path.dirname(file_path))
 
         # Check if file already exists (deduplication)
         if os.path.exists(file_path):
@@ -123,9 +124,9 @@ class FilesystemBlobStorageProvider:
         try:
             staged_data = os.path.join(staging_dir, "data")
             staged_metadata = os.path.join(staging_dir, "metadata.json")
-            with open(staged_data, "xb") as f:
+            with open_private(staged_data, "xb") as f:
                 f.write(data)
-            with open(staged_metadata, "x", encoding="utf-8", newline="") as f:
+            with open_private(staged_metadata, "x", encoding="utf-8", newline="") as f:
                 f.write(json_stringify(metadata, 2))
             # Publish complete bytes first: a failed data rename must not change another
             # writer's MIME.

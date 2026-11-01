@@ -20,6 +20,7 @@ from promptphoo.files import glob_sync, maybe_load_from_external_file
 from promptphoo.jsvalues import is_truthy, js_string, json_stringify
 from promptphoo.promptfoo_command import promptfoo_command
 from promptphoo.refs import dereference
+from promptphoo.safe_mode import check_test_data
 from promptphoo.templating import read_filters, render_env_only_in_object
 from promptphoo.testcases import (
     is_remote_tests_reference,
@@ -766,15 +767,22 @@ async def _resolve_loaded_config(
     parsed_providers = await providers_mod.load_api_providers(
         filtered_provider_configs, env=runtime_env, base_path=base_path
     )
-    test_configs = await _read_test_sources(
-        test_sources
-        if test_sources
-        else [
-            {"tests": config.get("tests") or [], "base_path": "" if cmd.get("tests") else base_path}
-        ],
-        runtime_env,
-        False,
-    )
+    # The config's own commandLineOptions.safeMode is applied by `eval` only after loading;
+    # test files must already be read as data (D74).
+    safe = cli_state.safe_mode() or bool((command_line_options or {}).get("safeMode"))
+    with cli_state.with_safe_mode(safe):
+        test_configs = await _read_test_sources(
+            test_sources
+            if test_sources
+            else [
+                {
+                    "tests": config.get("tests") or [],
+                    "base_path": "" if cmd.get("tests") else base_path,
+                }
+            ],
+            runtime_env,
+            False,
+        )
     config["tests"] = [copy.deepcopy(t) for t in test_configs]
     parsed_tests = [await read_test(t, base_path, False, runtime_env) for t in test_configs]
 
@@ -801,12 +809,15 @@ async def _resolve_loaded_config(
         for index, scenario in enumerate(parsed_scenarios):
             if not isinstance(scenario, dict):
                 raise ConfigResolutionError("scenario must be an object")
-            if isinstance(scenario.get("tests"), str):
-                scenario["tests"] = maybe_load_from_external_file(scenario["tests"])
-            if isinstance(scenario.get("tests"), list):
-                scenario["tests"] = await _read_test_sources(
-                    [{"tests": scenario["tests"], "base_path": base_path}], runtime_env, False
-                )
+            with cli_state.with_safe_mode(safe):
+                if isinstance(scenario.get("tests"), str):
+                    source = scenario["tests"]
+                    scenario["tests"] = maybe_load_from_external_file(source)
+                    check_test_data(scenario["tests"], source)
+                if isinstance(scenario.get("tests"), list):
+                    scenario["tests"] = await _read_test_sources(
+                        [{"tests": scenario["tests"], "base_path": base_path}], runtime_env, False
+                    )
             filtered = await filter_tests(
                 {**scenario, "providers": parsed_providers, "prompts": parsed_prompts},
                 {

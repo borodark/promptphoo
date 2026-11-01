@@ -177,10 +177,17 @@ async def render_prompt(
     filters: dict[str, Any] | None = None,
     provider: Any = None,
     skip_render_vars: list[str] | None = None,
+    literal_vars: list[str] | None = None,
 ) -> str:
-    """Load file:// vars, run prompt functions, and render the template. Mutates vars_."""
+    """Load file:// vars, run prompt functions, and render the template. Mutates vars_.
+
+    `literal_vars` (model outputs kept with storeOutputAs) are inserted as they are: never loaded
+    as file:// paths, substituted into or rendered as templates, unlike in Node, where a model's
+    output could read files or `{{ env.* }}` secrets into the next prompt (D73). Unlike
+    `skip_render_vars` they still lose one trailing newline, as every var does."""
     engine = get_engine(filters)
-    skip = skip_render_vars or []
+    trim_skip = skip_render_vars or []
+    skip = [*trim_skip, *(literal_vars or [])]
     base_prompt: str = prompt["raw"]
 
     for name, value in list(vars_.items()):
@@ -209,7 +216,7 @@ async def render_prompt(
             )
 
     for key, value in vars_.items():
-        if isinstance(value, str) and key not in skip and value.endswith("\n"):
+        if isinstance(value, str) and key not in trim_skip and value.endswith("\n"):
             vars_[key] = value[:-1]
     resolved_from_skipped: set[str] = set()
     resolve_variables(vars_, skip, resolved_from_skipped)

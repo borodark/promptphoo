@@ -868,3 +868,31 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Alternatives: Load a fresh grader for a plain id. Rejected for now: it changes grader requests, cache keys, token totals and possibly pass/fail for configs that work in Node, and would break configs relying on the reuse to carry `apiHost`, headers or deployment settings (D66).
 - Assumption: A reference that is a provider's label means the user chose that provider deliberately, so it is not warned about.
 - Modules: src/promptphoo/grading_provider.py, src/promptphoo/evaluator/run.py, tests/test_grading_provider.py
+- Commits: `be82c88`
+
+## 73. A model output kept with storeOutputAs is inserted literally
+- Decision: `render_prompt` takes `literal_vars`, and the evaluator passes the `storeOutputAs` registers. Their values are never loaded as `file://` paths, substituted into other vars, or rendered as templates; a var whose value took in a register is not rendered either. They still lose one trailing newline, as every var does, so ordinary prompts are unchanged.
+- Rationale: Upstream renders a stored output in the next turn like any var. An output of `{{ env.OPENAI_API_KEY }}` put the key into the next prompt (and the stored results), and `file:///path` read the file, so prompt injection into the model under test could exfiltrate secrets and files. Found and proven in the security review; graders were checked and do not re-render outputs.
+- Alternatives: Add the registers to `skip_render_vars`. Rejected: that also keeps their trailing newline, changing prompts for every config that uses storeOutputAs.
+- Assumption: No config relies on a model output being executed as a template; a model writing template syntax is the attack, not a feature.
+- Implication: A var such as `q: "{{ prev }} and {{ other | upper }}"` that mixes a register with template code is now inserted without rendering the rest.
+- Modules: src/promptphoo/evaluator/render.py, src/promptphoo/evaluator/run.py, tests/test_security.py
+
+## 74. In safe mode, test files are data: no code, no file access, no script providers
+- Decision:
+  - With `--safe-mode` or `commandLineOptions.safeMode`, `safe_mode.check_test_data` checks every test read from a test file (CSV, JSON, JSONL, YAML, and scenario test files) before anything in it is loaded, and stops the load with a SafeModeError when a test has a `python`, `javascript` or `ruby` assertion (including `not-` forms and inside `assert-set`), names a script provider (`exec:`, `python:`, `golang:`, `ruby:`, `file://`, `package:`) under a `provider`/`providers` key, contains any `file://` string, has a `$ref` to a file, loads its vars from files, or lists another test file.
+  - Inline Python assertions fail with upstream's safe-mode wording adapted to Python, as upstream does for inline JavaScript. Inline transforms were already refused.
+  - Tests written in the config, and tests returned by a Python generator the config names, are not checked: the config is code. Outside safe mode nothing changes.
+  - The config's own `commandLineOptions.safeMode` applies while its tests load, not only afterwards as before.
+- Rationale: Upstream's safe mode refuses only inline JavaScript, though its help promises "transforms and assertions". In both runtimes a CSV `__expected: python: ...` ran code and a var `file:///etc/hostname` was read into the prompt even with `--safe-mode`, contradicting SECURITY.md's "data should not be code". Making safe mode mean "datasets are data" is opt-in, so no config that works in Node breaks (D66).
+- Alternatives: Block code in datasets by default. Deferred: it would break real configs and needs the maintainer's decision. Confine `file://` vars to the config directory. Deferred with it.
+- Assumption: In safe mode, a test file never legitimately needs code or files; such tests belong in the config. `webhook` assertions and HTTP graders in test data are not refused and remain a way to send outputs to a URL.
+- Implication: The checks are string-based on the raw file contents, so a harmless `file://` in, say, metadata is refused too; the message says to move the test into the config or drop safe mode.
+- Modules: src/promptphoo/safe_mode.py, src/promptphoo/testcases.py, src/promptphoo/config/load.py, src/promptphoo/assertions/script.py, tests/test_security.py, tests/conftest.py
+
+## 75. The state directory's files are owner-only
+- Decision: `private_files` creates directories under the state directory 0700 and files 0600: the state directory itself, the cache directory and `cache-py.json`, the log directory and run logs, blobs, and `promptfoo.yaml`. Opening the database narrows it and its `-wal`/`-shm` files to 0600 when group or others can read them. An existing directory keeps its mode.
+- Rationale: The database stores configs verbatim, so a key written inline in a config is in it, and it holds prompts and outputs. Node creates these with the umask (0644 files in a 0775 directory here), readable by every local user.
+- Alternatives: chmod an existing state directory to 0700. Rejected: a directory shared on purpose would break; 0600 files already protect the contents. Scrub inline keys from the stored config. Rejected: DB rows are part of the drop-in contract (D2, D66).
+- Assumption: Node and promptphoo run as the same user, so owner-only files do not affect sharing the state directory between them.
+- Modules: src/promptphoo/private_files.py, src/promptphoo/paths.py, src/promptphoo/db/__init__.py, src/promptphoo/cache.py, src/promptphoo/logfiles.py, src/promptphoo/blobs/filesystem_provider.py, src/promptphoo/globalconfig.py, tests/test_security.py

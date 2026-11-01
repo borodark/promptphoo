@@ -202,6 +202,9 @@ confirmed against the Anthropic API on 2026-10-31 (see [`VERIFICATION.md`](VERIF
 
 ### Fixed
 
+- **Security (D73–D75):** a `storeOutputAs` output is no longer rendered as a template in the
+  next turn; `--safe-mode` makes test files data (no code, files or script providers); state
+  files are owner-only. Details in [`SECURITY.md`](../SECURITY.md).
 - **`show <prefix>` and `delete <prefix>` always fail in Node**, though the prefix matched an
   eval; promptphoo resolves a unique prefix and lists the matches of an ambiguous one, deleting
   nothing. **Legacy v3 evals** list with no prompts in Node and now show theirs (D71).

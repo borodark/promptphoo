@@ -19,6 +19,7 @@ from typing import Literal
 
 from promptphoo import envars
 from promptphoo.paths import get_config_directory_path
+from promptphoo.private_files import make_private_dirs, restrict
 
 logger = logging.getLogger("promptphoo")
 
@@ -134,7 +135,7 @@ def read_first_lines(path: str, count: int) -> list[str]:
 
 def _setup_log_directory() -> str:
     log_dir = get_log_directory()
-    os.makedirs(log_dir, exist_ok=True)
+    make_private_dirs(log_dir)
     try:
         files = get_log_files("all")
         if len(files) >= MAX_LOG_FILES:
@@ -174,6 +175,7 @@ def initialize_run_logging() -> None:
 
 def _add_handler(root: logging.Logger, path: str, level: int) -> None:
     handler = logging.FileHandler(path, encoding="utf-8")
+    restrict(path)  # a debug log records prompts and responses (D75)
     handler.setLevel(level)
     handler.setFormatter(FileFormatter())
     root.addHandler(handler)

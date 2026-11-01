@@ -458,7 +458,9 @@ async def _run_eval_internal(step: RunEvalOptions) -> list[dict[str, Any]]:
     prompt_for_render = dict(prompt)
     trace_context: dict[str, Any] | None = None
     try:
-        rendered_prompt = await render_prompt(prompt_for_render, vars_, step.filters, provider)
+        rendered_prompt = await render_prompt(
+            prompt_for_render, vars_, step.filters, provider, literal_vars=list(step.registers)
+        )
         prompt_config = _merge_prompt_config(prompt_for_render.get("config"), test.get("options"))
         setup = {
             "provider": _provider_setup(provider),

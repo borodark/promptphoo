@@ -25,6 +25,7 @@ from promptphoo.files import (
 )
 from promptphoo.jsvalues import json_stringify
 from promptphoo.refs import dereference
+from promptphoo.safe_mode import check_test_data
 from promptphoo.templating import render_env_only_in_object
 from promptphoo.yamlload import load_yaml
 
@@ -134,7 +135,9 @@ async def read_standalone_tests_file(
             raise TypeError(f"Python test function must return a list of test cases, got {kind}")
         return result
     if ext == "csv":
-        return _csv_rows_to_test_cases(_parse_csv_rows(Path(resolved).read_text(encoding="utf-8")))
+        cases = _csv_rows_to_test_cases(_parse_csv_rows(Path(resolved).read_text(encoding="utf-8")))
+        check_test_data(cases, resolved)
+        return cases
     if ext in ("xlsx", "xls"):
         raise NotImplementedError(f"Excel test files are not supported by promptphoo: {resolved}")
     if ext == "json":
@@ -144,18 +147,20 @@ async def read_standalone_tests_file(
         except Exception as e:
             raise ValueError(f"Failed to parse JSON test file {resolved}: {e}") from e
         cases = data if isinstance(data, list) else [data]
+        check_test_data(cases, resolved)
         return [_with_default_description(t, i) for i, t in enumerate(cases)]
     if ext == "jsonl":
         content = Path(resolved).read_text(encoding="utf-8")
-        return [
-            _with_default_description(t, i)
-            for i, t in enumerate(_parse_jsonl_lines(content, resolved))
-        ]
+        cases = _parse_jsonl_lines(content, resolved)
+        check_test_data(cases, resolved)
+        return [_with_default_description(t, i) for i, t in enumerate(cases)]
     if ext in ("yaml", "yml"):
-        rows = maybe_load_config_from_external_file(
-            load_yaml(Path(resolved).read_text(encoding="utf-8"))
-        )
-        return _csv_rows_to_test_cases(rows)
+        raw_rows = load_yaml(Path(resolved).read_text(encoding="utf-8"))
+        check_test_data(raw_rows, resolved)
+        rows = maybe_load_config_from_external_file(raw_rows)
+        cases = _csv_rows_to_test_cases(rows)
+        check_test_data(cases, resolved)
+        return cases
     return []
 
 
@@ -340,15 +345,18 @@ async def _load_tests_from_glob(
             cases: Any = await read_standalone_tests_file(test_file, base_path)
         elif test_file.endswith((".yaml", ".yml")):
             raw = load_yaml(Path(test_file).read_text("utf-8"))
+            check_test_data(raw, test_file)
             cases = dereference(maybe_load_config_from_external_file(raw))
         elif test_file.endswith(".jsonl"):
             raw_cases = _parse_jsonl_lines(Path(test_file).read_text("utf-8"), test_file)
+            check_test_data(raw_cases, test_file)
             cases = dereference(maybe_load_config_from_external_file(raw_cases))
         elif test_file.endswith(".json"):
             try:
                 raw = json.loads(Path(test_file).read_text("utf-8"))
             except json.JSONDecodeError as e:
                 raise ValueError(f"Failed to parse JSON test file {test_file}: {e}") from e
+            check_test_data(raw, test_file)
             cases = dereference(maybe_load_config_from_external_file(raw))
         else:
             raise ValueError(f"Unsupported file type for test file: {test_file}")

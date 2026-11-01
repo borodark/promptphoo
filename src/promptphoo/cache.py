@@ -29,6 +29,7 @@ from typing import Any, Literal
 from promptphoo import envars
 from promptphoo.jsvalues import json_stringify, number_to_string
 from promptphoo.paths import get_config_directory_path
+from promptphoo.private_files import make_private_dirs, open_private, restrict
 
 logger = logging.getLogger(__name__)
 
@@ -118,8 +119,9 @@ class Cache:
             return
         async with self._lock:
             tmp = self.path + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
+            with open_private(tmp, "w", encoding="utf-8") as f:
                 json.dump(self._data, f, ensure_ascii=False)
+            restrict(tmp)  # a leftover .tmp from an older run keeps its mode on reopen
             os.replace(tmp, self.path)
             self._dirty = False
 
@@ -165,7 +167,7 @@ def _get_instance() -> Cache:
             try:
                 if not os.path.exists(directory):
                     logger.info(f"Creating cache folder at {directory}.")
-                    os.makedirs(directory, exist_ok=True)
+                    make_private_dirs(directory)
                 path = os.path.join(directory, CACHE_FILE_NAME)
             except OSError as err:
                 logger.warning(

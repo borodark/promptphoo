@@ -85,6 +85,13 @@ def get_db() -> sqlite3.Connection:
                 check_same_thread=False,
             )
             _configure_connection(conn, DEFAULT_BUSY_TIMEOUT_MS, wal=not testing)
+            if not testing:
+                from promptphoo.private_files import restrict
+
+                # Rows can hold API keys written inline in a config (D75).
+                db_path = get_db_path()
+                for suffix in ("", "-wal", "-shm"):
+                    restrict(db_path + suffix)
             _conn = conn
         return _conn
 

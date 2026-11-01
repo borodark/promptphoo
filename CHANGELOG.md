@@ -69,6 +69,12 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
 - **Grader config reuse is warned about.** A grader named by the id of a configured provider
   reuses that provider's config, as in Node; promptphoo now says so once per grader and shows how
   to give the grader its own settings (D72).
+- **Security.** A model output kept with `storeOutputAs` is inserted as plain text, so it can
+  no longer pull `{{ env.* }}` secrets or files into the next prompt (D73). `--safe-mode` now
+  treats test files as data: code, `file://` references and script providers in them stop the
+  load, and inline Python assertions are refused (D74). The database, cache, logs and blobs are
+  owner-only (D75). SECURITY.md now says that keys written inline in a config are stored in the
+  database.
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

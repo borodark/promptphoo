@@ -102,6 +102,9 @@ Two differences:
 | Response cache | `~/.promptfoo/cache/cache.json` | `~/.promptfoo/cache/cache-py.json` | Your first promptphoo runs call providers again, so expect fresh API costs once |
 | `feedback` command | Posts to promptfoo's servers | Sends nothing; points to promptphoo's issue tracker | — |
 | Commands in messages | `promptfoo eval`, `promptfoo view` | `promptphoo eval`; `npx promptfoo@latest view` for the Node-only viewer | — |
+| `storeOutputAs` output in the next prompt | Rendered as a template (`{{ env.* }}`, `file://` run) | Inserted as plain text (D73) | — |
+| `--safe-mode` | Refuses inline JavaScript only | Also refuses code, `file://` references and script providers in test files, and inline Python (D74) | Move code-bearing tests into the config |
+| State directory files | Created with your umask | Database, cache, logs and blobs 0600; new directories 0700 (D75) | — |
 | `show <id prefix>`, `delete <id prefix>` | Always fail, though the prefix matches an eval | Act on the one matching eval; an ambiguous prefix lists the matches and deletes nothing (D71) | — |
 | Legacy (v3) evals in `list evals`, `list prompts` | Listed with no prompts | Listed with their prompts (D71) | — |
 | `model-graded-closedqa` and `select-best` with an Anthropic grader | Always fail (`400 at least one message is required`) | **Grade**: the system-only grading prompt is sent as the user turn (D68) | Expect these assertions to start passing or failing on their merits |

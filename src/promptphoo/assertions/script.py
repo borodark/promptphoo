@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 
-from promptphoo import envars, python_hooks
+from promptphoo import cli_state, envars, python_hooks
 from promptphoo.assertions.base import AssertionParams, GradingResult, invariant
 from promptphoo.jsonutil import js_json_parse
 from promptphoo.jsvalues import js_string, json_stringify, number_to_string
@@ -221,6 +221,16 @@ async def handle_python(params: AssertionParams) -> GradingResult:
     assertion = params.assertion
     try:
         if params.value_from_script is None:
+            if cli_state.safe_mode():
+                # Upstream refuses inline JavaScript in safe mode; inline Python is its
+                # promptphoo counterpart (D74).
+                return {
+                    "pass": False,
+                    "score": 0,
+                    "reason": "Inline Python execution is disabled in safe mode. Please use a file "
+                    'reference instead (e.g. "file://path/to/assertion.py").',
+                    "assertion": assertion,
+                }
             code = (
                 "import json\n\ndef main(output, context):\n"
                 f"{build_script_body(params.rendered_value, '    ')}\n"

@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from promptphoo.paths import get_config_directory_path
+from promptphoo.private_files import make_private_dirs, open_private
 from promptphoo.yamlload import load_yaml
 
 
@@ -42,7 +43,7 @@ def _config_file_path(create: bool = False) -> str:
 
 
 def write_global_config(config: dict[str, Any]) -> None:
-    with open(_config_file_path(True), "w", encoding="utf-8") as f:
+    with open_private(_config_file_path(True), "w", encoding="utf-8") as f:
         f.write(dump_js_yaml(config))
 
 
@@ -58,8 +59,8 @@ def read_global_config() -> dict[str, Any]:
             global_config = {**global_config, "id": str(uuid.uuid4())}
             write_global_config(global_config)
     else:
-        os.makedirs(config_dir, exist_ok=True)
-        with open(config_file_path, "w", encoding="utf-8") as f:
+        make_private_dirs(config_dir)
+        with open_private(config_file_path, "w", encoding="utf-8") as f:
             f.write(dump_js_yaml(global_config))
     return global_config
 
