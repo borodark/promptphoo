@@ -63,6 +63,9 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
 - **Results are listed in test order.** Outputs, exports and JUnit reports of a stored eval list
   rows by test, then prompt, where Node lists them in whatever order a concurrent run stored them
   (D70).
+- **Id prefixes work in `show` and `delete`.** Node matches the prefix and then fails; promptphoo
+  acts on the one matching eval and lists the matches of an ambiguous prefix without deleting.
+  Legacy v3 evals now list their prompts (D71).
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

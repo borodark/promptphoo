@@ -3,7 +3,10 @@
 Ports test/commands/list.test.ts, show.test.ts, delete.test.ts and test/util/
 databaseDelete.test.ts. The golden tests replay Node-written DB rows from
 tests/fixtures/list_show/golden.json (tools/list_show_golden.py) and require promptphoo's
-output to match Node's byte for byte. The interop tests at the bottom run real Node and are
+output to match Node's byte for byte. Cases where promptphoo differs on purpose are named in
+DIVERGES with their decision; they are checked against promptphoo's reviewed output in
+promptphoo_divergent.json (regenerate with PROMPTPHOO_UPDATE_DIVERGENT=1 and review the diff),
+and must still differ from Node's. The interop tests at the bottom run real Node and are
 skipped unless NODE_PROMPTFOO is set.
 """
 
@@ -41,6 +44,19 @@ GOLDEN = json.loads(
     (Path(__file__).parent / "fixtures" / "list_show" / "golden.json").read_text("utf-8")
 )
 ROOT = Path(__file__).resolve().parent.parent
+DIVERGENT_PATH = Path(__file__).parent / "fixtures" / "list_show" / "promptphoo_divergent.json"
+DIVERGENT = json.loads(DIVERGENT_PATH.read_text("utf-8")) if DIVERGENT_PATH.exists() else {}
+UPDATE_DIVERGENT = bool(os.environ.get("PROMPTPHOO_UPDATE_DIVERGENT"))
+
+# Golden cases where promptphoo differs from Node on purpose, with the decision (D66).
+DIVERGES = {
+    "show_prefix": "D71",  # an ambiguous prefix lists the matching evals
+    "del_prefix": "D71",  # an ambiguous prefix lists the matches and deletes nothing
+    "v3_list": "D71",  # legacy v3 evals list their prompts
+    "v3_prompts": "D71",
+    "v3_datasets": "D71",
+    "v3_show_prompt": "D71",
+}
 
 
 @pytest.fixture
@@ -85,6 +101,34 @@ def assert_same(want: str, got: str) -> None:
         pytest.fail("output differs from Node:\n" + diff)
 
 
+def check_case(case: dict[str, Any], code: int, output: str) -> None:
+    name = case["name"]
+    if name not in DIVERGES:
+        assert_same(case["output"], output)
+        assert code == case["exitCode"], name
+        return
+    node = (as_promptphoo(case["output"]), case["exitCode"])
+    assert node != (output, code), f"{name} now matches Node; drop it from DIVERGES"
+    if UPDATE_DIVERGENT:
+        stored = json.loads(DIVERGENT_PATH.read_text("utf-8")) if DIVERGENT_PATH.exists() else {}
+        stored[name] = {"decision": DIVERGES[name], "exitCode": code, "output": output}
+        text = json.dumps(dict(sorted(stored.items())), indent=2, ensure_ascii=False) + "\n"
+        DIVERGENT_PATH.write_text(text, "utf-8")
+        return
+    want = DIVERGENT[name]
+    assert want["decision"] == DIVERGES[name]
+    if want["output"] != output:
+        diff = "".join(
+            difflib.unified_diff(want["output"].splitlines(1), output.splitlines(1), "want", "py")
+        )
+        pytest.fail(f"{name} differs from promptphoo's reviewed output:\n" + diff)
+    assert code == want["exitCode"], name
+
+
+def test_divergent_records_are_all_named():
+    assert set(DIVERGENT) == set(DIVERGES)
+
+
 def _cases(stage: str) -> list[dict[str, Any]]:
     return [c for c in GOLDEN["cases"] if c["stage"] == stage]
 
@@ -99,16 +143,14 @@ def test_matches_node_golden(case, config_dir):
     if case["stage"] != "empty":
         load_rows(config_dir, GOLDEN["stages"][case["stage"]])
     code, output = invoke(*case["args"])
-    assert_same(case["output"], output)
-    assert code == case["exitCode"]
+    check_case(case, code, output)
 
 
 def test_delete_sequence_matches_node_golden(config_dir):
     load_rows(config_dir, GOLDEN["stages"]["stage2"])
     for case in _cases("deletes"):
         code, output = invoke(*case["args"])
-        assert_same(case["output"], output)
-        assert code == case["exitCode"], case["name"]
+        check_case(case, code, output)
     conn = sqlite3.connect(config_dir / "promptfoo.db")
     counts = {t: conn.execute(f'SELECT count(*) FROM "{t}"').fetchone()[0]
               for t in GOLDEN["countsAfterDeletes"]}  # fmt: skip
@@ -270,11 +312,90 @@ def test_show_python_written_eval(config_dir, monkeypatch):
     assert invoke("show", "eval", record.id) == (code, out)
 
 
-def test_show_prefix_routes_to_find_by_id(config_dir):
+def _eval_count(config_dir: Path) -> int:
+    conn = sqlite3.connect(config_dir / "promptfoo.db")
+    try:
+        return conn.execute("SELECT count(*) FROM evals").fetchone()[0]
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("args", [("show",), ("show", "eval")])
+def test_show_unique_prefix_shows_the_eval(config_dir, args):
+    # D71: upstream matches the prefix, then looks it up as an exact id and fails.
     record = make_eval(["Hi"], [{}], T0)
-    code, out = invoke("show", record.id[:8])
+    code, out = invoke(*args, record.id[:9])
+    assert code == 0
+    assert f"\nEval {record.id}\n" in out
+
+
+@pytest.mark.parametrize("args", [("delete",), ("delete", "eval")])
+def test_delete_unique_prefix_deletes_the_eval(config_dir, args):
+    record = make_eval(["Hi"], [{}], T0)
+    code, out = invoke(*args, record.id[:9])
+    assert code == 0
+    assert f"Evaluation with ID {record.id} has been successfully deleted." in out
+    assert _eval_count(config_dir) == 0
+
+
+@pytest.mark.parametrize("args", [("show",), ("show", "eval"), ("delete",), ("delete", "eval")])
+def test_ambiguous_prefix_lists_matches_and_changes_nothing(config_dir, args):
+    first = make_eval(["Hi"], [{}], T0, description="first")
+    second = make_eval(["Hi"], [{}], T0 + 1000, description="second")
+    code, out = invoke(*args, "eval-")
     assert code == 1
-    assert out.startswith(f"No evaluation found with ID {record.id[:8]}\n")
+    assert out.startswith('ID prefix "eval-" matches 2 evaluations:\n')
+    assert out.index(second.id) < out.index(first.id)
+    assert "Use a longer prefix or the full ID." in out
+    assert _eval_count(config_dir) == 2
+
+
+def test_prefix_wildcards_are_literal(config_dir):
+    make_eval(["Hi"], [{}], T0)
+    code, out = invoke("delete", "eval", "eval%")
+    assert code == 1
+    assert _eval_count(config_dir) == 1
+
+
+def test_exact_id_beats_a_longer_id_it_prefixes(config_dir):
+    record = make_eval(["Hi"], [{}], T0)
+    conn = sqlite3.connect(config_dir / "promptfoo.db")
+    with conn:
+        conn.execute(
+            "INSERT INTO evals (id, created_at, config, results) "
+            "SELECT id || 'x', created_at + 1, config, results FROM evals WHERE id = ?",
+            (record.id,),
+        )
+    conn.close()
+    code, out = invoke("delete", "eval", record.id)
+    assert code == 0
+    assert _eval_count(config_dir) == 1
+
+
+def test_resolve_eval_ref_sees_evals_older_than_the_newest_100(config_dir):
+    record = make_eval(["Hi"], [{}], T0)
+    conn = sqlite3.connect(config_dir / "promptfoo.db")
+    with conn:
+        conn.executemany(
+            "INSERT INTO evals (id, created_at, config, results) VALUES (?, ?, '{}', '{}')",
+            [(f"eval-new-{i:03d}", T0 + 10_000 + i) for i in range(101)],
+        )
+    conn.close()
+    assert queries.get_eval_from_id(record.id[:9]) is None  # upstream's window
+    assert [m["id"] for m in queries.resolve_eval_ref(record.id[:9])] == [record.id]
+    db.close_db()
+    code, out = invoke("show", record.id[:9])
+    assert code == 0 and f"\nEval {record.id}\n" in out
+
+
+def test_get_many_loads_prompts_of_legacy_v3_evals_only(config_dir):
+    load_rows(config_dir, GOLDEN["stages"]["stage2"])
+    evals = {e.id: e for e in Eval.get_many()}
+    db.close_db()
+    legacy = evals["eval-v3L-2020-01-02T03:04:05"]
+    assert legacy.version() == 3
+    assert [p["raw"] for p in legacy.get_prompts()] == ["Legacy {{q}}"]
+    assert all(e.old_results is None for i, e in evals.items() if i != legacy.id)
 
 
 def test_show_eval_more_than_25_rows(config_dir):

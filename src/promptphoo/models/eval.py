@@ -739,8 +739,9 @@ class Eval:
 
     @classmethod
     def get_many(cls, limit: int | float | None = None) -> list[Eval]:
-        """Eval.getMany: the newest `limit` evals (default 100) without their results column,
-        so legacy v3 rows read as v4 here, as upstream."""
+        """Eval.getMany: the newest `limit` evals (default 100). Upstream leaves out the results
+        column, so a legacy v3 eval reads as v4 with no prompts; promptphoo loads that column for
+        v3 rows only, so their prompts show in `list` and `show prompt` (D71)."""
         from promptphoo.db.queries import DEFAULT_QUERY_LIMIT
 
         if limit is None:
@@ -748,8 +749,9 @@ class Eval:
         cur = db.get_db().cursor()
         cur.row_factory = None  # the shared connection may carry _row_factory
         cur.execute(
-            "SELECT id, created_at, author, description, config, prompts FROM evals "
-            "ORDER BY created_at DESC LIMIT ?",
+            "SELECT id, created_at, author, description, config, prompts, "
+            "CASE WHEN json_valid(results) AND json_type(results, '$.table') = 'object' "
+            "THEN results END AS legacy_results FROM evals ORDER BY created_at DESC LIMIT ?",
             (int(limit) if float(limit).is_integer() else limit,),
         )
         cols = [c[0] for c in cur.description]
@@ -764,6 +766,7 @@ class Eval:
                     author=row["author"],
                     prompts=db.from_db_json(row["prompts"]) or [],
                     persisted=True,
+                    old_results=db.from_db_json(row["legacy_results"]),
                 )
             )
         return out

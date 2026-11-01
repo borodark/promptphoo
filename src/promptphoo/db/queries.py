@@ -249,6 +249,21 @@ def get_eval_from_id(hash_: str) -> dict[str, Any] | None:
     return None
 
 
+def resolve_eval_ref(ref: str) -> list[dict[str, Any]]:
+    """The evals an id or id prefix names, newest first: an exact id alone, else every eval
+    whose id starts with `ref`, among all evals rather than upstream's newest 100 (D71)."""
+    conn = db.get_db()
+    exact = conn.execute("SELECT id, description FROM evals WHERE id = ?", (ref,)).fetchall()
+    if exact:
+        return [{"id": r[0], "description": r[1]} for r in exact]
+    # substr rather than LIKE, so `%` and `_` in the reference stay literal.
+    rows = conn.execute(
+        "SELECT id, description FROM evals WHERE substr(id, 1, ?) = ? ORDER BY created_at DESC",
+        (len(ref), ref),
+    ).fetchall()
+    return [{"id": r[0], "description": r[1]} for r in rows]
+
+
 def _sql_limit(limit: int | float | None) -> int | float:
     # drizzle's `.limit(undefined)` falls back to the default parameter upstream.
     if limit is None:

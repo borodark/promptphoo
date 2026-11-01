@@ -202,6 +202,9 @@ confirmed against the Anthropic API on 2026-10-31 (see [`VERIFICATION.md`](VERIF
 
 ### Fixed
 
+- **`show <prefix>` and `delete <prefix>` always fail in Node**, though the prefix matched an
+  eval; promptphoo resolves a unique prefix and lists the matches of an ambiguous one, deleting
+  nothing. **Legacy v3 evals** list with no prompts in Node and now show theirs (D71).
 - **Stored results load in no particular order in Node**, so outputs and exports of a concurrent
   run list rows in a different order each time; promptphoo orders them by test, then prompt (D70).
 - **A prompt file that fails to parse, or whose nested `file://` reference is missing, is used

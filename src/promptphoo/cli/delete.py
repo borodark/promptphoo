@@ -12,7 +12,13 @@ from typing import Any
 
 import click
 
-from promptphoo.cli.show import ExitCode, IdOrSubcommandGroup, env_option, run_db_command
+from promptphoo.cli.show import (
+    ExitCode,
+    IdOrSubcommandGroup,
+    env_option,
+    resolve_eval_id,
+    run_db_command,
+)
 
 logger = logging.getLogger("promptphoo.cli")
 
@@ -64,10 +70,10 @@ def handle_eval_delete_all(yes: bool = False, exit_code: ExitCode | None = None)
 
 
 def handle_delete(id_: str, exit_code: ExitCode) -> None:
-    from promptphoo.db.queries import get_eval_from_id
+    from promptphoo.db.queries import resolve_eval_ref
 
-    if get_eval_from_id(id_):
-        handle_eval_delete(id_, exit_code)
+    if resolve_eval_ref(id_):
+        _delete_resolved(id_, exit_code)
         return
     logger.error("No resource found with ID %s", id_)
     exit_code.fail()
@@ -86,6 +92,14 @@ def handle_delete_eval(eval_id: str, yes: bool, exit_code: ExitCode) -> None:
     elif eval_id == "all":
         handle_eval_delete_all(yes, exit_code)
     else:
+        _delete_resolved(eval_id, exit_code)
+
+
+def _delete_resolved(ref: str, exit_code: ExitCode) -> None:
+    """Delete the one eval `ref` names by id or unique prefix. An ambiguous prefix lists the
+    matches and deletes nothing (D71)."""
+    eval_id = resolve_eval_id(ref, exit_code)
+    if eval_id is not None:
         handle_eval_delete(eval_id, exit_code)
 
 

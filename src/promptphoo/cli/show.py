@@ -170,10 +170,43 @@ def handle_prompt(id_: str, exit_code: ExitCode) -> None:
     print_resource_hint("dataset")
 
 
+AMBIGUOUS_LIST_LIMIT = 10
+
+
+def resolve_eval_id(ref: str, exit_code: ExitCode) -> str | None:
+    """The full id of the one eval `ref` names, exactly or by prefix. Upstream matches a prefix
+    and then looks the prefix up as an exact id, which always fails (D71). Several matches are
+    listed and fail; no match returns `ref` unchanged, so the caller's not-found message stays
+    upstream's."""
+    from promptphoo.db.queries import resolve_eval_ref
+
+    matches = resolve_eval_ref(ref)
+    if len(matches) == 1:
+        return matches[0]["id"]
+    if not matches:
+        return ref
+    lines = [f'ID prefix "{ref}" matches {len(matches)} evaluations:']
+    for m in matches[:AMBIGUOUS_LIST_LIMIT]:
+        description = m.get("description") or ""
+        if len(description) > 60:
+            description = description[:57] + "..."
+        lines.append(f"  {m['id']}" + (f"  {description}" if description else ""))
+    if len(matches) > AMBIGUOUS_LIST_LIMIT:
+        lines.append(f"  ... and {len(matches) - AMBIGUOUS_LIST_LIMIT} more")
+    lines.append("Use a longer prefix or the full ID.")
+    logger.error("%s", "\n".join(lines))
+    exit_code.fail()
+    return None
+
+
 def handle_eval(id_: str, exit_code: ExitCode) -> None:
     from promptphoo.models.eval import Eval
     from promptphoo.output.table import generate_table
 
+    resolved = resolve_eval_id(id_, exit_code)
+    if resolved is None:
+        return
+    id_ = resolved
     eval_ = Eval.find_by_id(id_)
     if not eval_:
         logger.error("No evaluation found with ID %s", id_)
@@ -253,12 +286,12 @@ def show_latest_eval(exit_code: ExitCode) -> None:
 
 
 def handle_show(id_: str | None, exit_code: ExitCode) -> None:
-    from promptphoo.db.queries import get_dataset_from_hash, get_eval_from_id, get_prompt_from_hash
+    from promptphoo.db.queries import get_dataset_from_hash, get_prompt_from_hash, resolve_eval_ref
 
     if not id_:
         show_latest_eval(exit_code)
         return
-    if get_eval_from_id(id_):
+    if resolve_eval_ref(id_):
         handle_eval(id_, exit_code)
         return
     if get_prompt_from_hash(id_):

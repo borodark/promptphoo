@@ -459,6 +459,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Rationale: Users and scripts see the prefix behaviour and the sort orders, and the goldens recorded from Node pin them.
 - Assumption: Eval ids contain only ASCII letters, digits, `-` and `:`, so the casefold key orders them as ICU does.
 - Implication: A promptphoo `delete` followed within a moment by another write does not merge both into one signal, so a running Node viewer may miss the delete until its next refresh.
+- Note: The prefix behaviour (`show <prefix>` and `delete <prefix>` failing, and the newest-100 window) and the legacy v3 listing with no prompts no longer hold; see D71. `get_eval_from_id` stays as the upstream port.
 - Modules: src/promptphoo/db/queries.py, src/promptphoo/models/eval.py
 - Commits: `89b55d0`
 
@@ -473,6 +474,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Node 0.125.1 is the reference. Regenerate the goldens with the tool after an upstream bump.
 - Implication: Scripts that pipe an answer into `delete eval all` get the same result and exit code under both CLIs; only the terminal rendering of the prompt differs.
 - Note: promptphoo has since gained per-run log files and the same footer (see D45). The footer is still cut from the goldens, because its log file paths differ on every run.
+- Note: Golden cases where promptphoo differs on purpose are listed in the test's DIVERGES table with their decision and checked against tests/fixtures/list_show/promptphoo_divergent.json; each must still differ from Node's record (D66, D71).
 - Modules: src/promptphoo/cli/list_.py, src/promptphoo/cli/show.py, src/promptphoo/cli/delete.py, tools/list_show_golden.py, tests/test_cli_list_show_delete.py, tests/fixtures/list_show/golden.json
 - Commits: `89b55d0` `c181195`
 
@@ -846,3 +848,14 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Nothing relies on Node's order, since it is not reproducible. With `-j 1` insertion order already is (test, prompt) order, so those outputs match Node's exactly.
 - Implication: `select-best` and `max-score` list outputs in their grader prompt in prompt order. Under concurrency this can differ from a given Node run's prompt and cache key; accepted, because Node's own order there is random. Parity still sorts rows, since Node's side is unordered.
 - Modules: src/promptphoo/models/eval.py, tests/test_models_eval.py, tools/parity.py
+- Commits: `5138739`
+
+## 71. Eval ids resolve by unique prefix in show and delete; legacy v3 evals list their prompts
+- Decision:
+  - `show`, `show eval`, `delete` and `delete eval` accept an eval id or any prefix of one. An exact id wins; otherwise `resolve_eval_ref` matches the prefix, with `substr` so `%` and `_` stay literal, over all evals rather than the newest 100. One match shows or deletes that eval. Several matches are listed, newest first (up to 10, descriptions cut at 60 characters), followed by `Use a longer prefix or the full ID.`, and exit 1 with nothing deleted. No match keeps upstream's messages.
+  - `Eval.get_many` also selects the `results` column for rows whose results hold a v3 `table`, so legacy evals list their prompts in `list evals`, and appear in `list prompts`, `list datasets`, `show prompt` and `show dataset`.
+- Rationale: Upstream's `getEvalFromId` matches a prefix, but `show` and `delete` then look the prefix up as an exact id, so a prefix always fails, though `show prompt` tables print shortened eval ids that invite pasting one. Upstream's `getMany` leaves out the results column, so a v3 eval reads as v4 with an empty prompt list.
+- Alternatives: Pick the newest match for an ambiguous prefix, as `getEvalFromId` does. Rejected: `delete` must never guess. Keep the newest-100 window. Rejected: an exact id older than that was unreachable.
+- Assumption: Eval ids are ASCII, so `substr` by characters is a byte prefix. A v4 row's results never hold a `table`.
+- Implication: The golden cases `show_prefix`, `del_prefix`, `v3_list`, `v3_prompts`, `v3_datasets` and `v3_show_prompt` differ from Node on purpose (see D41's note). `export`, `retry` and `--filter-failing <id>` still take exact ids.
+- Modules: src/promptphoo/db/queries.py, src/promptphoo/cli/show.py, src/promptphoo/cli/delete.py, src/promptphoo/models/eval.py, tests/test_cli_list_show_delete.py, tests/fixtures/list_show/promptphoo_divergent.json
