@@ -75,6 +75,11 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
   load, and inline Python assertions are refused (D74). The database, cache, logs and blobs are
   owner-only (D75). SECURITY.md now says that keys written inline in a config are stored in the
   database.
+- **Breaking, for safety.** Var values no longer read environment variables: `{{ env.* }}` in a
+  CSV cell or test-file var renders empty, with a warning (`PROMPTPHOO_VARS_READ_ENV=true`
+  restores it; D76). CSV and JSONL datasets can no longer carry code: Python assertions, script
+  providers and code-file references in them stop the load (`PROMPTPHOO_TRUST_TEST_DATA=true`
+  restores it; D77).
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

@@ -29,20 +29,23 @@ downloaded. promptphoo treats them as data, with these protections (decision D61
   promptfoo does. The template engine is Jinja2's `SandboxedEnvironment`, so a template cannot
   reach Python internals (`__class__`, `__subclasses__`, `__globals__`) to run code. Inline
   expressions such as `transformResponse: "json.choices[0].message.content"` use the same sandbox.
-- **What the sandbox does not stop:** a template can read environment variables
-  (`{{ env.OPENAI_API_KEY }}`) and place them in a prompt, which is then sent to the provider under
-  test. If you evaluate datasets you did not write against providers you do not control, set
-  `PROMPTFOO_DISABLE_TEMPLATING=true`, or run with only the keys that eval needs.
+- **Var values cannot read the environment.** In upstream a var value such as
+  `{{ env.OPENAI_API_KEY }}` renders the key into the prompt sent to the provider under test.
+  promptphoo renders var values with an empty `env` and warns (D76).
+  `PROMPTPHOO_VARS_READ_ENV=true` restores upstream's behaviour. Prompts and config values still
+  read the environment; config-authored `{{ env.* }}` in inline vars is rendered at load.
 - **Model output is never a template.** An output kept with `storeOutputAs` goes into the next
   prompt as plain text. Upstream renders it, so a model steered by injected content could answer
   `{{ env.OPENAI_API_KEY }}` or `file:///path` and have the key or the file's contents sent in
   the next prompt (D73).
 
-**Outside safe mode, test files are trusted like the config.** A CSV `__expected` cell such as
-`python: ...` is a Python assertion, a var such as `file:///any/path` is read from disk (a `.py`
-path runs its `get_var`), and a YAML or JSON test file can name an `exec:` grader. This is
-upstream's behaviour. **For datasets you did not write, use `--safe-mode`** (or
-`commandLineOptions: {safeMode: true}`), which makes test files data (D74):
+**CSV and JSONL datasets cannot carry code** (D77). In upstream a CSV `__expected` cell such as
+`python: ...` runs Python in the promptfoo process. promptphoo refuses code assertions, script
+providers and `file://` references to code files in CSV and JSONL files, unless
+`PROMPTPHOO_TRUST_TEST_DATA=true`. Plain `file://` references in them (a document, an image)
+still load, from any path. YAML and JSON test files are trusted like the config outside safe
+mode. **For data you did not write, use `--safe-mode`** (or `commandLineOptions: {safeMode:
+true}`), which makes every test file data (D74):
 
 - Tests read from test files (CSV, JSON, JSONL, YAML, scenario test files) are checked before
   anything in them is loaded. The eval stops with a message if one has a `python`, `javascript`
@@ -51,8 +54,8 @@ upstream's behaviour. **For datasets you did not write, use `--safe-mode`** (or
   lists another test file.
 - Inline Python assertions and inline transforms are refused everywhere, as upstream refuses
   inline JavaScript. A `file://` hook named in the config still runs: the config is code.
-- Safe mode does not stop a var value from reading `{{ env.* }}` (see above), and does not refuse
-  `webhook` assertions or HTTP graders in test data, which can send outputs to a URL.
+- Safe mode does not refuse `webhook` assertions or HTTP graders in test data, which can send
+  outputs to a URL.
 
 ## Network defaults
 

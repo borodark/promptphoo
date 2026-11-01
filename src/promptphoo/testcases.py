@@ -136,7 +136,7 @@ async def read_standalone_tests_file(
         return result
     if ext == "csv":
         cases = _csv_rows_to_test_cases(_parse_csv_rows(Path(resolved).read_text(encoding="utf-8")))
-        check_test_data(cases, resolved)
+        check_test_data(cases, resolved, dataset=True)
         return cases
     if ext in ("xlsx", "xls"):
         raise NotImplementedError(f"Excel test files are not supported by promptphoo: {resolved}")
@@ -152,7 +152,7 @@ async def read_standalone_tests_file(
     if ext == "jsonl":
         content = Path(resolved).read_text(encoding="utf-8")
         cases = _parse_jsonl_lines(content, resolved)
-        check_test_data(cases, resolved)
+        check_test_data(cases, resolved, dataset=True)
         return [_with_default_description(t, i) for i, t in enumerate(cases)]
     if ext in ("yaml", "yml"):
         raw_rows = load_yaml(Path(resolved).read_text(encoding="utf-8"))
@@ -349,7 +349,7 @@ async def _load_tests_from_glob(
             cases = dereference(maybe_load_config_from_external_file(raw))
         elif test_file.endswith(".jsonl"):
             raw_cases = _parse_jsonl_lines(Path(test_file).read_text("utf-8"), test_file)
-            check_test_data(raw_cases, test_file)
+            check_test_data(raw_cases, test_file, dataset=True)
             cases = dereference(maybe_load_config_from_external_file(raw_cases))
         elif test_file.endswith(".json"):
             try:

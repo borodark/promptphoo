@@ -877,6 +877,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: No config relies on a model output being executed as a template; a model writing template syntax is the attack, not a feature.
 - Implication: A var such as `q: "{{ prev }} and {{ other | upper }}"` that mixes a register with template code is now inserted without rendering the rest.
 - Modules: src/promptphoo/evaluator/render.py, src/promptphoo/evaluator/run.py, tests/test_security.py
+- Commits: `d04e704`
 
 ## 74. In safe mode, test files are data: no code, no file access, no script providers
 - Decision:
@@ -888,7 +889,9 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Alternatives: Block code in datasets by default. Deferred: it would break real configs and needs the maintainer's decision. Confine `file://` vars to the config directory. Deferred with it.
 - Assumption: In safe mode, a test file never legitimately needs code or files; such tests belong in the config. `webhook` assertions and HTTP graders in test data are not refused and remain a way to send outputs to a URL.
 - Implication: The checks are string-based on the raw file contents, so a harmless `file://` in, say, metadata is refused too; the message says to move the test into the config or drop safe mode.
+- Note: Blocking code in CSV and JSONL datasets by default is now done (D77), and var values no longer read the environment (D76).
 - Modules: src/promptphoo/safe_mode.py, src/promptphoo/testcases.py, src/promptphoo/config/load.py, src/promptphoo/assertions/script.py, tests/test_security.py, tests/conftest.py
+- Commits: `d04e704`
 
 ## 75. The state directory's files are owner-only
 - Decision: `private_files` creates directories under the state directory 0700 and files 0600: the state directory itself, the cache directory and `cache-py.json`, the log directory and run logs, blobs, and `promptfoo.yaml`. Opening the database narrows it and its `-wal`/`-shm` files to 0600 when group or others can read them. An existing directory keeps its mode.
@@ -896,3 +899,20 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Alternatives: chmod an existing state directory to 0700. Rejected: a directory shared on purpose would break; 0600 files already protect the contents. Scrub inline keys from the stored config. Rejected: DB rows are part of the drop-in contract (D2, D66).
 - Assumption: Node and promptphoo run as the same user, so owner-only files do not affect sharing the state directory between them.
 - Modules: src/promptphoo/private_files.py, src/promptphoo/paths.py, src/promptphoo/db/__init__.py, src/promptphoo/cache.py, src/promptphoo/logfiles.py, src/promptphoo/blobs/filesystem_provider.py, src/promptphoo/globalconfig.py, tests/test_security.py
+- Commits: `d04e704`
+
+## 76. Var values are rendered without the environment
+- Decision: When a var value is rendered as a template (the plain-text prompt path), its `env` is empty, so `{{ env.OPENAI_API_KEY }}` in a var renders empty. A warning names the var once. `PROMPTPHOO_VARS_READ_ENV=true` restores Node's behaviour. Prompts, config values and assertion values still read the environment.
+- Rationale: In Node a var value sees the whole environment. A CSV cell or a test file's var could put any API key into a prompt sent to the provider under test, and into the stored results. Config-authored `{{ env.* }}`, including in inline test vars, is already rendered once at load by `render_config_env_templates` with the full environment, so what reaches var rendering at run time is mostly data.
+- Alternatives: Expose the config's `env:` block and env-file values. Rejected: those commonly hold the API keys themselves (`env: {OPENAI_API_KEY: ...}`, `.env`). Hide the environment only in safe mode. Rejected by the maintainer in favour of a default.
+- Assumption: Configs that need an environment value in a var write it in the config, where load-time rendering resolves it. A dataset that relies on `{{ env.* }}` is rare, and the warning and the opt-in cover it.
+- Implication: A config var whose environment variable was unset at load, and set later in the process, now renders empty instead of picking it up.
+- Modules: src/promptphoo/evaluator/render.py, tests/test_security.py
+
+## 77. CSV and JSONL datasets cannot carry code by default
+- Decision: Outside safe mode, tests read from CSV and JSONL files are refused when they hold a `python`, `javascript` or `ruby` assertion (including `not-` forms; a CSV `__expected: python: ...` or `file://*.py` becomes one), name a script provider under a `provider` key, or refer to a code file (`file://*.py`, `.js`, `.sh` and the like, with an optional `:function`). Plain `file://` references (a document, an image) still load. `PROMPTPHOO_TRUST_TEST_DATA=true` restores Node's behaviour. YAML and JSON test files stay trusted outside safe mode. XLSX datasets are not supported by promptphoo, so there is nothing to block there.
+- Rationale: CSV and JSONL files are the usual shape of shared and downloaded datasets, and in Node a single cell runs Python in the promptfoo process. Config authors write YAML and JSON test files, which usually carry the code-bearing tests.
+- Alternatives: Block code in every test file by default. Rejected: YAML test files with Python assertions are common and written by the config's author. Confine plain `file://` var references to the config directory. Not done: a dataset that reads a local document is a common use, and safe mode refuses file references for untrusted data.
+- Assumption: Code-bearing tests in a CSV or JSONL file are rare enough that an opt-in costs little.
+- Implication: A config that keeps Python assertions in a CSV now fails to load with a message naming the opt-in; this is a break from Node accepted by the maintainer (D66).
+- Modules: src/promptphoo/safe_mode.py, src/promptphoo/testcases.py, tests/test_security.py

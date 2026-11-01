@@ -95,6 +95,30 @@ def _auto_wrap_raw(prompt: str) -> str:
     return f"{{% raw %}}{prompt}{{% endraw %}}" if partial and not wrapped else prompt
 
 
+# Var values are rendered with an empty `env` (D76). Config-authored `{{ env.* }}` is rendered
+# once at load (render_config_env_templates), so what reaches this point is mostly data: a CSV
+# cell, a test file's var. Node gives it the whole environment, API keys included.
+_NO_ENV: dict[str, str] = {}
+_ENV_IN_TEMPLATE = re.compile(r"{[{%][^}]*\benv\b")
+_warned_env_vars: set[str] = set()
+
+
+def vars_can_read_env() -> bool:
+    return envars.get_env_bool("PROMPTPHOO_VARS_READ_ENV")
+
+
+def _warn_env_reference(name: str, value: str) -> str:
+    if name not in _warned_env_vars and _ENV_IN_TEMPLATE.search(value):
+        _warned_env_vars.add(name)
+        logger.warning(
+            'Var "%s" reads environment variables ({{ env.* }}); promptphoo does not expose them '
+            "to var values, so they render empty. Put the value in the config, or set "
+            "PROMPTPHOO_VARS_READ_ENV=true if you trust this data.",
+            name,
+        )
+    return value
+
+
 def _references_undefined(template: str, vars_: dict[str, Any]) -> bool:
     for name in extract_variables_from_template(template):
         m = re.match(r"^([A-Za-z_]\w*)", name)
@@ -231,13 +255,14 @@ async def render_prompt(
         parsed = js_json_parse(base_prompt)
         return json_stringify(render_vars_in_object(parsed, vars_), 2)
     except Exception:  # Node falls back to plain-template rendering on any failure
+        var_context = vars_ if vars_can_read_env() else {**vars_, "env": _NO_ENV}
         rendered_vars = {
             k: v
             if not isinstance(v, str)
             or k in skip
             or k in resolved_from_skipped
             or _references_undefined(v, vars_)
-            else engine.render_string(_auto_wrap_raw(v), vars_)
+            else engine.render_string(_auto_wrap_raw(_warn_env_reference(k, v)), var_context)
             for k, v in vars_.items()
         }
         return engine.render_string(_auto_wrap_raw(base_prompt), rendered_vars)

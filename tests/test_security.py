@@ -3,6 +3,8 @@
 D73: a model output kept with storeOutputAs is inserted literally in the next prompt.
 D74: in safe mode, test files are data: no code, no file access, no script providers.
 D75: the state directory's database, cache, logs and blobs are owner-only.
+D76: var values are rendered without the environment.
+D77: CSV and JSONL datasets cannot carry code unless trusted.
 """
 
 from __future__ import annotations
@@ -87,21 +89,102 @@ def test_stored_output_still_loses_one_trailing_newline(tmp_path, monkeypatch):
 
 # --- D74: safe mode -------------------------------------------------------------------------
 
-CSV_CONFIG = """\
-prompts: ["Hi {{ name }}"]
-providers: [echo]
-tests: file://tests.csv
-"""
+BASE_CONFIG = 'prompts: ["Hi {{ name }}"]\nproviders: [echo]\n'
+CSV_CONFIG = BASE_CONFIG + "tests: file://tests.csv\n"
 
 MARKER = "__import__('pathlib').Path('PWNED').write_text('ran') or True"
 
 
-def test_csv_python_assertion_runs_without_safe_mode(tmp_path, monkeypatch):
-    # Outside safe mode a CSV keeps upstream's behaviour: configuration is code.
+def test_csv_python_assertion_refused_by_default(tmp_path, monkeypatch, caplog):
+    # D77: a dataset cannot carry code even outside safe mode.
+    csv = f'name,__expected\nAnn,"python: {MARKER}"\n'
+    result, rows = _eval(tmp_path, monkeypatch, CSV_CONFIG, files={"tests.csv": csv})
+    assert result.exit_code == 1
+    text = result.output + caplog.text
+    assert "has a python assertion" in text and "PROMPTPHOO_TRUST_TEST_DATA" in text
+    assert not (tmp_path / "PWNED").exists() and rows == []
+
+
+def test_trusted_csv_python_assertion_runs(tmp_path, monkeypatch):
+    monkeypatch.setenv("PROMPTPHOO_TRUST_TEST_DATA", "true")
     csv = f'name,__expected\nAnn,"python: {MARKER}"\n'
     result, _ = _eval(tmp_path, monkeypatch, CSV_CONFIG, files={"tests.csv": csv})
     assert result.exit_code == 0, result.output
     assert (tmp_path / "PWNED").exists()
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        ("tests.csv", "name,__expected\nAnn,file://evil.py\n"),
+        ("tests.csv", "name\nfile://evil.py:get_var\n"),
+        ("tests.jsonl", '{"vars": {"name": "a"}, "options": {"provider": "exec:touch PWNED"}}\n'),
+        (
+            "tests.jsonl",
+            '{"vars": {"name": "a"}, "assert": [{"type": "not-python", "value": "1"}]}\n',
+        ),
+    ],
+)
+def test_dataset_code_refused_by_default(tmp_path, monkeypatch, caplog, name, body):
+    (tmp_path / "evil.py").write_text(
+        "open('PWNED', 'w').write('ran')\n"
+        "def get_assert(output, context):\n    return True\n"
+        "def get_var(var_name, prompt, other_vars):\n    return {'output': 'x'}\n"
+    )
+    config = BASE_CONFIG + f"tests: file://{name}\n"
+    result, rows = _eval(tmp_path, monkeypatch, config, files={name: body})
+    assert result.exit_code == 1
+    assert "cannot run code (D77)" in result.output + caplog.text
+    assert not (tmp_path / "PWNED").exists() and rows == []
+
+
+def test_dataset_plain_file_reference_still_loads(tmp_path, monkeypatch):
+    (tmp_path / "doc.txt").write_text("from a file")
+    csv = "name\nfile://doc.txt\n"
+    result, rows = _eval(tmp_path, monkeypatch, CSV_CONFIG, files={"tests.csv": csv})
+    assert result.exit_code == 0, result.output
+    assert rows[0]["response"]["output"] == "Hi from a file"
+
+
+def test_yaml_test_file_stays_trusted_outside_safe_mode(tmp_path, monkeypatch):
+    body = "- vars: {name: a}\n  assert: [{type: python, value: 'True'}]\n"
+    config = BASE_CONFIG + "tests: file://tests.yaml\n"
+    result, rows = _eval(tmp_path, monkeypatch, config, files={"tests.yaml": body})
+    assert result.exit_code == 0, result.output
+    assert rows[0]["success"]
+
+
+# --- D76: var values cannot read the environment ----------------------------------------------
+
+
+def test_dataset_var_cannot_read_environment(tmp_path, monkeypatch, caplog):
+    monkeypatch.setenv("PP_TEST_SECRET", "s3cr3t-value")
+    csv = 'name\n"{{ env.PP_TEST_SECRET }}"\n'
+    result, rows = _eval(tmp_path, monkeypatch, CSV_CONFIG, files={"tests.csv": csv})
+    assert result.exit_code == 0, result.output
+    assert rows[0]["response"]["output"] == "Hi "
+    assert "s3cr3t-value" not in json.dumps(rows)
+    assert "PROMPTPHOO_VARS_READ_ENV" in caplog.text
+
+
+def test_vars_read_env_opt_in(tmp_path, monkeypatch):
+    monkeypatch.setenv("PP_TEST_SECRET", "s3cr3t-value")
+    monkeypatch.setenv("PROMPTPHOO_VARS_READ_ENV", "true")
+    csv = 'name\n"{{ env.PP_TEST_SECRET }}"\n'
+    result, rows = _eval(tmp_path, monkeypatch, CSV_CONFIG, files={"tests.csv": csv})
+    assert rows[0]["response"]["output"] == "Hi s3cr3t-value"
+
+
+def test_config_vars_and_prompts_still_read_environment(tmp_path, monkeypatch):
+    # Config-authored env templates render at load and in prompts, as in Node.
+    monkeypatch.setenv("PP_TEST_VALUE", "from-env")
+    config = (
+        'prompts: ["{{ name }} - {{ env.PP_TEST_VALUE }}"]\nproviders: [echo]\n'
+        'tests: [{vars: {name: "{{ env.PP_TEST_VALUE }}"}}]\n'
+    )
+    result, rows = _eval(tmp_path, monkeypatch, config)
+    assert result.exit_code == 0, result.output
+    assert rows[0]["response"]["output"] == "from-env - from-env"
 
 
 @pytest.mark.parametrize(
