@@ -57,6 +57,9 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
 - **Closed QA and select-best grade with Anthropic.** Both grading prompts are a single system
   message, which the Anthropic API rejects, so in Node they always fail with an Anthropic grader.
   promptphoo sends such a prompt as the user turn (D68).
+- **Silent prompt fallbacks now warn.** A JSON, YAML or CSV prompt file that fails to parse, or a
+  nested `file://` reference inside one that cannot be loaded, is still used as raw text, as in
+  Node, but promptphoo says so (D69).
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

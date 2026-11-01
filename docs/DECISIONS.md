@@ -828,3 +828,11 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: No request legitimately sends a system prompt with no messages; the API refuses it, so nothing that works in Node changes.
 - Implication: A config whose closed-QA or select-best assertions errored in Node now grades. Rerunning the live replay (D65) reports these grader requests as misses, because Node recorded the rejected bodies.
 - Modules: src/promptphoo/providers/anthropic/messages.py, tests/test_providers_anthropic.py, tests/test_anthropic_grader_e2e.py
+- Commits: `ddb2ea7`
+
+## 69. Prompt files that fall back to their raw text warn
+- Decision: A JSON or YAML prompt file that fails to parse, or whose nested `file://` reference cannot be loaded, is still used as raw text, as in Node, but promptphoo logs a warning naming the file and the error. A CSV prompt file that fails to parse is still split into one prompt per line, with a warning. A JSON or YAML file whose text contains `{%` or `{{` falls back quietly (debug log only).
+- Rationale: Node falls back silently, so a typo in a chat prompt file, or a missing nested file, sends the unexpanded text to the model and the eval runs on the wrong prompt with nothing said. Nunjucks-templated chat files are legitimately not valid JSON or YAML until rendered, so they are exempt.
+- Alternatives: Fail the load. Rejected: a config that works in Node keeps working (D66).
+- Assumption: Prompt files without template tags are meant to parse.
+- Modules: src/promptphoo/prompts/processors.py, tests/test_prompt_fallbacks.py

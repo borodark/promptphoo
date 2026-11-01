@@ -243,14 +243,14 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/prompts/constants.ts` | `promptphoo.prompts` | `test_loading.py`, `test_matchers_rag.py` |
 | `src/prompts/grading.ts` | `promptphoo.prompts.grading` | `test_cli_eval_flags.py`, `test_matchers_rag.py`, `test_modelgraded_e2e.py` |
 | `src/prompts/index.ts` | `promptphoo.prompts` | `test_loading.py`, `test_matchers_rag.py` |
-| `src/prompts/processors/csv.ts` | `promptphoo.prompts.processors` | - |
-| `src/prompts/processors/executable.ts` | `promptphoo.prompts.processors` | - |
-| `src/prompts/processors/json.ts` | `promptphoo.prompts.processors` | - |
-| `src/prompts/processors/jsonl.ts` | `promptphoo.prompts.processors` | - |
-| `src/prompts/processors/python.ts` | `promptphoo.prompts.processors` | - |
-| `src/prompts/processors/string.ts` | `promptphoo.prompts.processors` | - |
-| `src/prompts/processors/text.ts` | `promptphoo.prompts.processors` | - |
-| `src/prompts/processors/yaml.ts` | `promptphoo.prompts.processors` | - |
+| `src/prompts/processors/csv.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
+| `src/prompts/processors/executable.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
+| `src/prompts/processors/json.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
+| `src/prompts/processors/jsonl.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
+| `src/prompts/processors/python.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
+| `src/prompts/processors/string.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
+| `src/prompts/processors/text.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
+| `src/prompts/processors/yaml.ts` | `promptphoo.prompts.processors` | `test_prompt_fallbacks.py` |
 | `src/prompts/utils.ts` | `promptphoo.prompts` | `test_loading.py`, `test_matchers_rag.py` |
 
 ### `providers/`

@@ -74,13 +74,39 @@ def process_template_file(path: str, prompt: Prompt, label_path: str | None = No
     return [defined(raw=content, label=label, config=prompt.get("config"))]
 
 
+def _parse_structured_prompt(path: str, contents: str, parse: Any, kind: str) -> str:
+    """Parse a JSON or YAML prompt file and expand its nested file:// references. On failure the
+    file's text is the prompt, as in Node. Node falls back silently; promptphoo warns, except
+    when the text is a template (a Nunjucks loop is not valid JSON or YAML) (D69)."""
+    try:
+        parsed = parse(contents)
+    except Exception as e:  # noqa: BLE001 - keep raw text on any parse failure, as Node does
+        if "{%" in contents or "{{" in contents:
+            logger.debug("Error parsing %s file %s: %s", kind, path, e)
+        else:
+            logger.warning(
+                "Prompt file %s is not valid %s (%s); its text is used as the prompt as is.",
+                path,
+                kind,
+                str(e).splitlines()[0] if str(e) else type(e).__name__,
+            )
+        return contents
+    try:
+        return json_stringify(maybe_load_config_from_external_file(parsed))
+    except Exception as e:  # noqa: BLE001 - same fallback as a parse failure
+        logger.warning(
+            "Prompt file %s: could not load a file:// reference (%s); its text is used as the "
+            "prompt as is.",
+            path,
+            e,
+        )
+        return contents
+
+
 def process_json_file(path: str, prompt: Prompt, label_path: str | None = None) -> list[Prompt]:
     label_path = label_path or path
     contents = Path(path).read_text(encoding="utf-8").removeprefix(_BOM)
-    try:
-        contents = json_stringify(maybe_load_config_from_external_file(json.loads(contents)))
-    except (ValueError, OSError):
-        pass
+    contents = _parse_structured_prompt(path, contents, json.loads, "JSON")
     label = prompt.get("label") or f"{label_path}: {contents}"
     return [defined(raw=contents, label=label, config=prompt.get("config"))]
 
@@ -104,10 +130,7 @@ def process_jsonl_file(path: str, prompt: Prompt, label_path: str | None = None)
 def process_yaml_file(path: str, prompt: Prompt, label_path: str | None = None) -> list[Prompt]:
     label_path = label_path or path
     contents = Path(path).read_text(encoding="utf-8")
-    try:
-        contents = json_stringify(maybe_load_config_from_external_file(load_yaml(contents)))
-    except Exception as e:  # noqa: BLE001 - keep raw text on any parse failure, as Node does
-        logger.debug("Error parsing YAML file %s: %s", path, e)
+    contents = _parse_structured_prompt(path, contents, load_yaml, "YAML")
     label = prompt.get("label") or f"{label_path}: {contents[:80]}"
     return [defined(raw=contents, label=label, config=prompt.get("config"))]
 
@@ -154,7 +177,11 @@ def process_csv_prompts(path: str, base: Prompt) -> list[Prompt]:
         records = [{k.strip(): v.strip() for k, v in r.items()} for r in records]
         rows = [{"raw": r["prompt"], "label": r.get("label")} for r in records if r.get("prompt")]
         return _build_csv_prompts(rows, base)
-    except ValueError:
+    except ValueError as e:
+        # Node falls back to one prompt per line silently; promptphoo says so (D69).
+        logger.warning(
+            "Prompt file %s is not valid CSV (%s); each line is used as a prompt.", path, e
+        )
         return _csv_lines(content, base)
 
 
