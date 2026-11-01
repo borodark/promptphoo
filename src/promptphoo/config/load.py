@@ -843,6 +843,14 @@ async def _resolve_loaded_config(
     }
     test_suite = {k: v for k, v in test_suite.items() if v is not None}
 
+    from promptphoo.assertions.validate import validate_assertions
+
+    # defaultTest can still be a file:// string here; only an object is checked.
+    validate_assertions(
+        test_suite.get("tests") or [],
+        test_suite["defaultTest"] if isinstance(test_suite.get("defaultTest"), dict) else None,
+    )
+
     if command_line_options and command_line_options.get("envPath") and base_path:
         env_paths = command_line_options["envPath"]
         env_paths = env_paths if isinstance(env_paths, list) else [env_paths]

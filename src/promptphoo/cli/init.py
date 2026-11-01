@@ -1,4 +1,6 @@
-"""`promptfoo init [directory]`. Ports src/commands/init.ts.
+"""`promptfoo init [directory]`. Ports src/commands/init.ts. The example aliases, replacements
+and removals of src/commands/exampleAliases.ts are read from `_data/init_templates.json`, which
+tools/gen_init_templates.mjs generates from that file.
 
 `--example <name>` downloads the example from the promptfoo GitHub repository through the
 shared fetch layer, as upstream does (tests mock it with respx). The interactive prompts use

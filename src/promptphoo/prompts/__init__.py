@@ -1,4 +1,5 @@
-"""Prompt loading. Ports src/prompts/index.ts and src/prompts/utils.ts."""
+"""Prompt loading. Ports src/prompts/index.ts, src/prompts/utils.ts and the
+VALID_FILE_EXTENSIONS list of src/prompts/constants.ts."""
 
 from __future__ import annotations
 

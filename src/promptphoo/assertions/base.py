@@ -1,4 +1,5 @@
-"""Assertion handler interface. Ports AssertionParams / GradingResult from src/types/index.ts.
+"""Assertion handler interface. Ports AssertionParams / GradingResult from src/types/index.ts,
+and coerceString from src/assertions/utils.ts.
 
 A handler takes AssertionParams and returns a GradingResult dict (or an awaitable of one):
     {"pass": bool, "score": float, "reason": str, "assertion": <assertion dict>, ...optional

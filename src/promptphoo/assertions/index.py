@@ -1,4 +1,5 @@
-"""Assertion dispatcher. Ports runAssertion / runAssertions from src/assertions/index.ts."""
+"""Assertion dispatcher. Ports runAssertion / runAssertions from src/assertions/index.ts, and
+getFinalTest / processFileReference from src/assertions/utils.ts."""
 
 from __future__ import annotations
 

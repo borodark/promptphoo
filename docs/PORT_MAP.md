@@ -15,11 +15,11 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | Upstream area | Files | Named | Out of scope | Not named |
 |---|---:|---:|---:|---:|
 | `app/` | 395 | 0 | 395 | 0 |
-| `assertions/` | 60 | 55 | 3 | 2 |
+| `assertions/` | 60 | 57 | 3 | 0 |
 | `blobs/` | 8 | 6 | 0 | 2 |
 | `cache/` | 1 | 0 | 0 | 1 |
 | `codeScan/` | 22 | 0 | 22 | 0 |
-| `commands/` | 52 | 17 | 34 | 1 |
+| `commands/` | 52 | 18 | 34 | 0 |
 | `constants/` | 1 | 0 | 0 | 1 |
 | `contracts/` | 22 | 8 | 0 | 14 |
 | `database/` | 5 | 3 | 0 | 2 |
@@ -35,7 +35,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `optimizer/` | 1 | 0 | 1 | 0 |
 | `presentation/` | 4 | 2 | 0 | 2 |
 | `progress/` | 1 | 0 | 0 | 1 |
-| `prompts/` | 13 | 11 | 1 | 1 |
+| `prompts/` | 13 | 12 | 1 | 0 |
 | `providers/` | 277 | 110 | 0 | 167 |
 | `python/` | 5 | 1 | 0 | 4 |
 | `redteam/` | 229 | 1 | 228 | 0 |
@@ -51,7 +51,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `validation/` | 3 | 1 | 0 | 2 |
 | `validators/` | 5 | 0 | 0 | 5 |
 | `(top level)` | 34 | 14 | 0 | 20 |
-| **Total** | **1388** | **341** | **708** | **339** |
+| **Total** | **1388** | **345** | **708** | **335** |
 
 ## Named
 
@@ -111,6 +111,8 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/assertions/traceUtils.ts` | `promptphoo.assertions.trace`, `promptphoo.assertions.trajectory` | `test_assertions_trace.py`, `test_assertions_trajectory.py`, `test_matchers_llm_judges.py` |
 | `src/assertions/trajectory.ts` | `promptphoo.assertions.trajectory` | `test_assertions_trajectory.py`, `test_matchers_llm_judges.py` |
 | `src/assertions/trajectoryUtils.ts` | `promptphoo.assertions.trajectory` | `test_assertions_trajectory.py`, `test_matchers_llm_judges.py` |
+| `src/assertions/utils.ts` | `promptphoo.assertions.base`, `promptphoo.assertions.index` | `test_assertions_guardrails.py`, `test_assertions_markup.py`, `test_assertions_modelgraded_rag.py`, `test_assertions_sql.py`, `test_assertions_textmetrics.py`, `test_assertions_tools.py`, `test_assertions_trace.py`, `test_assertions_trajectory.py`, `test_comparison.py`, `test_deepeval.py`, `test_grading_provider.py`, `test_matchers_geval.py`, `test_matchers_llm_judges.py`, `test_matchers_llm_rubric.py` |
+| `src/assertions/validateAssertions.ts` | `promptphoo.assertions.validate` | `test_assertions_validate.py` |
 | `src/assertions/webhook.ts` | `promptphoo.assertions.script` | - |
 | `src/assertions/wordCount.ts` | `promptphoo.assertions.basic` | - |
 | `src/assertions/xml.ts` | `promptphoo.assertions.markup` | `test_assertions_markup.py` |
@@ -135,6 +137,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/commands/debug.ts` | `promptphoo.cli.debug` | - |
 | `src/commands/delete.ts` | `promptphoo.cli.delete` | `test_cli_list_show_delete.py` |
 | `src/commands/eval.ts` | `promptphoo.cli.eval` | `test_cli_eval_flags.py`, `test_resume_retry.py`, `test_watch.py` |
+| `src/commands/exampleAliases.ts` | `promptphoo.cli.init` | `test_cli_init.py` |
 | `src/commands/export.ts` | `promptphoo.cli.export` | `test_import_export.py` |
 | `src/commands/feedback.ts` | `promptphoo.cli.feedback` | `test_cli_misc.py` |
 | `src/commands/generate/assertions.ts` | `promptphoo.cli.generate` | `test_cli_generate.py` |
@@ -237,6 +240,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 
 | Upstream | promptphoo | Imported by |
 |---|---|---|
+| `src/prompts/constants.ts` | `promptphoo.prompts` | `test_loading.py`, `test_matchers_rag.py` |
 | `src/prompts/grading.ts` | `promptphoo.prompts.grading` | `test_cli_eval_flags.py`, `test_matchers_rag.py`, `test_modelgraded_e2e.py` |
 | `src/prompts/index.ts` | `promptphoo.prompts` | `test_loading.py`, `test_matchers_rag.py` |
 | `src/prompts/processors/csv.ts` | `promptphoo.prompts.processors` | - |
@@ -437,7 +441,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 
 | Upstream | promptphoo | Imported by |
 |---|---|---|
-| `src/util/config/load.ts` | `promptphoo.config.load` | `test_cli_misc.py`, `test_loading.py` |
+| `src/util/config/load.ts` | `promptphoo.config.load` | `test_assertions_validate.py`, `test_cli_misc.py`, `test_loading.py` |
 | `src/util/config/manage.ts` | `promptphoo.paths` | `conftest.py`, `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
 | `src/util/convertEvalResultsToTable.ts` | `promptphoo.output.results_table` | - |
 | `src/util/dataUrl.ts` | `promptphoo.providers.anthropic.util` | `test_providers_anthropic.py` |
@@ -535,10 +539,8 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 
 ## Not named by any module
 
-- `assertions/` (2): `assertions/utils.ts`, `assertions/validateAssertions.ts`
 - `blobs/` (2): `blobs/remoteUpload.ts`, `blobs/shareUpload.ts`
 - `cache/` (1): `cache/storage.ts`
-- `commands/` (1): `commands/exampleAliases.ts`
 - `constants/` (1): `constants/build.ts`
 - `contracts/` (14): `contracts/api/common.ts`, `contracts/api/user.ts`, `contracts/env.ts`, `contracts/index.ts`, `contracts/prompts.ts`, `contracts/providerConfig/auth.ts`, `contracts/providerConfig/mcp.ts`, `contracts/providerConfig/openai.ts`, `contracts/providerConfig/shared.ts`, `contracts/providers.ts`, `contracts/shared.ts`, `contracts/transform.ts`, `contracts/validators/prompts.ts`, `contracts/validators/shared.ts`
 - `database/` (2): `database/tables.ts`, `database/testing.ts`
@@ -550,7 +552,6 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 - `openapi/` (1): `openapi/server.ts`
 - `presentation/` (2): `presentation/redteamConfig.ts`, `presentation/redteamMetrics.ts`
 - `progress/` (1): `progress/ciProgressReporter.ts`
-- `prompts/` (1): `prompts/constants.ts`
 - `providers/` (167): `providers/a2a/index.ts`, `providers/a2a/transforms.ts`, `providers/a2a/types.ts`, `providers/agentWorkspace.ts`, `providers/agenticRunQueue.ts`, `providers/ai21.ts`, `providers/anthropic/claudeCodeAuth.ts`, `providers/anthropic/types.ts`, `providers/azure/assistant.ts`, `providers/azure/foundry-agent.ts`, `providers/azure/image.ts`, `providers/azure/moderation.ts`, `providers/azure/realtime.ts`, `providers/azure/types.ts`, `providers/azure/video.ts`, `providers/bedrock/agents.ts`, `providers/bedrock/anthropicMessages.ts`, `providers/bedrock/knowledgeBase.ts`, `providers/bedrock/luma-ray.ts`, `providers/bedrock/mantle.ts`, `providers/bedrock/mantleChat.ts`, `providers/bedrock/nova-reel.ts`, `providers/bedrock/nova-sonic.ts`, `providers/bedrock/openaiResponses.ts`, `providers/bedrock/tokenProvider.ts`, `providers/browser.ts`, `providers/browserDependencies.ts`, `providers/claude-agent-sdk.ts`, `providers/cohere.ts`, `providers/constants.ts`, `providers/elevenlabs/agents/conversation.ts`, `providers/elevenlabs/agents/evaluation.ts`, `providers/elevenlabs/agents/index.ts`, `providers/elevenlabs/agents/tools.ts`, `providers/elevenlabs/agents/types.ts`, `providers/elevenlabs/alignment/index.ts`, `providers/elevenlabs/alignment/types.ts`, `providers/elevenlabs/auth.ts`, `providers/elevenlabs/cache.ts`, `providers/elevenlabs/client.ts`, `providers/elevenlabs/cost-tracker.ts`, `providers/elevenlabs/errors.ts`, `providers/elevenlabs/history/index.ts`, `providers/elevenlabs/history/types.ts`, `providers/elevenlabs/index.ts`, `providers/elevenlabs/isolation/index.ts`, `providers/elevenlabs/isolation/types.ts`, `providers/elevenlabs/stt/index.ts`, `providers/elevenlabs/stt/types.ts`, `providers/elevenlabs/stt/wer.ts`, `providers/elevenlabs/tts/audio.ts`, `providers/elevenlabs/tts/index.ts`, `providers/elevenlabs/tts/pronunciation.ts`, `providers/elevenlabs/tts/streaming.ts`, `providers/elevenlabs/tts/types.ts`, `providers/elevenlabs/tts/voice-design.ts`, `providers/elevenlabs/types.ts`, `providers/elevenlabs/websocket-client.ts`, `providers/fal.ts`, `providers/fetch.ts`, `providers/functionCallbackTypes.ts`, `providers/golangCompletion.ts`, `providers/google/gemini-image.ts`, `providers/google/image.ts`, `providers/google/interactions.ts`, `providers/google/live.ts`, `providers/google/types.ts`, `providers/google/vertexLive.ts`, `providers/google/video.ts`, `providers/groq/index.ts`, `providers/groq/responses.ts`, `providers/groq/types.ts`, `providers/groq/util.ts`, `providers/huggingface.ts`, `providers/hyperbolic/audio.ts`, `providers/hyperbolic/image.ts`, `providers/manualInput.ts`, `providers/mcp/auth.ts`, `providers/mcp/client.ts`, `providers/mcp/index.ts`, `providers/mcp/session.ts`, `providers/mcp/transform.ts`, `providers/mcp/transforms.ts`, `providers/mcp/types.ts`, `providers/mcp/util.ts`, `providers/mistral.ts`, `providers/mistral/defaults.ts`, `providers/modelslab.ts`, `providers/n8n.ts`, `providers/nscale/image.ts`, `providers/openai/agents-api.ts`, `providers/openai/agents-availability.ts`, `providers/openai/agents-loader.ts`, `providers/openai/agents-model-settings.ts`, `providers/openai/agents-tracing.ts`, `providers/openai/agents-types.ts`, `providers/openai/agents.ts`, `providers/openai/assistant.ts`, `providers/openai/audio.ts`, `providers/openai/codex-app-server.ts`, `providers/openai/codex-runtime.ts`, `providers/openai/codex-sdk.ts`, `providers/openai/codex-security.ts`, `providers/openai/codex-tracing.ts`, `providers/openai/codexApiKeyGating.ts`, `providers/openai/codexCliCompatibility.ts`, `providers/openai/codexDefaults.ts`, `providers/openai/codexProcess.ts`, `providers/openai/codexSkillMetadata.ts`, `providers/openai/config.ts`, `providers/openai/decisions.ts`, `providers/openai/image.ts`, `providers/openai/live.ts`, `providers/openai/liveInput.ts`, `providers/openai/liveSession.ts`, `providers/openai/liveTypes.ts`, `providers/openai/realtime.ts`, `providers/openai/transcription.ts`, `providers/openai/tts.ts`, `providers/openai/types.ts`, `providers/openai/video.ts`, `providers/openclaw/agent.ts`, `providers/openclaw/chat.ts`, `providers/openclaw/device-auth.ts`, `providers/openclaw/embedding.ts`, `providers/openclaw/index.ts`, `providers/openclaw/responses.ts`, `providers/openclaw/shared.ts`, `providers/openclaw/tools.ts`, `providers/openclaw/types.ts`, `providers/opencode-sdk.ts`, `providers/openinterpreter.ts`, `providers/packageParser.ts`, `providers/pricing.ts`, `providers/promptfoo.ts`, `providers/promptfooModel.ts`, `providers/providerLogging.ts`, `providers/providerRegistry.ts`, `providers/quiverai.ts`, `providers/registryTypes.ts`, `providers/replicate.ts`, `providers/rubyCompletion.ts`, `providers/sagemaker.ts`, `providers/scriptBasedProvider.ts`, `providers/scriptContext.ts`, `providers/scriptResult.ts`, `providers/simulatedUser.ts`, `providers/slack-availability.ts`, `providers/slack.ts`, `providers/toolSchemaError.ts`, `providers/tracing.ts`, `providers/transformResult.ts`, `providers/transformers.ts`, `providers/transformersAvailability.ts`, `providers/typesafe.ts`, `providers/vercel.ts`, `providers/video/index.ts`, `providers/video/utils.ts`, `providers/voyage.ts`, `providers/watsonx-availability.ts`, `providers/watsonx.ts`, `providers/websocket.ts`, `providers/xai/defaults.ts`, `providers/xai/image.ts`, `providers/xai/responses.ts`, `providers/xai/video.ts`, `providers/xai/voice.ts`
 - `python/` (4): `python/pythonUtils.ts`, `python/stderr.ts`, `python/worker.ts`, `python/wrapper.ts`
 - `storage/` (3): `storage/index.ts`, `storage/localFileSystemProvider.ts`, `storage/types.ts`
