@@ -31,6 +31,7 @@ from promptphoo.evaluator.build import (
 from promptphoo.evaluator.render import FILE_METADATA_KEY, collect_file_metadata, render_prompt
 from promptphoo.filters import filter_by_range
 from promptphoo.grading_provider import (
+    ReuseWarningProviderMap,
     build_configured_provider_map,
     resolve_runtime_grading_provider_references,
 )
@@ -1293,7 +1294,9 @@ class Evaluator:
         default = get_default_test(suite) or {}
         steps: list[RunEvalOptions] = []
         test_idx = 0
-        configured_provider_map = build_configured_provider_map(suite.get("providers") or [])
+        configured_provider_map = ReuseWarningProviderMap(
+            build_configured_provider_map(suite.get("providers") or [])
+        )
         for index, test in enumerate(tests):
             await _prepare_test_case(suite, test, index)
             resolve_runtime_grading_provider_references(test, configured_provider_map)

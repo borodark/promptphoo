@@ -6,9 +6,12 @@ instance instead of constructing a second one.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from promptphoo.providers.base import ApiProvider, is_api_provider
+
+logger = logging.getLogger(__name__)
 
 GRADING_PROVIDER_TYPE_KEYS = ("text", "embedding", "classification", "moderation")
 
@@ -46,6 +49,38 @@ def build_configured_provider_map(providers: list[Any]) -> dict[str, ApiProvider
         if label and label not in provider_map:
             provider_map[label] = provider
     return provider_map
+
+
+class ReuseWarningProviderMap(dict):
+    """A configured-provider map that warns, once per reference, when a grader named by a
+    provider's id (not its label) reuses that provider's non-empty config. Upstream reuses it
+    silently, so a target's `max_tokens` or `temperature` quietly applies to grading (D72)."""
+
+    def __init__(self, provider_map: dict[str, ApiProvider]):
+        super().__init__(provider_map)
+        self._warned: set[str] = set()
+
+    def get(self, key: Any, default: Any = None) -> Any:
+        provider = super().get(key, default)
+        if (
+            provider is not default
+            and isinstance(key, str)
+            and key not in self._warned
+            and key == provider.id()
+            and key != getattr(provider, "label", None)
+            and getattr(provider, "config", None)
+        ):
+            self._warned.add(key)
+            keys = ", ".join(sorted(provider.config))
+            logger.warning(
+                'Grader "%s" is the id of a configured provider, so grading reuses that provider '
+                "and its config (%s). To grade with other settings, give the grader its own "
+                "entry: provider: {id: %s, config: {...}}.",
+                key,
+                keys,
+                key,
+            )
+        return provider
 
 
 def _resolve_typed_provider_value(provider: Any, provider_map: dict[str, ApiProvider]) -> Any:

@@ -198,7 +198,7 @@ confirmed against the Anthropic API on 2026-10-31 (see [`VERIFICATION.md`](VERIF
 ### Reproduced
 
 - **A grader whose provider id matches a target reuses that target's config**, such as
-  `max_tokens`.
+  `max_tokens`. promptphoo keeps the reuse but warns once per grader (D72).
 
 ### Fixed
 

@@ -218,8 +218,8 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 
 | Upstream | promptphoo | Imported by |
 |---|---|---|
-| `src/models/eval.ts` | `promptphoo.db.import_export`, `promptphoo.models.eval` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_e2e.py`, `test_comparison_resume.py`, `test_filters_results.py`, `test_import_export.py`, `test_models_eval.py`, `test_output_traces.py`, `test_output_writer.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_resume_retry.py`, `test_scheduler_evaluator.py` |
-| `src/models/evalResult.ts` | `promptphoo.db.import_export`, `promptphoo.models.eval`, `promptphoo.models.result_sanitize` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_e2e.py`, `test_comparison_resume.py`, `test_filters_results.py`, `test_import_export.py`, `test_models_eval.py`, `test_output_traces.py`, `test_output_writer.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_resume_retry.py`, `test_sanitizer.py`, `test_scheduler_evaluator.py` |
+| `src/models/eval.ts` | `promptphoo.db.import_export`, `promptphoo.models.eval` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_e2e.py`, `test_comparison_resume.py`, `test_filters_results.py`, `test_grading_provider.py`, `test_import_export.py`, `test_models_eval.py`, `test_output_traces.py`, `test_output_writer.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_resume_retry.py`, `test_scheduler_evaluator.py` |
+| `src/models/evalResult.ts` | `promptphoo.db.import_export`, `promptphoo.models.eval`, `promptphoo.models.result_sanitize` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_e2e.py`, `test_comparison_resume.py`, `test_filters_results.py`, `test_grading_provider.py`, `test_import_export.py`, `test_models_eval.py`, `test_output_traces.py`, `test_output_writer.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_resume_retry.py`, `test_sanitizer.py`, `test_scheduler_evaluator.py` |
 
 ### `node/`
 
@@ -293,7 +293,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/providers/deepseek.ts` | `promptphoo.providers.compatible.deepseek` | `test_providers_compat_core.py` |
 | `src/providers/defaults.ts` | `promptphoo.providers.defaults` | `rag_fakes.py`, `test_deepeval.py`, `test_matchers_geval.py`, `test_matchers_llm_judges.py`, `test_providers_defaults.py` |
 | `src/providers/docker.ts` | `promptphoo.providers.compatible.docker` | `test_providers_compat_misc.py` |
-| `src/providers/echo.ts` | `promptphoo.providers.simple` | `test_cli_list_show_delete.py`, `test_models_eval.py` |
+| `src/providers/echo.ts` | `promptphoo.providers.simple` | `test_cli_list_show_delete.py`, `test_grading_provider.py`, `test_models_eval.py` |
 | `src/providers/env.ts` | `promptphoo.providers.credentials` | - |
 | `src/providers/envoy.ts` | `promptphoo.providers.compatible.simple` | `test_providers_compat_core.py` |
 | `src/providers/families/aws.ts` | `promptphoo.providers.bedrock` | `test_providers_bedrock.py` |
@@ -355,8 +355,8 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/providers/responses/processor.ts` | `promptphoo.providers.responses.processor` | - |
 | `src/providers/responses/stream.ts` | `promptphoo.providers.responses.stream` | - |
 | `src/providers/responses/types.ts` | `promptphoo.providers.responses.processor` | - |
-| `src/providers/scriptCompletion.ts` | `promptphoo.providers.simple` | `test_cli_list_show_delete.py`, `test_models_eval.py` |
-| `src/providers/sequence.ts` | `promptphoo.providers.simple` | `test_cli_list_show_delete.py`, `test_models_eval.py` |
+| `src/providers/scriptCompletion.ts` | `promptphoo.providers.simple` | `test_cli_list_show_delete.py`, `test_grading_provider.py`, `test_models_eval.py` |
+| `src/providers/sequence.ts` | `promptphoo.providers.simple` | `test_cli_list_show_delete.py`, `test_grading_provider.py`, `test_models_eval.py` |
 | `src/providers/serialization.ts` | `promptphoo.providers.compatible.common` | - |
 | `src/providers/shared.ts` | `promptphoo.providers.shared` | `test_providers_shared.py` |
 | `src/providers/snowflake.ts` | `promptphoo.providers.compatible.snowflake` | `test_providers_compat_gateways.py` |
@@ -478,9 +478,9 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/util/numeric.ts` | `promptphoo.numeric` | - |
 | `src/util/output.ts` | `promptphoo.output`, `promptphoo.output.writer` | `test_blobs.py`, `test_import_export.py`, `test_output_formats.py`, `test_output_results_table.py`, `test_output_traces.py`, `test_output_writer.py` |
 | `src/util/outputFormats.ts` | `promptphoo.output`, `promptphoo.output.writer` | `test_blobs.py`, `test_import_export.py`, `test_output_formats.py`, `test_output_results_table.py`, `test_output_traces.py`, `test_output_writer.py` |
-| `src/util/promptMatching.ts` | `promptphoo.evaluator.run` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
+| `src/util/promptMatching.ts` | `promptphoo.evaluator.run` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_grading_provider.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
 | `src/util/promptfooCommand.ts` | `promptphoo.promptfoo_command` | - |
-| `src/util/provider.ts` | `promptphoo.evaluator.run` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
+| `src/util/provider.ts` | `promptphoo.evaluator.run` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_grading_provider.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
 | `src/util/providerRef.ts` | `promptphoo.providers` | `rag_fakes.py`, `test_deepeval.py`, `test_matchers_classify_moderate_search.py`, `test_matchers_geval.py`, `test_matchers_llm_judges.py`, `test_matchers_providers.py`, `test_providers_anthropic.py`, `test_providers_compat_core.py`, `test_providers_compat_registry.py`, `test_providers_defaults.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_providers_webhook.py` |
 | `src/util/providerResponse.ts` | `promptphoo.output.results_table` | - |
 | `src/util/readline.ts` | `promptphoo.suggestions` | `test_cli_eval_flags.py` |
@@ -508,7 +508,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/cliState.ts` | `promptphoo.cli_state` | `test_assertions_trace.py`, `test_build.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_fetch.py`, `test_loading.py`, `test_matchers_providers.py`, `test_providers_defaults.py`, `test_providers_http.py`, `test_providers_openai_chat.py`, `test_resume_retry.py`, `test_templating.py`, `test_tracing_evaluator_tracing.py` |
 | `src/csv.ts` | `promptphoo.csvtests` | `test_loading.py` |
 | `src/envars.ts` | `promptphoo.envars` | - |
-| `src/evaluator.ts` | `promptphoo.evaluator.build`, `promptphoo.evaluator.comparison`, `promptphoo.evaluator.extensions`, `promptphoo.evaluator.run`, `promptphoo.suggestions` | `test_blobs.py`, `test_build.py`, `test_cli_eval_flags.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_extensions.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
+| `src/evaluator.ts` | `promptphoo.evaluator.build`, `promptphoo.evaluator.comparison`, `promptphoo.evaluator.extensions`, `promptphoo.evaluator.run`, `promptphoo.suggestions` | `test_blobs.py`, `test_build.py`, `test_cli_eval_flags.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_extensions.py`, `test_grading_provider.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
 | `src/evaluatorHelpers.ts` | `promptphoo.evaluator.extensions`, `promptphoo.evaluator.render` | `test_extensions.py`, `test_templating.py` |
 | `src/feedback.ts` | `promptphoo.cli.feedback` | `test_cli_misc.py` |
 | `src/logger.ts` | `promptphoo.logfiles` | `test_cli_logs.py` |

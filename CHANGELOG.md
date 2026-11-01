@@ -66,6 +66,9 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
 - **Id prefixes work in `show` and `delete`.** Node matches the prefix and then fails; promptphoo
   acts on the one matching eval and lists the matches of an ambiguous prefix without deleting.
   Legacy v3 evals now list their prompts (D71).
+- **Grader config reuse is warned about.** A grader named by the id of a configured provider
+  reuses that provider's config, as in Node; promptphoo now says so once per grader and shows how
+  to give the grader its own settings (D72).
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

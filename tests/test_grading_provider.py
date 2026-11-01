@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import threading
 
 from promptphoo.assertions.index import get_final_test
 from promptphoo.grading_provider import (
+    ReuseWarningProviderMap,
     build_configured_provider_map,
     is_provider_type_map,
     resolve_configured_provider_reference,
@@ -15,8 +18,8 @@ from promptphoo.providers.base import ApiProvider
 
 
 class P(ApiProvider):
-    def __init__(self, pid: str, label: str | None = None) -> None:
-        super().__init__({"label": label} if label else None)
+    def __init__(self, pid: str, label: str | None = None, config: dict | None = None) -> None:
+        super().__init__({**({"label": label} if label else {}), "config": config or {}})
         self._pid = pid
         self.lock = threading.Lock()  # not deep-copyable, like real provider clients
 
@@ -93,3 +96,61 @@ def test_get_final_test_forwards_grading_options_and_shares_providers():
     assert override["options"]["provider"] == "openai:gpt-4"
     assert override["options"]["rubricPrompt"] == ["msg"]
     assert test["options"]["provider"] is grader
+
+
+def _reuse_warnings(caplog):
+    return [r.getMessage() for r in caplog.records if "reuses that provider" in r.getMessage()]
+
+
+def test_reuse_warning_fires_once_for_an_id_with_config(caplog):
+    # D72: upstream reuses the target, and its config, silently.
+    target = P("anthropic:messages:claude", config={"max_tokens": 200, "temperature": 0})
+    provider_map = ReuseWarningProviderMap(build_configured_provider_map([target]))
+    for _ in range(3):
+        test = {"options": {"provider": "anthropic:messages:claude"}}
+        resolve_runtime_grading_provider_references(test, provider_map)
+        assert test["options"]["provider"] is target
+    [message] = _reuse_warnings(caplog)
+    assert '"anthropic:messages:claude"' in message and "(max_tokens, temperature)" in message
+
+
+def test_reuse_warning_covers_id_only_typed_entries(caplog):
+    target = P("openai:gpt", config={"max_tokens": 5})
+    provider_map = ReuseWarningProviderMap(build_configured_provider_map([target]))
+    test = {"assert": [{"type": "llm-rubric", "provider": {"text": {"id": "openai:gpt"}}}]}
+    resolve_runtime_grading_provider_references(test, provider_map)
+    assert len(_reuse_warnings(caplog)) == 1
+
+
+def test_reuse_warning_silent_for_labels_empty_config_and_inline_entries(caplog):
+    labelled = P("openai:gpt", label="judge", config={"max_tokens": 5})
+    bare = P("anthropic:messages:claude")
+    provider_map = ReuseWarningProviderMap(build_configured_provider_map([labelled, bare]))
+    tests = [
+        {"options": {"provider": "judge"}},
+        {"options": {"provider": "anthropic:messages:claude"}},
+        {"options": {"provider": {"id": "openai:gpt", "config": {"max_tokens": 900}}}},
+        {"options": {"provider": "openai:other"}},
+    ]
+    for test in tests:
+        resolve_runtime_grading_provider_references(test, provider_map)
+    assert tests[0]["options"]["provider"] is labelled
+    assert _reuse_warnings(caplog) == []
+
+
+def test_evaluator_warns_once_across_tests(caplog):
+    from promptphoo.evaluator.run import evaluate
+    from promptphoo.models.eval import Eval
+    from promptphoo.providers.simple import EchoProvider
+
+    echo = EchoProvider({"id": "echo", "config": {"max_tokens": 10}})
+    suite = {
+        "providers": [echo],
+        "prompts": [{"raw": "Y", "label": "p"}],
+        "defaultTest": {"options": {"provider": "echo"}},
+        "tests": [{"vars": {"i": i}} for i in range(3)],
+    }
+    caplog.set_level(logging.WARNING)
+    record = Eval({"tests": suite["tests"]}, author=None)
+    asyncio.run(evaluate(suite, record, {"maxConcurrency": 1, "cache": False}))
+    assert len(_reuse_warnings(caplog)) == 1

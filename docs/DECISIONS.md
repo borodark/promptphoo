@@ -371,6 +371,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
   - `get_final_test` copies the test with `_clone_test_value`, which deep-copies plain data but shares `ApiProvider` instances and callables, and applies JS truthiness to `assertion.provider || test.options.provider` and to `rubricPrompt`.
   - `--grader` and `defaultTest.options.provider` were already forwarded by `config/load.py` and `cli/eval.py`, and `get_grading_provider` reads the `defaultTest` fallback from `cli_state.config()`.
 - Rationale: Resolved graders are provider instances inside `options` and `assert`, and they hold clients and locks that `copy.deepcopy` cannot copy. Upstream likewise reattaches `test.provider` after its clone, because the clone loses functions.
+- Note: The reuse is now warned about, once per reference, when the grader is named by the provider's id and that provider has a config (D72).
 - Modules: src/promptphoo/grading_provider.py, src/promptphoo/assertions/index.py, src/promptphoo/evaluator/run.py
 - Commits: `956e36a`
 
@@ -859,3 +860,11 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Eval ids are ASCII, so `substr` by characters is a byte prefix. A v4 row's results never hold a `table`.
 - Implication: The golden cases `show_prefix`, `del_prefix`, `v3_list`, `v3_prompts`, `v3_datasets` and `v3_show_prompt` differ from Node on purpose (see D41's note). `export`, `retry` and `--filter-failing <id>` still take exact ids.
 - Modules: src/promptphoo/db/queries.py, src/promptphoo/cli/show.py, src/promptphoo/cli/delete.py, src/promptphoo/models/eval.py, tests/test_cli_list_show_delete.py, tests/fixtures/list_show/promptphoo_divergent.json
+- Commits: `d198bf2`
+
+## 72. A grader that reuses a target's config by id is warned about
+- Decision: When a grader reference (`options.provider`, `--grader`, an assertion's `provider`, or an id-only typed entry) is the id, not the label, of a configured provider whose config is non-empty, the evaluator logs once per reference: `Grader "<id>" is the id of a configured provider, so grading reuses that provider and its config (<keys>). To grade with other settings, give the grader its own entry: provider: {id: <id>, config: {...}}.` The reuse itself is unchanged.
+- Rationale: Upstream reuses the configured instance on purpose (#9460), so the target's `max_tokens`, `temperature` and other settings silently apply to grading. A `max_tokens` sized for short answers truncates a grader's JSON, and the assertion fails for a reason the user cannot see. The live matrix config hit exactly this.
+- Alternatives: Load a fresh grader for a plain id. Rejected for now: it changes grader requests, cache keys, token totals and possibly pass/fail for configs that work in Node, and would break configs relying on the reuse to carry `apiHost`, headers or deployment settings (D66).
+- Assumption: A reference that is a provider's label means the user chose that provider deliberately, so it is not warned about.
+- Modules: src/promptphoo/grading_provider.py, src/promptphoo/evaluator/run.py, tests/test_grading_provider.py
