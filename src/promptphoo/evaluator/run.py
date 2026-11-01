@@ -1,4 +1,5 @@
-"""The eval loop. Ports runEval / Evaluator from src/evaluator.ts (the non-redteam path). The
+"""The eval loop. Ports runEval / Evaluator from src/evaluator.ts (the non-redteam path), and the
+reference matching of src/util/promptMatching.ts and src/util/provider.ts. The
 select-best / max-score pass is in evaluator/comparison.py and the extension hooks in
 evaluator/extensions.py. Derived metrics (mathjs expressions upstream) are not ported; configs
 that use them get a warning and the metrics are skipped. Tracing gives each step a W3C trace
@@ -125,7 +126,10 @@ def get_provider_identifier(provider: ApiProvider) -> str:
     return provider.label or provider.id()
 
 
-def _ref_matches(ref: str, label: str | None, pid: str | None) -> bool:
+def does_prompt_ref_match(ref: str, prompt: dict[str, Any]) -> bool:
+    """doesPromptRefMatch (src/util/promptMatching.ts): exact label or id, a `Group:*`
+    wildcard, or the legacy `Group` prefix of `Group:foo`."""
+    label, pid = prompt.get("label"), prompt.get("id")
     if label == ref or (pid and pid == ref):
         return True
     if ref.endswith("*"):
@@ -135,36 +139,45 @@ def _ref_matches(ref: str, label: str | None, pid: str | None) -> bool:
     return bool((label and label.startswith(f"{ref}:")) or (pid and pid.startswith(f"{ref}:")))
 
 
+def does_provider_ref_match(ref: str, provider: ApiProvider) -> bool:
+    """doesProviderRefMatch (src/util/provider.ts): as for prompts, with file and exec ids
+    compared in canonical form."""
+    label = provider.label
+    pid = provider.id()
+    canonical = canonicalize_provider_id(pid)
+    if label and label == ref:
+        return True
+    if pid == ref or canonical == canonicalize_provider_id(ref):
+        return True
+    if ref.endswith("*") and (
+        (label and label.startswith(ref[:-1]))
+        or pid.startswith(ref[:-1])
+        or canonical.startswith(ref[:-1])
+    ):
+        return True
+    return bool(
+        (label and label.startswith(f"{ref}:"))
+        or pid.startswith(f"{ref}:")
+        or canonical.startswith(f"{ref}:")
+    )
+
+
+def get_provider_description(provider: ApiProvider) -> str:
+    """getProviderDescription (src/util/provider.ts): `label (id)`, or the id alone."""
+    label, pid = provider.label, provider.id()
+    return f"{label} ({pid})" if label and label != pid else pid
+
+
 def is_allowed_prompt(prompt: dict[str, Any], allowed: list[str] | None) -> bool:
     if not isinstance(allowed, list):
         return True
-    return any(_ref_matches(r, prompt.get("label"), prompt.get("id")) for r in allowed)
+    return any(does_prompt_ref_match(r, prompt) for r in allowed)
 
 
 def is_provider_allowed(provider: ApiProvider, allowed: list[str] | None) -> bool:
     if not isinstance(allowed, list):
         return True
-    pid = provider.id()
-    label = provider.label
-    canonical = canonicalize_provider_id(pid)
-    for ref in allowed:
-        if label and label == ref:
-            return True
-        if pid == ref or canonical == canonicalize_provider_id(ref):
-            return True
-        if ref.endswith("*") and (
-            (label and label.startswith(ref[:-1]))
-            or pid.startswith(ref[:-1])
-            or canonical.startswith(ref[:-1])
-        ):
-            return True
-        if (
-            (label and label.startswith(f"{ref}:"))
-            or pid.startswith(f"{ref}:")
-            or (canonical.startswith(f"{ref}:"))
-        ):
-            return True
-    return False
+    return any(does_provider_ref_match(r, provider) for r in allowed)
 
 
 _conversation_cache: dict[str, bool] = {}

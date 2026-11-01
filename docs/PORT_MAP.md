@@ -47,11 +47,11 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `tracing/` | 21 | 21 | 0 | 0 |
 | `types/` | 32 | 2 | 0 | 30 |
 | `updates/` | 1 | 0 | 0 | 1 |
-| `util/` | 109 | 48 | 0 | 61 |
+| `util/` | 109 | 52 | 0 | 57 |
 | `validation/` | 3 | 1 | 0 | 2 |
 | `validators/` | 5 | 0 | 0 | 5 |
 | `(top level)` | 34 | 14 | 0 | 20 |
-| **Total** | **1388** | **345** | **708** | **335** |
+| **Total** | **1388** | **349** | **708** | **331** |
 
 ## Named
 
@@ -441,7 +441,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 
 | Upstream | promptphoo | Imported by |
 |---|---|---|
-| `src/util/config/load.ts` | `promptphoo.config.load` | `test_assertions_validate.py`, `test_cli_misc.py`, `test_loading.py` |
+| `src/util/config/load.ts` | `promptphoo.config.load` | `test_assertions_validate.py`, `test_cli_misc.py`, `test_config_references.py`, `test_loading.py` |
 | `src/util/config/manage.ts` | `promptphoo.paths` | `conftest.py`, `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
 | `src/util/convertEvalResultsToTable.ts` | `promptphoo.output.results_table` | - |
 | `src/util/dataUrl.ts` | `promptphoo.providers.anthropic.util` | `test_providers_anthropic.py` |
@@ -478,7 +478,9 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/util/numeric.ts` | `promptphoo.numeric` | - |
 | `src/util/output.ts` | `promptphoo.output`, `promptphoo.output.writer` | `test_blobs.py`, `test_import_export.py`, `test_output_formats.py`, `test_output_results_table.py`, `test_output_traces.py`, `test_output_writer.py` |
 | `src/util/outputFormats.ts` | `promptphoo.output`, `promptphoo.output.writer` | `test_blobs.py`, `test_import_export.py`, `test_output_formats.py`, `test_output_results_table.py`, `test_output_traces.py`, `test_output_writer.py` |
+| `src/util/promptMatching.ts` | `promptphoo.evaluator.run` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
 | `src/util/promptfooCommand.ts` | `promptphoo.promptfoo_command` | - |
+| `src/util/provider.ts` | `promptphoo.evaluator.run` | `test_blobs.py`, `test_cli_list_show_delete.py`, `test_comparison.py`, `test_comparison_resume.py`, `test_import_export.py`, `test_models_eval.py`, `test_providers_anthropic.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_scheduler_evaluator.py` |
 | `src/util/providerRef.ts` | `promptphoo.providers` | `rag_fakes.py`, `test_deepeval.py`, `test_matchers_classify_moderate_search.py`, `test_matchers_geval.py`, `test_matchers_llm_judges.py`, `test_matchers_providers.py`, `test_providers_anthropic.py`, `test_providers_compat_core.py`, `test_providers_compat_registry.py`, `test_providers_defaults.py`, `test_providers_google_ollama_e2e.py`, `test_providers_http.py`, `test_providers_webhook.py` |
 | `src/util/providerResponse.ts` | `promptphoo.output.results_table` | - |
 | `src/util/readline.ts` | `promptphoo.suggestions` | `test_cli_eval_flags.py` |
@@ -488,6 +490,8 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 | `src/util/testCaseReader.ts` | `promptphoo.cli.watch`, `promptphoo.testcases` | `test_loading.py`, `test_watch.py` |
 | `src/util/tokenUsageUtils.ts` | `promptphoo.tokens` | `test_matchers_llm_rubric.py`, `test_output_summary.py`, `test_providers_bedrock.py` |
 | `src/util/transform.ts` | `promptphoo.transform` | `test_assertions_modelgraded_rag.py` |
+| `src/util/validateTestPromptReferences.ts` | `promptphoo.config.references` | `test_config_references.py` |
+| `src/util/validateTestProviderReferences.ts` | `promptphoo.config.references` | `test_config_references.py` |
 | `src/util/yamlLoad.ts` | `promptphoo.yamlload` | `test_cli_config.py`, `test_cli_generate.py`, `test_cli_init.py`, `test_loading.py`, `test_output_writer.py` |
 
 ### `validation/`
@@ -557,7 +561,7 @@ ports in its docstring. Features, rather than files, are inventoried in docs/SCO
 - `storage/` (3): `storage/index.ts`, `storage/localFileSystemProvider.ts`, `storage/types.ts`
 - `types/` (30): `types/agent.ts`, `types/api/blobs.ts`, `types/api/common.ts`, `types/api/configs.ts`, `types/api/eval.ts`, `types/api/media.ts`, `types/api/modelAudit.ts`, `types/api/providers.ts`, `types/api/redteam.ts`, `types/api/server.ts`, `types/api/traces.ts`, `types/api/user.ts`, `types/api/version.ts`, `types/cache.ts`, `types/codeScan.ts`, `types/configAliases.ts`, `types/configDraft.ts`, `types/email.ts`, `types/env.ts`, `types/evalConstants.ts`, `types/eventSource.ts`, `types/internal.ts`, `types/modelAudit.ts`, `types/prompts.ts`, `types/results.ts`, `types/shared.ts`, `types/standaloneEval.ts`, `types/targetLink.ts`, `types/tracing.ts`, `types/transform.ts`
 - `updates/` (1): `updates/updateCommands.ts`
-- `util/` (61): `util/agent/agentAuth.ts`, `util/agent/agentClient.ts`, `util/agent/fsOperations.ts`, `util/agent/targetLink.ts`, `util/agent/targetLinkFs.ts`, `util/apiHealth.ts`, `util/azureBlob.ts`, `util/calculateFilteredMetrics.ts`, `util/caseMapping.ts`, `util/cliOptions.ts`, `util/cloud.ts`, `util/comparison.ts`, `util/config/default.ts`, `util/config/extensions.ts`, `util/config/writer.ts`, `util/createHash.browser.ts`, `util/createHash.ts`, `util/debounce.ts`, `util/eval/filterTestsUtil.ts`, `util/eval/promptMetrics.ts`, `util/eval/redteamWarning.ts`, `util/eval/repeatStability.ts`, `util/fetch/cloudAuthRedirects.ts`, `util/fetch/requestSignal.ts`, `util/fetch/types.ts`, `util/filterRangeWarn.ts`, `util/httpProvider.ts`, `util/huggingfaceMetadata.ts`, `util/index.ts`, `util/inlineBlobsForShare.ts`, `util/invariant.ts`, `util/isPathWithinDir.ts`, `util/libsqlBindingErrors.ts`, `util/modelAuditCliParser.ts`, `util/modelAuditInstall.ts`, `util/modelAuditResults.ts`, `util/namedMetrics.ts`, `util/oauth.ts`, `util/objectUtils.ts`, `util/packageImportErrors.ts`, `util/packageVersion.ts`, `util/pathUtils.ts`, `util/processShim.ts`, `util/promptMatching.ts`, `util/provider.ts`, `util/redteamProbeLimit.ts`, `util/runCommand.ts`, `util/runtime.ts`, `util/safeMode.ts`, `util/secureTempFiles.ts`, `util/server.ts`, `util/sharing.ts`, `util/standaloneEvalCache.ts`, `util/text.ts`, `util/time.ts`, `util/tokenUsage.ts`, `util/uuid.ts`, `util/validateTestPromptReferences.ts`, `util/validateTestProviderReferences.ts`, `util/verboseToggle.ts`, `util/xlsx.ts`
+- `util/` (57): `util/agent/agentAuth.ts`, `util/agent/agentClient.ts`, `util/agent/fsOperations.ts`, `util/agent/targetLink.ts`, `util/agent/targetLinkFs.ts`, `util/apiHealth.ts`, `util/azureBlob.ts`, `util/calculateFilteredMetrics.ts`, `util/caseMapping.ts`, `util/cliOptions.ts`, `util/cloud.ts`, `util/comparison.ts`, `util/config/default.ts`, `util/config/extensions.ts`, `util/config/writer.ts`, `util/createHash.browser.ts`, `util/createHash.ts`, `util/debounce.ts`, `util/eval/filterTestsUtil.ts`, `util/eval/promptMetrics.ts`, `util/eval/redteamWarning.ts`, `util/eval/repeatStability.ts`, `util/fetch/cloudAuthRedirects.ts`, `util/fetch/requestSignal.ts`, `util/fetch/types.ts`, `util/filterRangeWarn.ts`, `util/httpProvider.ts`, `util/huggingfaceMetadata.ts`, `util/index.ts`, `util/inlineBlobsForShare.ts`, `util/invariant.ts`, `util/isPathWithinDir.ts`, `util/libsqlBindingErrors.ts`, `util/modelAuditCliParser.ts`, `util/modelAuditInstall.ts`, `util/modelAuditResults.ts`, `util/namedMetrics.ts`, `util/oauth.ts`, `util/objectUtils.ts`, `util/packageImportErrors.ts`, `util/packageVersion.ts`, `util/pathUtils.ts`, `util/processShim.ts`, `util/redteamProbeLimit.ts`, `util/runCommand.ts`, `util/runtime.ts`, `util/safeMode.ts`, `util/secureTempFiles.ts`, `util/server.ts`, `util/sharing.ts`, `util/standaloneEvalCache.ts`, `util/text.ts`, `util/time.ts`, `util/tokenUsage.ts`, `util/uuid.ts`, `util/verboseToggle.ts`, `util/xlsx.ts`
 - `validation/` (2): `validation/fileExtensions.ts`, `validation/filterRange.ts`
 - `validators/` (5): `validators/prompts.ts`, `validators/providers.ts`, `validators/redteam.ts`, `validators/shared.ts`, `validators/util.ts`
 - `(top level)` (20): `configTypes.ts`, `constants.ts`, `contracts.ts`, `entrypoint.ts`, `envOverrides.ts`, `esm.ts`, `evaluate.ts`, `googleSheets.ts`, `guardrails.ts`, `index.ts`, `localEntrypoint.ts`, `logger.browser.ts`, `microsoftSharepoint.ts`, `remoteGrading.ts`, `remoteScoring.ts`, `share.ts`, `telemetry.ts`, `telemetryEvents.ts`, `updates.ts`, `version.ts`

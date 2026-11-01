@@ -41,11 +41,15 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
   parses as js-yaml does; Anthropic requests no longer carry an `x-promptfoo-version` header
   (D64); float sums follow JavaScript's left-to-right order, so cosine similarities and averages
   match Node to the last bit (D63).
-- **Malformed assertions fail at load time, as in Node.** `validateAssertions` is ported: an
-  assertion without a `type` (often a stray `-` before `value:` in YAML), a non-object, a bad
-  `assert-set` or a schema violation now stops the run with `AssertValidationError` and Node's
-  message, instead of reaching the evaluator. Found by `tools/port_map.py`, which generates
-  [`docs/PORT_MAP.md`](docs/PORT_MAP.md) from the module docstrings.
+- **Malformed assertions and dangling references fail at load time, as in Node.**
+  `validateAssertions` is ported: an assertion without a `type` (often a stray `-` before `value:`
+  in YAML), a non-object, a bad `assert-set` or a schema violation now stops the run with
+  `AssertValidationError` and Node's message, instead of reaching the evaluator. The two checks
+  that follow it upstream are ported too: a test, `defaultTest` or scenario whose `providers`
+  names no configured provider, and a test or `defaultTest` whose `prompts` names no prompt, stop
+  the run; the prompt error points at the `path:line:column` of the reference in the YAML config.
+  Found by `tools/port_map.py`, which generates [`docs/PORT_MAP.md`](docs/PORT_MAP.md) from the
+  module docstrings.
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

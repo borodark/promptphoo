@@ -243,6 +243,17 @@ def _dedupe_key(provider: Any) -> Any:
         return id(provider)
 
 
+def read_prompt_reference_sources(config_paths: list[str]) -> list[dict[str, str]]:
+    """readPromptReferenceSources: the text of every YAML config, for the location hints of
+    prompt reference errors."""
+    sources = []
+    for config_path in config_paths:
+        for match in glob_sync(os.path.abspath(config_path)):
+            if os.path.splitext(match)[1] in (".yaml", ".yml"):
+                sources.append({"path": match, "content": Path(match).read_text(encoding="utf-8")})
+    return sources
+
+
 def prepare_combined_config(config_paths: list[str]) -> dict[str, Any]:
     """Combine configs; returns {config, test_sources, prompt_base_paths}."""
     sources: list[tuple[dict[str, Any], str]] = []
@@ -553,6 +564,7 @@ async def resolve_configs(
     file_config: dict[str, Any] = {}
     test_sources: list[dict[str, Any]] | None = None
     prompt_base_paths: list[str] | None = None
+    prompt_reference_sources: list[dict[str, str]] = []
     if cmd.get("config"):
         prepared = prepare_combined_config(cmd["config"])
         file_config = prepared["config"]
@@ -561,6 +573,7 @@ async def resolve_configs(
             [] if cmd.get("tests") or cmd.get("vars") or cmd.get("assertions")
             else prepared["test_sources"]
         )  # fmt: skip
+        prompt_reference_sources = read_prompt_reference_sources(cmd["config"])
         default_config = {}
 
     with (
@@ -569,7 +582,13 @@ async def resolve_configs(
         cli_state.with_config({**default_config, **file_config}),
     ):
         resolved = await _resolve_loaded_config(
-            cmd, file_config, default_config, test_sources, prompt_base_paths, config_type
+            cmd,
+            file_config,
+            default_config,
+            test_sources,
+            prompt_base_paths,
+            config_type,
+            prompt_reference_sources,
         )
     cli_state.set_base_path(resolved["base_path"])
     cli_state.set_config(resolved["config"])
@@ -588,6 +607,7 @@ async def _resolve_loaded_config(
     test_sources: list[dict[str, Any]] | None,
     prompt_base_paths: list[str] | None,
     config_type: str | None = None,
+    prompt_reference_sources: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     from promptphoo import providers as providers_mod
     from promptphoo.prompts import read_prompts
@@ -844,11 +864,26 @@ async def _resolve_loaded_config(
     test_suite = {k: v for k, v in test_suite.items() if v is not None}
 
     from promptphoo.assertions.validate import validate_assertions
+    from promptphoo.config.references import (
+        validate_test_prompt_references,
+        validate_test_provider_references,
+    )
 
     # defaultTest can still be a file:// string here; only an object is checked.
-    validate_assertions(
+    suite_default = test_suite.get("defaultTest")
+    suite_default = suite_default if isinstance(suite_default, dict) else None
+    validate_assertions(test_suite.get("tests") or [], suite_default)
+    validate_test_provider_references(
         test_suite.get("tests") or [],
-        test_suite["defaultTest"] if isinstance(test_suite.get("defaultTest"), dict) else None,
+        test_suite["providers"],
+        suite_default,
+        test_suite.get("scenarios"),
+    )
+    validate_test_prompt_references(
+        test_suite.get("tests") or [],
+        test_suite["prompts"],
+        suite_default,
+        prompt_reference_sources,
     )
 
     if command_line_options and command_line_options.get("envPath") and base_path:
