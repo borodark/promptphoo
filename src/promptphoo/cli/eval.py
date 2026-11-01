@@ -19,6 +19,7 @@ from typing import Any
 import click
 
 from promptphoo import cache, cli_state, db, envars
+from promptphoo.cli.errors import load_configs, user_errors
 from promptphoo.cli.options import VariadicOption, collect_key_value
 from promptphoo.cli.retry import (
     delete_error_results,
@@ -167,7 +168,7 @@ async def do_eval(
         resume_eval = latest
         resolved = await _resolve_replay_configs(resume_eval, "retrying errors for")
     else:
-        resolved = await resolve_configs(cmd, default_config)
+        resolved = await load_configs(resolve_configs(cmd, default_config))
     config: dict[str, Any] = resolved["config"]
     test_suite: dict[str, Any] = resolved["test_suite"]
     command_line_options: dict[str, Any] = resolved.get("command_line_options") or {}
@@ -479,7 +480,7 @@ async def _resolve_replay_configs(eval_record: Eval, action: str) -> dict[str, A
             **({"env": rendered["env"]} if rendered.get("env") else {}),
             "tracing": rendered.get("tracing"),
         }
-    configs = await resolve_configs(dict(options), replay_config)
+    configs = await load_configs(resolve_configs(dict(options), replay_config))
     configs["test_suite"]["providers"] = filter_providers(
         configs["test_suite"]["providers"], provider_filter
     )
@@ -846,7 +847,13 @@ def _recoverable_errors() -> tuple[type[BaseException], ...]:
     from promptphoo.evaluator.extensions import ExtensionHookError
     from promptphoo.suggestions import PromptSuggestionsRejectedError
 
-    return EvalRunError, ExtensionHookError, PromptSuggestionsRejectedError, ConfigResolutionError
+    return (
+        EvalRunError,
+        ExtensionHookError,
+        PromptSuggestionsRejectedError,
+        ConfigResolutionError,
+        *user_errors(),
+    )
 
 
 def _log_error(error: BaseException) -> None:

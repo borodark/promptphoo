@@ -205,5 +205,8 @@ confirmed against the Anthropic API on 2026-10-31 (see [`VERIFICATION.md`](VERIF
 
 ### Fixed
 
+- **A mistake in a config prints a stack trace in Node** (an assertion without a `type`, an
+  unknown provider or prompt reference, a YAML syntax error, an unknown provider id); promptphoo
+  prints the message and exits 1, and `--watch` keeps watching (D67).
 - **`answer-relevance` with an assertion-level `provider: {text, embedding}`:** Node throws
   `RangeError: Maximum call stack size exceeded`; promptphoo runs it.

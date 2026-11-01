@@ -50,6 +50,10 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
   the run; the prompt error points at the `path:line:column` of the reference in the YAML config.
   Found by `tools/port_map.py`, which generates [`docs/PORT_MAP.md`](docs/PORT_MAP.md) from the
   module docstrings.
+- **Config mistakes are reported, not dumped.** An assertion without a `type`, an unknown
+  provider or prompt reference, a YAML syntax error, an unknown provider id or a missing file
+  now prints one message and exits 1 in `eval` and `generate`, where Node prints a stack trace;
+  `--watch` keeps watching after a bad edit (D66, D67).
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

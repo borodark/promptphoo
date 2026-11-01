@@ -41,6 +41,7 @@ def serialize_object_array_as_csv(rows: list[dict[str, Any]]) -> str:
 async def _resolve_test_suite(
     config_path: str | None, default_config: dict[str, Any], config_type: str
 ) -> dict[str, Any]:
+    from promptphoo.cli.errors import load_configs
     from promptphoo.config.load import resolve_configs
 
     if not config_path:
@@ -48,7 +49,9 @@ async def _resolve_test_suite(
             "Could not find a config file. Pass --config path/to/promptfooconfig.yaml or run "
             '"promptphoo init" to create one.'
         )
-    resolved = await resolve_configs({"config": [config_path]}, default_config, config_type)
+    resolved = await load_configs(
+        resolve_configs({"config": [config_path]}, default_config, config_type)
+    )
     return resolved["test_suite"]
 
 
@@ -193,11 +196,12 @@ def _validate_assertion_type(ctx: click.Context, param: click.Parameter, value: 
 
 def _run(coro: Any) -> None:
     from promptphoo import db
+    from promptphoo.cli.errors import user_errors
     from promptphoo.config.load import ConfigResolutionError
 
     try:
         asyncio.run(coro)
-    except (GenerateError, ConfigResolutionError, ValueError, RuntimeError) as e:
+    except (GenerateError, ConfigResolutionError, ValueError, RuntimeError, *user_errors()) as e:
         logger.error("%s", getattr(e, "cli_message", None) or e)
         raise SystemExit(1) from e
     finally:

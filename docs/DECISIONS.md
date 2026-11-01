@@ -807,3 +807,15 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: The contract items above are what users, scripts and the shared database rely on. If a behaviour outside them turns out to be relied on, it moves into the contract.
 - Implication: Parity and golden tests keep Node's recorded output as the reference. Where promptphoo differs on purpose, the test names the decision and checks promptphoo's own expected output.
 - Modules: docs/DECISIONS.md, docs/SCOPE.md, CONTRIBUTING.md
+- Commits: `e397657`
+
+## 67. Mistakes in a config are reported as one message, not a traceback
+- Decision: `eval` (including `--watch`, `--resume` and `--retry-errors`) and `generate` report the errors a bad config causes as a single log line and exit 1. `cli/errors.py` holds the list:
+  - the load-time checks of `validateAssertions` and the provider and prompt reference checks;
+  - any ValueError, OSError or YAML error raised while `resolve_configs` runs (a missing or unreadable file, a YAML syntax error, a bad `$ref`, an unknown provider id), re-raised as `ConfigLoadError` with the traceback kept in the debug log;
+  - `DatabaseVersionError` and `OutputWriteError`.
+- Rationale: Node lets these reach its top level, which prints a stack trace for what is a typo in the user's YAML. In `--watch` the same error stopped the watcher, so fixing the file did nothing. The exit code, 1, is Node's.
+- Alternatives: Catch every exception at the top level. Rejected: a real bug would then lose its traceback. Only the three validation classes. Rejected: an unknown provider id or a YAML syntax error is just as much a user mistake.
+- Assumption: Errors raised while loading a config come from the config. A bug in the loader shows up as a ConfigLoadError message, with the traceback in the debug log.
+- Implication: `validate`, `retry` and `debug` already reported every error as a message and are unchanged.
+- Modules: src/promptphoo/cli/errors.py, src/promptphoo/cli/eval.py, src/promptphoo/cli/generate.py, tests/test_cli_errors.py
