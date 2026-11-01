@@ -265,7 +265,8 @@ class EvalResult:
                 break
             offset = nxt["test_idx"]
             rows = conn.execute(
-                "SELECT * FROM eval_results WHERE eval_id = ? AND test_idx >= ? AND test_idx < ?",
+                "SELECT * FROM eval_results WHERE eval_id = ? AND test_idx >= ? AND test_idx < ? "
+                "ORDER BY test_idx, prompt_idx",  # Node: unordered (D70)
                 (eval_id, offset, offset + batch_size),
             ).fetchall()
             yield [EvalResult.from_db_row(r) for r in rows]
@@ -543,10 +544,11 @@ class Eval:
             db.update_signal_file(self.id)
 
     async def read_results_by_test_idx(self, test_idx: int) -> list[EvalResult]:
-        """fetchResultsByTestIdx (EvalResult.findManyByEvalId with testIdx; no ORDER BY)."""
+        """fetchResultsByTestIdx (EvalResult.findManyByEvalId with testIdx). Node has no ORDER
+        BY; promptphoo orders by prompt, so select-best lists outputs in a fixed order (D70)."""
         conn = _dict_cursor()
         rows = conn.execute(
-            "SELECT * FROM eval_results WHERE eval_id = ? AND test_idx = ?",
+            "SELECT * FROM eval_results WHERE eval_id = ? AND test_idx = ? ORDER BY prompt_idx",
             (self.id, test_idx),
         ).fetchall()
         return [EvalResult.from_db_row(r) for r in rows]
@@ -655,7 +657,8 @@ class Eval:
         if self.persisted:
             conn = _dict_cursor()
             rows = conn.execute(
-                "SELECT * FROM eval_results WHERE eval_id = ?",  # Node: no ORDER BY
+                # Node: no ORDER BY, so rows come back in insertion (completion) order (D70).
+                "SELECT * FROM eval_results WHERE eval_id = ? ORDER BY test_idx, prompt_idx",
                 (self.id,),
             ).fetchall()
             self.results = [EvalResult.from_db_row(r) for r in rows]

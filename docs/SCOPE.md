@@ -202,6 +202,8 @@ confirmed against the Anthropic API on 2026-10-31 (see [`VERIFICATION.md`](VERIF
 
 ### Fixed
 
+- **Stored results load in no particular order in Node**, so outputs and exports of a concurrent
+  run list rows in a different order each time; promptphoo orders them by test, then prompt (D70).
 - **A prompt file that fails to parse, or whose nested `file://` reference is missing, is used
   as raw text silently in Node**; promptphoo warns, unless the file is a template (D69).
 - **`model-graded-closedqa` and `select-best` with an Anthropic grader** always fail in Node

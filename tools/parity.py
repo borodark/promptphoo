@@ -123,7 +123,8 @@ def normalize(obj, top=True):
     if isinstance(obj, dict):
         if top and "traces" in obj:
             obj = {**obj, "traces": normalize_traces(obj["traces"])}
-        # Result rows arrive in completion order, which concurrency makes nondeterministic.
+        # Node's rows arrive in completion order, which concurrency makes nondeterministic;
+        # promptphoo's are ordered (D70). Sort both.
         if isinstance(obj.get("results"), list):
             obj = {**obj, "results": sorted(obj["results"], key=_row_key)}
         return {

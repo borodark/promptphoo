@@ -137,6 +137,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Rationale: Parity runs across all cores to keep the harness fast enough to run after every change. A full run takes about 10 seconds.
 - Assumption: Every EXPECTED entry names the phase or the upstream reason that explains it.
 - Implication: The Phase 2 exit criterion was met with 61 PASS and 0 unexpected failures.
+- Note: promptphoo now reads result rows in (test_idx, prompt_idx) order (D70); the parity sort stays for Node's side.
 - Modules: tools/parity.py
 - Commits: `400e703` `c181195`
 
@@ -836,3 +837,12 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Alternatives: Fail the load. Rejected: a config that works in Node keeps working (D66).
 - Assumption: Prompt files without template tags are meant to parse.
 - Modules: src/promptphoo/prompts/processors.py, tests/test_prompt_fallbacks.py
+- Commits: `c20795c`
+
+## 70. Results load in (test_idx, prompt_idx) order
+- Decision: The queries that read an eval's stored results order them: `load_results` and the batched reader by `test_idx, prompt_idx`, and `read_results_by_test_idx` by `prompt_idx`. An eval kept only in memory (`--no-write`) keeps completion order.
+- Rationale: Node reads `eval_results` without ORDER BY, so rows come back in whatever order a concurrent run stored them. The JSON, YAML and JSONL outputs, `export`, JUnit, the `afterAll` hook and `--filter-failing <id>` then list results in an order that changes from run to run.
+- Alternatives: Keep Node's order. Rejected: it is not an order, just whatever SQLite returns.
+- Assumption: Nothing relies on Node's order, since it is not reproducible. With `-j 1` insertion order already is (test, prompt) order, so those outputs match Node's exactly.
+- Implication: `select-best` and `max-score` list outputs in their grader prompt in prompt order. Under concurrency this can differ from a given Node run's prompt and cache key; accepted, because Node's own order there is random. Parity still sorts rows, since Node's side is unordered.
+- Modules: src/promptphoo/models/eval.py, tests/test_models_eval.py, tools/parity.py
