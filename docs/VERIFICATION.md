@@ -80,7 +80,7 @@ difference coming from different live output lengths.
 ## Upstream bugs reproduced faithfully
 
 promptphoo ports upstream's behaviour, including these bugs found during the live runs. They are
-listed in [`SCOPE.md`](SCOPE.md#known-upstream-bugs-reproduced).
+listed in [`SCOPE.md`](SCOPE.md#known-upstream-bugs).
 
 - **`model-graded-closedqa` always errors with Anthropic graders.** Its prompt is a single system
   message, and Anthropic rejects a request with no user message (`400 at least one message is

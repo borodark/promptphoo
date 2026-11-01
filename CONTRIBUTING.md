@@ -73,6 +73,10 @@ It needs Ollama with `nomic-embed-text` for the embedding assertions. Record wha
    where practical.
 4. Where the port has to differ, make the difference loud (a clear error rather than a silent
    change), and log it as a decision.
+5. Faithful does not mean copying bugs outside the drop-in contract (D66). Configs, flags, exit
+   codes, DB rows, output formats, ids, hashes and grader prompts stay as Node has them. A crash,
+   a request that always fails or a traceback for a user mistake may be fixed, as a decision of
+   its own; a fix that changes scores needs the maintainer's agreement first.
 
 The conventions that keep the port consistent (plain camelCase dicts at runtime, `json_stringify`
 for every hash and id, `yamlload.load_yaml`, the templating engine, `files.node_join`, and so on)

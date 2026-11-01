@@ -795,3 +795,15 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: The proxy never writes `x-api-key` or `authorization`, and the runner reads the key from a file only inside the commands that need it, then scans every output for it.
 - Modules: tools/live/anthropic_proxy.py, tools/live/run_anthropic.sh, tools/live/compare_replay.py, tools/live/compare_live.py, tools/live/configs/matrix/promptfooconfig.yaml, docs/VERIFICATION.md
 - Commits: `8bcdf44`
+
+## 66. The drop-in contract is the interface; outside it, promptphoo fixes what Node gets wrong
+- Decision: D2's drop-in contract covers config parsing, CLI flags and exit codes, DB rows and migrations, export and output file formats, ids, hashes and cache keys, and grader prompt text. Outside that contract promptphoo may fix what Node gets wrong: crashes, silently wrong results, poor error messages and internal mechanics.
+  - A fix that makes a config work where Node fails or errors is allowed.
+  - A fix that changes scores, pass/fail or grader requests for a config that works in Node needs a decision of its own and the maintainer's agreement.
+  - A config that works in Node keeps working: a new check may warn, but does not fail it.
+  - Each fix is a decision of its own and is listed in SCOPE.md under "Known upstream bugs", in its "Fixed" list; where users can see it, MIGRATING.md says so too.
+- Rationale: Porting bugs on purpose made sense while parity was being established. Users who switch need their configs, history and outputs to keep working, not Node's crashes. Precedents: D61 (safer defaults), D64 (no `x-promptfoo-version` header to Anthropic) and the answer-relevance `RangeError` that promptphoo never reproduced.
+- Alternatives: Reproduce every upstream bug, as CONTRIBUTING's porting rule first said. Rejected: it keeps tracebacks, silent fallbacks and requests that always fail, none of which protects compatibility. Fix freely. Rejected: score changes break the side-by-side comparisons users run when they switch (MIGRATING.md).
+- Assumption: The contract items above are what users, scripts and the shared database rely on. If a behaviour outside them turns out to be relied on, it moves into the contract.
+- Implication: Parity and golden tests keep Node's recorded output as the reference. Where promptphoo differs on purpose, the test names the decision and checks promptphoo's own expected output.
+- Modules: docs/DECISIONS.md, docs/SCOPE.md, CONTRIBUTING.md

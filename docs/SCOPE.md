@@ -189,16 +189,21 @@ These were open when the inventory was first taken, and have since been decided.
 - **Default graders:** the Mistral, xAI, Voyage and Azure Content Safety branches are skipped,
   so those credentials fall through to the OpenAI defaults (D33).
 
-## Known upstream bugs reproduced
+## Known upstream bugs
 
-promptphoo ports upstream's behaviour, bugs included, so a config behaves the same in both. These
-were confirmed against the live Anthropic API on 2026-10-31 (see
-[`VERIFICATION.md`](VERIFICATION.md)).
+Upstream bugs inside the drop-in contract are reproduced, so a config behaves the same in both.
+Outside it, promptphoo fixes them, each as a decision of its own (D66). The live entries were
+confirmed against the Anthropic API on 2026-10-31 (see [`VERIFICATION.md`](VERIFICATION.md)).
+
+### Reproduced
 
 - **`model-graded-closedqa` with an Anthropic grader always errors** (`400 at least one message
   is required`): its grading prompt is a single system message. Use `llm-rubric` with an
   Anthropic grader, or an OpenAI grader for closed QA.
 - **A grader whose provider id matches a target reuses that target's config**, such as
   `max_tokens`.
-- **Not reproduced:** Node throws `RangeError: Maximum call stack size exceeded` when
-  `answer-relevance` has an assertion-level `provider: {text, embedding}`; promptphoo runs it.
+
+### Fixed
+
+- **`answer-relevance` with an assertion-level `provider: {text, embedding}`:** Node throws
+  `RangeError: Maximum call stack size exceeded`; promptphoo runs it.
