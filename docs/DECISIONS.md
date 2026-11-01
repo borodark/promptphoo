@@ -908,6 +908,7 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Configs that need an environment value in a var write it in the config, where load-time rendering resolves it. A dataset that relies on `{{ env.* }}` is rare, and the warning and the opt-in cover it.
 - Implication: A config var whose environment variable was unset at load, and set later in the process, now renders empty instead of picking it up.
 - Modules: src/promptphoo/evaluator/render.py, tests/test_security.py
+- Commits: `3e615e9`
 
 ## 77. CSV and JSONL datasets cannot carry code by default
 - Decision: Outside safe mode, tests read from CSV and JSONL files are refused when they hold a `python`, `javascript` or `ruby` assertion (including `not-` forms; a CSV `__expected: python: ...` or `file://*.py` becomes one), name a script provider under a `provider` key, or refer to a code file (`file://*.py`, `.js`, `.sh` and the like, with an optional `:function`). Plain `file://` references (a document, an image) still load. `PROMPTPHOO_TRUST_TEST_DATA=true` restores Node's behaviour. YAML and JSON test files stay trusted outside safe mode. XLSX datasets are not supported by promptphoo, so there is nothing to block there.
@@ -915,4 +916,17 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Alternatives: Block code in every test file by default. Rejected: YAML test files with Python assertions are common and written by the config's author. Confine plain `file://` var references to the config directory. Not done: a dataset that reads a local document is a common use, and safe mode refuses file references for untrusted data.
 - Assumption: Code-bearing tests in a CSV or JSONL file are rare enough that an opt-in costs little.
 - Implication: A config that keeps Python assertions in a CSV now fails to load with a message naming the opt-in; this is a break from Node accepted by the maintainer (D66).
+- Note: Plain `file://` references are now confined to the config folder (D78).
 - Modules: src/promptphoo/safe_mode.py, src/promptphoo/testcases.py, tests/test_security.py
+- Commits: `3e615e9`
+
+## 78. Var files, and every file a dataset names, stay inside the config folder
+- Decision: A `file://` reference is refused unless its target, symlinks followed, is inside the config folder (the base path, else the working directory), when it is:
+  - a var value, checked when the var file is loaded for a prompt, whatever its origin (config, test file, dataset). The row fails with the message;
+  - a var value in any test file, or any reference in a CSV or JSONL dataset, checked when the file is read and before its nested references are expanded. The load stops with the message.
+  - `PROMPTPHOO_ALLOW_FILES_OUTSIDE_CONFIG=true` restores Node's behaviour. Files the config itself names (prompts, providers, test-file paths, assertion values in YAML and JSON test files, hooks) are not confined: the config is code, and projects share files across folders.
+- Rationale: In Node a dataset cell `file:///any/path` or `file://../../x` reads that file into the prompt sent to the provider, and into the stored results. Confining var files to the project closes that read without touching config-authored paths.
+- Alternatives: Confine every `file://` reference. Rejected: shared prompt and rubric files outside the config folder are common in monorepos. Refuse plain file references in datasets entirely. Rejected: a dataset that names a document next to it is a normal use.
+- Assumption: Var files live in the project folder; a config that keeps them elsewhere sets the opt-in or moves them.
+- Implication: A config var such as `doc: file://../shared/doc.txt` now fails its rows; this breaks a config that works in Node, as the maintainer agreed (D66). Code files keep D74's and D77's rules.
+- Modules: src/promptphoo/files.py, src/promptphoo/evaluator/render.py, src/promptphoo/safe_mode.py, tests/test_security.py

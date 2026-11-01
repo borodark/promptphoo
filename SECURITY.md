@@ -42,9 +42,15 @@ downloaded. promptphoo treats them as data, with these protections (decision D61
 **CSV and JSONL datasets cannot carry code** (D77). In upstream a CSV `__expected` cell such as
 `python: ...` runs Python in the promptfoo process. promptphoo refuses code assertions, script
 providers and `file://` references to code files in CSV and JSONL files, unless
-`PROMPTPHOO_TRUST_TEST_DATA=true`. Plain `file://` references in them (a document, an image)
-still load, from any path. YAML and JSON test files are trusted like the config outside safe
-mode. **For data you did not write, use `--safe-mode`** (or `commandLineOptions: {safeMode:
+`PROMPTPHOO_TRUST_TEST_DATA=true`. YAML and JSON test files are trusted like the config outside
+safe mode.
+
+**Var files stay inside the config folder** (D78). A var value `file://...` (from the config, a
+test file or a dataset), and any `file://` reference in a CSV or JSONL dataset, must resolve,
+symlinks followed, inside the config folder. Upstream reads it from any path, so a dataset could
+send `/home/you/.ssh/id_rsa` to the provider. `PROMPTPHOO_ALLOW_FILES_OUTSIDE_CONFIG=true`
+restores upstream's behaviour. Paths the config names itself (prompts, hooks, test files) are not
+confined. **For data you did not write, use `--safe-mode`** (or `commandLineOptions: {safeMode:
 true}`), which makes every test file data (D74):
 
 - Tests read from test files (CSV, JSON, JSONL, YAML, scenario test files) are checked before

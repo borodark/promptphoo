@@ -106,6 +106,7 @@ Two differences:
 | `--safe-mode` | Refuses inline JavaScript only | Also refuses code, `file://` references and script providers in test files, and inline Python (D74) | Move code-bearing tests into the config |
 | `{{ env.* }}` in var values (CSV cells, test-file vars) | Renders the environment | Renders empty, with a warning; `PROMPTPHOO_VARS_READ_ENV=true` restores it (D76) | Put environment values in the config |
 | Code in CSV/JSONL datasets (`__expected: python:`, `file://*.py`, `exec:`) | Runs | Refused; `PROMPTPHOO_TRUST_TEST_DATA=true` restores it (D77) | Move code-bearing tests into the config or a YAML test file |
+| `file://` var values and dataset references outside the config folder | Read from any path | Refused; `PROMPTPHOO_ALLOW_FILES_OUTSIDE_CONFIG=true` restores it (D78) | Move var files into the project |
 | State directory files | Created with your umask | Database, cache, logs and blobs 0600; new directories 0700 (D75) | — |
 | `show <id prefix>`, `delete <id prefix>` | Always fail, though the prefix matches an eval | Act on the one matching eval; an ambiguous prefix lists the matches and deletes nothing (D71) | — |
 | Legacy (v3) evals in `list evals`, `list prompts` | Listed with no prompts | Listed with their prompts (D71) | — |

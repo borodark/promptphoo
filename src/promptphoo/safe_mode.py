@@ -15,10 +15,12 @@ them.
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Any
 
 from promptphoo import cli_state, envars
+from promptphoo.files import confine_to_config_folder
 
 CODE_ASSERTION_TYPES = {"python", "javascript", "ruby"}
 SCRIPT_PROVIDER = re.compile(r"^(exec:|python:|golang:|ruby:|file://|package:)", re.IGNORECASE)
@@ -35,18 +37,40 @@ class SafeModeError(ValueError):
 def check_test_data(cases: Any, source: str, dataset: bool = False) -> None:
     """Raise SafeModeError when `cases`, read from `source`, could run code or reach the
     filesystem in safe mode, or, for a CSV/JSONL `dataset`, could run code at all."""
+    items = cases if isinstance(cases, list) else [cases]
     if cli_state.safe_mode():
-        strict = True
+        strict: bool | None = True
     elif dataset and not envars.get_env_bool("PROMPTPHOO_TRUST_TEST_DATA"):
         strict = False
     else:
-        return
-    items = cases if isinstance(cases, list) else [cases]
+        strict = None
     for index, case in enumerate(items):
         where = f"{source}, test {index + 1}"
-        if strict and isinstance(case, str):
-            _refuse(where, f'refers to another test file "{case}"', strict)
-        _walk(case, where, (), strict)
+        if strict is not None:
+            if strict and isinstance(case, str):
+                _refuse(where, f'refers to another test file "{case}"', strict)
+            _walk(case, where, (), strict)
+        _confine_file_references(case, where, (), dataset)
+
+
+def _confine_file_references(value: Any, where: str, path: tuple[str, ...], dataset: bool) -> None:
+    """Var values in any test file, and every reference in a CSV or JSONL dataset, must stay
+    inside the config folder (D78). Checked before nested references are loaded."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            _confine_file_references(child, where, (*path, str(key)), dataset)
+    elif isinstance(value, list):
+        for child in value:
+            _confine_file_references(child, where, path, dataset)
+    elif (
+        isinstance(value, str)
+        and value.startswith("file://")
+        and (dataset or path[:1] == ("vars",))
+        and not CODE_FILE.match(value)  # code files are refused or trusted elsewhere
+    ):
+        reference = value[len("file://") :].split("#")[0]
+        resolved = os.path.abspath(os.path.join(cli_state.base_path() or "", reference))
+        confine_to_config_folder(resolved, where)
 
 
 def _walk(value: Any, where: str, path: tuple[str, ...], strict: bool) -> None:

@@ -5,6 +5,7 @@ D74: in safe mode, test files are data: no code, no file access, no script provi
 D75: the state directory's database, cache, logs and blobs are owner-only.
 D76: var values are rendered without the environment.
 D77: CSV and JSONL datasets cannot carry code unless trusted.
+D78: var files, and every file a CSV/JSONL dataset names, stay inside the config folder.
 """
 
 from __future__ import annotations
@@ -363,3 +364,70 @@ def test_existing_readable_database_is_narrowed(tmp_path, monkeypatch):
     db.close_db()
     assert _mode(home / "promptfoo.db") == 0o600
     assert _mode(home) == 0o775  # a directory shared on purpose stays shared
+
+
+# --- D78: file references stay inside the config folder --------------------------------------
+
+
+@pytest.fixture
+def outside(tmp_path):
+    secret = tmp_path / "outside.txt"
+    secret.write_text("outside-contents")
+    project = tmp_path / "project"
+    project.mkdir()
+    return project, secret
+
+
+@pytest.mark.parametrize(
+    "reference", ["file://{secret}", "file://../outside.txt", "file://link.txt"]
+)
+def test_dataset_file_reference_outside_config_folder_refused(
+    outside, monkeypatch, caplog, reference
+):
+    project, secret = outside
+    (project / "link.txt").symlink_to(secret)
+    csv = "name\n" + reference.format(secret=secret) + "\n"
+    result, rows = _eval(project, monkeypatch, CSV_CONFIG, files={"tests.csv": csv})
+    assert result.exit_code == 1
+    assert "outside the config folder" in result.output + caplog.text
+    assert rows == []
+
+
+def test_config_var_outside_config_folder_fails_the_row(outside, monkeypatch):
+    project, secret = outside
+    config = BASE_CONFIG + f"tests: [{{vars: {{name: 'file://{secret}'}}}}]\n"
+    result, rows = _eval(project, monkeypatch, config)
+    assert "outside-contents" not in json.dumps(rows)
+    assert "outside the config folder" in rows[0]["error"]
+
+
+def test_yaml_test_file_var_outside_refused_but_assertion_file_allowed(
+    outside, monkeypatch, caplog
+):
+    project, secret = outside
+    config = BASE_CONFIG + "tests: file://tests.yaml\n"
+    bad = "- vars: {name: file://../outside.txt}\n"
+    result, _ = _eval(project, monkeypatch, config, files={"tests.yaml": bad})
+    assert result.exit_code == 1
+    assert "outside the config folder" in result.output + caplog.text
+    # An assertion's file is not a var value: config authors share rubrics across folders.
+    good = "- vars: {name: outside-contents}\n  assert: [{type: equals, value: file://../outside.txt}]\n"
+    result, rows = _eval(project, monkeypatch, config, files={"tests.yaml": good})
+    assert result.exit_code == 100, result.output
+
+
+def test_prompt_file_outside_config_folder_still_loads(outside, monkeypatch):
+    project, secret = outside
+    config = "prompts: [file://../outside.txt]\nproviders: [echo]\ntests: [{vars: {x: 1}}]\n"
+    result, rows = _eval(project, monkeypatch, config)
+    assert result.exit_code == 0, result.output
+    assert rows[0]["response"]["output"] == "outside-contents"
+
+
+def test_allow_files_outside_config_opt_in(outside, monkeypatch):
+    project, secret = outside
+    monkeypatch.setenv("PROMPTPHOO_ALLOW_FILES_OUTSIDE_CONFIG", "true")
+    csv = f"name\nfile://{secret}\n"
+    result, rows = _eval(project, monkeypatch, CSV_CONFIG, files={"tests.csv": csv})
+    assert result.exit_code == 0, result.output
+    assert rows[0]["response"]["output"] == "Hi outside-contents"

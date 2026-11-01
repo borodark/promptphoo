@@ -10,7 +10,13 @@ import re
 from typing import Any
 
 from promptphoo import cli_state, envars, python_hooks
-from promptphoo.files import is_audio_file, is_image_file, is_javascript_file, is_video_file
+from promptphoo.files import (
+    confine_to_config_folder,
+    is_audio_file,
+    is_image_file,
+    is_javascript_file,
+    is_video_file,
+)
 from promptphoo.jsonutil import js_json_parse
 from promptphoo.jsvalues import js_string, json_stringify
 from promptphoo.templating import extract_variables_from_template, get_engine, render_vars_in_object
@@ -129,6 +135,7 @@ def _references_undefined(template: str, vars_: dict[str, Any]) -> bool:
 
 async def _load_var_file(name: str, value: str, base_prompt: str, vars_: dict, provider) -> Any:
     path = os.path.abspath(os.path.join(cli_state.base_path() or "", value[len("file://") :]))
+    confine_to_config_folder(path, f'Var "{name}"')
     ext = _ext(path)
     if is_javascript_file(path):
         raise ValueError(

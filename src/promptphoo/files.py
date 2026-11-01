@@ -113,6 +113,35 @@ def path_exists(path: str | Path) -> bool:
 # --- parsers ----------------------------------------------------------------------------------
 
 
+class OutsideConfigFolderError(ValueError):
+    pass
+
+
+def files_outside_config_allowed() -> bool:
+    from promptphoo import envars
+
+    return envars.get_env_bool("PROMPTPHOO_ALLOW_FILES_OUTSIDE_CONFIG")
+
+
+def confine_to_config_folder(path: str, what: str) -> str:
+    """Return `path` when it resolves, symlinks followed, inside the config folder (the base
+    path, else the working directory); raise OutsideConfigFolderError otherwise (D78). Node
+    reads a var's file:// reference from any path."""
+    if files_outside_config_allowed():
+        return path
+    from promptphoo import cli_state
+
+    base = os.path.realpath(cli_state.base_path() or os.getcwd())
+    real = os.path.realpath(path)
+    if real != base and not real.startswith(base.rstrip(os.sep) + os.sep):
+        raise OutsideConfigFolderError(
+            f"{what} refers to {path}, outside the config folder {base}. promptphoo reads these "
+            "files only inside the config folder (D78). Move the file there, or set "
+            "PROMPTPHOO_ALLOW_FILES_OUTSIDE_CONFIG=true if you trust this data."
+        )
+    return path
+
+
 def parse_csv_records(contents: str, delimiter: str = ",") -> list[dict[str, str]]:
     """csv-parse `{columns: true}`: header row keys, strict record length, BOM-free."""
     reader = csv.reader(io.StringIO(contents), delimiter=delimiter)
