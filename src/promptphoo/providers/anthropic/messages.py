@@ -477,6 +477,13 @@ class AnthropicMessagesProvider(AnthropicGenericProvider):
         system = parsed.get("system")
         extracted_messages = parsed["extractedMessages"]
         prompt_thinking = parsed.get("thinking")
+        if system and not extracted_messages:
+            # The API rejects a request with a system prompt and no messages, which is what
+            # system-only prompts (closed QA's and select-best's grading prompts) parse to.
+            # Send the system content as the user turn, as upstream's Bedrock Claude path does
+            # (D68).
+            extracted_messages = [{"role": "user", "content": system}]
+            system = None
 
         loaded_tools = await maybe_load_tools_from_external_file(config.get("tools"), vars) or []
         config_tools = transform_tools(loaded_tools, "anthropic")

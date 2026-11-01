@@ -543,3 +543,34 @@ def test_end_to_end_eval(config_dir):
     summary = record.to_evaluate_summary()
     assert summary["stats"]["successes"] == 1
     assert summary["stats"]["tokenUsage"]["total"] == 30
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        json.dumps([{"role": "system", "content": "Grade this: yes or no?"}]),
+        "system: Grade this: yes or no?",
+    ],
+)
+def test_system_only_prompt_is_sent_as_the_user_turn(prompt):
+    # D68: the API rejects a system prompt with no messages (closed QA, select-best).
+    route = mock_messages(message("Y"))
+    run(make_provider("claude-sonnet-4-5").call_api(prompt))
+    body, _ = sent(route)
+    assert "system" not in body
+    assert body["messages"] == [
+        {"role": "user", "content": [{"type": "text", "text": "Grade this: yes or no?"}]}
+    ]
+
+
+@respx.mock
+def test_system_and_user_prompt_keeps_the_system_prompt():
+    route = mock_messages(message("ok"))
+    prompt = json.dumps(
+        [{"role": "system", "content": "Be brief."}, {"role": "user", "content": "Hi"}]
+    )
+    run(make_provider("claude-sonnet-4-5").call_api(prompt))
+    body, _ = sent(route)
+    assert body["system"] == [{"type": "text", "text": "Be brief."}]
+    assert body["messages"] == [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]

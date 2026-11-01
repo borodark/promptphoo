@@ -819,3 +819,12 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Errors raised while loading a config come from the config. A bug in the loader shows up as a ConfigLoadError message, with the traceback in the debug log.
 - Implication: `validate`, `retry` and `debug` already reported every error as a message and are unchanged.
 - Modules: src/promptphoo/cli/errors.py, src/promptphoo/cli/eval.py, src/promptphoo/cli/generate.py, tests/test_cli_errors.py
+- Commits: `7bfc4ce`
+
+## 68. Anthropic: a prompt with only system messages is sent as the user turn
+- Decision: When an Anthropic Messages prompt parses to a system prompt and no messages (a JSON chat prompt holding only a system message, or a text prompt of only `system:` lines), `AnthropicMessagesProvider` sends the system content as a single user message and no `system` field. `parse_messages` itself stays a faithful port.
+- Rationale: The API rejects such a request (`400 at least one message is required`), so in Node `model-graded-closedqa` and `select-best` always fail with an Anthropic grader: both grading prompts are one system message. Upstream's own Bedrock Claude path already makes this conversion, with a comment naming these OpenAI-style judge prompts; promptphoo ports that at providers/bedrock/index.py.
+- Alternatives: Rewrite the two grading prompts. Rejected: grader prompt text is part of the drop-in contract (D66).
+- Assumption: No request legitimately sends a system prompt with no messages; the API refuses it, so nothing that works in Node changes.
+- Implication: A config whose closed-QA or select-best assertions errored in Node now grades. Rerunning the live replay (D65) reports these grader requests as misses, because Node recorded the rejected bodies.
+- Modules: src/promptphoo/providers/anthropic/messages.py, tests/test_providers_anthropic.py, tests/test_anthropic_grader_e2e.py

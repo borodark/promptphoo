@@ -102,7 +102,7 @@ Two differences:
 | Response cache | `~/.promptfoo/cache/cache.json` | `~/.promptfoo/cache/cache-py.json` | Your first promptphoo runs call providers again, so expect fresh API costs once |
 | `feedback` command | Posts to promptfoo's servers | Sends nothing; points to promptphoo's issue tracker | — |
 | Commands in messages | `promptfoo eval`, `promptfoo view` | `promptphoo eval`; `npx promptfoo@latest view` for the Node-only viewer | — |
-| `model-graded-closedqa` with an Anthropic grader | Always fails (`400 at least one message is required`) | The same: upstream's bug is kept | Use `llm-rubric`, or an OpenAI grader for closed QA |
+| `model-graded-closedqa` and `select-best` with an Anthropic grader | Always fail (`400 at least one message is required`) | **Grade**: the system-only grading prompt is sent as the user turn (D68) | Expect these assertions to start passing or failing on their merits |
 
 Environment variables (`OPENAI_API_KEY`, `PROMPTFOO_*`), exit codes and
 `PROMPTFOO_PASS_RATE_THRESHOLD` work the same way.

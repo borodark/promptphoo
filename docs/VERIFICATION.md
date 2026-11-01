@@ -85,6 +85,9 @@ listed in [`SCOPE.md`](SCOPE.md#known-upstream-bugs).
 - **`model-graded-closedqa` always errors with Anthropic graders.** Its prompt is a single system
   message, and Anthropic rejects a request with no user message (`400 at least one message is
   required`). Both runtimes fail it identically.
+  *Fixed since this report (D68):* promptphoo now sends that prompt as the user turn, and
+  `select-best`, whose prompt has the same shape, grades too. A rerun of the replay reports these
+  grader requests as misses, since Node's recordings hold the rejected bodies.
 - **A grader inherits a target's config when the ids match.** With `claude-sonnet-5` as both
   target and grader, the grader runs with the target's `max_tokens: 200`.
 - **Node crashes where promptphoo does not:** an assertion-level `provider: {text, embedding}`

@@ -197,14 +197,14 @@ confirmed against the Anthropic API on 2026-10-31 (see [`VERIFICATION.md`](VERIF
 
 ### Reproduced
 
-- **`model-graded-closedqa` with an Anthropic grader always errors** (`400 at least one message
-  is required`): its grading prompt is a single system message. Use `llm-rubric` with an
-  Anthropic grader, or an OpenAI grader for closed QA.
 - **A grader whose provider id matches a target reuses that target's config**, such as
   `max_tokens`.
 
 ### Fixed
 
+- **`model-graded-closedqa` and `select-best` with an Anthropic grader** always fail in Node
+  (`400 at least one message is required`), because each grading prompt is a single system
+  message; promptphoo sends it as the user turn (D68).
 - **A mistake in a config prints a stack trace in Node** (an assertion without a `type`, an
   unknown provider or prompt reference, a YAML syntax error, an unknown provider id); promptphoo
   prints the message and exits 1, and `--watch` keeps watching (D67).

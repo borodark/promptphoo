@@ -54,6 +54,9 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
   provider or prompt reference, a YAML syntax error, an unknown provider id or a missing file
   now prints one message and exits 1 in `eval` and `generate`, where Node prints a stack trace;
   `--watch` keeps watching after a bad edit (D66, D67).
+- **Closed QA and select-best grade with Anthropic.** Both grading prompts are a single system
+  message, which the Anthropic API rejects, so in Node they always fail with an Anthropic grader.
+  promptphoo sends such a prompt as the user turn (D68).
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in
