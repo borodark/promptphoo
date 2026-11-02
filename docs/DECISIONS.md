@@ -930,3 +930,4 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Assumption: Var files live in the project folder; a config that keeps them elsewhere sets the opt-in or moves them.
 - Implication: A config var such as `doc: file://../shared/doc.txt` now fails its rows; this breaks a config that works in Node, as the maintainer agreed (D66). Code files keep D74's and D77's rules.
 - Modules: src/promptphoo/files.py, src/promptphoo/evaluator/render.py, src/promptphoo/safe_mode.py, tests/test_security.py
+- Commits: `5a1a14f`
