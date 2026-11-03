@@ -81,6 +81,14 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
   providers and code-file references in them stop the load (`PROMPTPHOO_TRUST_TEST_DATA=true`
   restores it; D77). Var files, and every file a CSV or JSONL dataset names, must be inside the
   config folder (`PROMPTPHOO_ALLOW_FILES_OUTSIDE_CONFIG=true` restores it; D78).
+- **High concurrency no longer slows evals down.** Past `-j 64`, throughput used to fall as
+  concurrency rose: at 500 ms provider latency, from 52 results/s at `-j 64` to 20 at `-j 256`,
+  and `-j 4096` did not finish in 15 minutes. httpcore's connection pool does work quadratic in
+  its size on every request, so large pools are now split into clients of 16 connections, the
+  same total as before. httpcore's per-request `import sniffio`, which rescanned `sys.path`
+  every time now that anyio no longer installs it, fails at once, and compiled templates are
+  cached. At 500 ms the same eval reaches 160 results/s at `-j 256` and 112 at `-j 4096`; at
+  0 ms, harness overhead drops by about a quarter.
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

@@ -479,6 +479,42 @@ def test_connection_pool_size_follows_max_concurrency():
         assert fetch.get_connection_pool_size() == 9
 
 
+async def test_large_pools_are_split_into_small_clients():
+    # httpcore's pool cost is quadratic in its size, so -j 256 is served by 16 clients of 16
+    # keep-alive connections each, used in turn: the same 256 connections in total.
+    with cli_state.with_max_concurrency(256):
+        clients = [fetch.get_client() for _ in range(32)]
+    ((group, _, _),) = fetch._clients.values()
+    assert len(group) == 16
+    assert {c._transport._pool._max_keepalive_connections for c in group} == {16}
+    assert clients[:16] == list(group) and clients[16:] == list(group)
+    contexts = {id(c._transport._pool._ssl_context) for c in group}
+    assert len(contexts) == 1  # one CA bundle load for the whole group
+    await fetch.close_client()
+    assert all(c.is_closed for c in group)
+
+
+async def test_small_pools_keep_one_client():
+    with cli_state.with_max_concurrency(16):
+        assert fetch.get_client() is fetch.get_client()
+    ((group, _, _),) = fetch._clients.values()
+    assert len(group) == 1
+    await fetch.close_client()
+
+
+def test_missing_sniffio_is_recorded_once():
+    # httpcore imports sniffio on every lock operation; without the sys.modules entry each
+    # failed import rescanned sys.path.
+    import importlib.util
+    import sys
+
+    if importlib.util.find_spec("sniffio") is None and "sniffio" not in sys.modules:
+        pytest.fail("fetch did not record the missing sniffio module")
+    if sys.modules.get("sniffio", ...) is None:
+        with pytest.raises(ImportError):
+            import sniffio  # noqa: F401
+
+
 def test_request_timeout_ms(monkeypatch):
     assert fetch.get_request_timeout_ms() == 300_000
     monkeypatch.setenv("REQUEST_TIMEOUT_MS", "1234")
