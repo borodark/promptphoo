@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from promptphoo import cli_state, envars, python_hooks
+from promptphoo.jsonutil import json_loads
 from promptphoo.yamlload import load_yaml
 
 logger = logging.getLogger(__name__)
@@ -212,7 +213,7 @@ def maybe_load_from_external_file(file_path: Any, context: LoadContext = None) -
             except FileNotFoundError:
                 continue
             if match.endswith(".json"):
-                parsed = json.loads(text)
+                parsed = json_loads(text)
                 contents.extend(parsed if isinstance(parsed, list) else [parsed])
             elif match.endswith((".yaml", ".yml")):
                 parsed = load_yaml(text)
@@ -233,7 +234,7 @@ def maybe_load_from_external_file(file_path: Any, context: LoadContext = None) -
         raise OSError(f"Failed to read file {resolved}: {e}") from e
     if resolved.endswith(".json"):
         try:
-            return json.loads(text)
+            return json_loads(text)
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse JSON file {resolved}: {e}") from e
     if resolved.endswith((".yaml", ".yml")):
@@ -330,7 +331,7 @@ def load_file_reference(file_ref: str, base_path: str = "") -> Any:
     resolved = os.path.abspath(os.path.join(base_path, file_path))
     ext = os.path.splitext(resolved)[1].lower()
     if ext == ".json":
-        return json.loads(Path(resolved).read_text(encoding="utf-8"))
+        return json_loads(Path(resolved).read_text(encoding="utf-8"))
     if ext in (".yaml", ".yml"):
         return load_yaml(Path(resolved).read_text(encoding="utf-8"))
     if ext == ".py":

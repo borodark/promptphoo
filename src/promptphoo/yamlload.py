@@ -14,6 +14,8 @@ from typing import Any
 
 import yaml
 
+from promptphoo.jsvalues import js_number, js_string, v8_ordered
+
 _BREAKS = "\0 \t\r\n\x85  "
 
 
@@ -92,15 +94,18 @@ _add(
 )
 
 
-def _construct_int(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> int:
+def _construct_int(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> int | float:
+    """js-yaml's parseInt: a JS number, so past 2**53 the nearest double."""
     value = str(loader.construct_scalar(node))
     sign = -1 if value.startswith("-") else 1
     digits = value.lstrip("+-")
     if digits.startswith("0o"):
-        return sign * int(digits[2:], 8)
+        return js_number(sign * int(digits[2:], 8))
     if digits.startswith("0x"):
-        return sign * int(digits[2:], 16)
-    return sign * int(digits, 10)
+        return js_number(sign * int(digits[2:], 16))
+    if len(digits) > 4000:  # past int()'s digit limit; JS gives the double (or Infinity)
+        return sign * float(digits)
+    return js_number(sign * int(digits, 10))
 
 
 def _construct_float(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> float | int:
@@ -185,18 +190,14 @@ def load_yaml(content: str, json: bool = False) -> Any:
 
 
 def _stringify_keys(value: Any) -> Any:
-    """JS object keys are strings: `1: a` loads as {"1": "a"}, `true: x` as {"true": "x"}."""
+    """JS object keys are strings: `1: a` loads as {"1": "a"}, `true: x` as {"true": "x"}. The
+    object lists them in V8's order, array-index keys first: `{b: 1, 2: 2, 1: 3}` is {1, 2, b}."""
     if isinstance(value, dict):
         out: dict[str, Any] = {}
         for k, v in value.items():
-            if isinstance(k, str):
-                key = k
-            else:
-                from promptphoo.jsvalues import js_string
-
-                key = js_string(k)
+            key = k if isinstance(k, str) else js_string(k)
             out[key] = _stringify_keys(v)
-        return out
+        return v8_ordered(out)
     if isinstance(value, list):
         return [_stringify_keys(v) for v in value]
     return value

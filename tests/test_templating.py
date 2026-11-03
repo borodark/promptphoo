@@ -108,3 +108,29 @@ def test_var_values_rendered_as_templates_are_sandboxed():
     except SecurityError:
         return
     assert out == "Q: "
+
+
+def test_engine_compiles_each_template_once(monkeypatch):
+    engine = templating.Engine(templating.NunjucksCompatEnvironment(), is_grader=False)
+    calls = []
+    original = engine.env.from_string
+    monkeypatch.setattr(engine.env, "from_string", lambda t: calls.append(t) or original(t))
+    rendered = [engine.render_string("Hi {{ n }}", {"n": i}) for i in range(3)]
+    assert rendered == ["Hi 0", "Hi 1", "Hi 2"]
+    assert calls == ["Hi {{ n }}"]
+
+
+def test_engine_compiled_cache_is_bounded(monkeypatch):
+    engine = templating.Engine(templating.NunjucksCompatEnvironment(), is_grader=False)
+    monkeypatch.setattr(templating.Engine, "MAX_COMPILED", 4)
+    for i in range(10):
+        assert engine.render_string(f"{i} {{{{ x }}}}", {"x": "y"}) == f"{i} y"
+    assert len(engine._compiled) <= 4
+
+
+def test_template_errors_are_not_cached():
+    engine = templating.Engine(templating.NunjucksCompatEnvironment(), is_grader=False)
+    for _ in range(2):
+        with pytest.raises(Exception, match="unexpected"):
+            engine.render_string("{{ x ")
+    assert engine._compiled == {}

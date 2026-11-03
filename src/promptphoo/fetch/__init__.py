@@ -23,13 +23,16 @@ from __future__ import annotations
 import asyncio
 import base64
 import gzip
+import importlib.util
 import inspect
+import itertools
 import json
 import logging
 import math
 import os
 import random
 import re
+import sys
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -37,6 +40,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+
+# httpcore runs `import sniffio` on every pool lock operation, and recent anyio no longer
+# installs sniffio. A failed import is not cached, so each one searched sys.path again: about
+# 46k path scans in a 2,560-result eval at -j 256. Recording the module as absent makes the
+# import fail at once, with the same result.
+if "sniffio" not in sys.modules and importlib.util.find_spec("sniffio") is None:
+    sys.modules["sniffio"] = None  # type: ignore[assignment]
 
 from promptphoo import UPSTREAM_VERSION, cli_state, envars
 from promptphoo.fetch import header_parser
@@ -49,6 +59,7 @@ from promptphoo.fetch.errors import (
     extract_rate_limit_error_code,
     extract_rate_limit_error_type,
 )
+from promptphoo.jsonutil import json_loads
 from promptphoo.jsvalues import number_to_string
 
 logger = logging.getLogger(__name__)
@@ -94,7 +105,7 @@ class FetchResponse:
         return self.content.decode("utf-8", errors="replace")
 
     def json(self) -> Any:
-        return json.loads(self.text())
+        return json_loads(self.text())
 
     def header(self, name: str) -> str | None:
         """`response.headers.get(name)`, case-insensitively."""
@@ -165,7 +176,18 @@ async def _resolve_authentication_headers(
 
 # ---- clients (undici agents) -------------------------------------------------------------------
 
-_clients: dict[tuple[Any, ...], tuple[httpx.AsyncClient, asyncio.AbstractEventLoop | None]] = {}
+# Each key maps to a group of clients that share the pool size between them (see
+# `_get_or_create_client`), the event loop they belong to, and a round-robin over the group.
+_clients: dict[
+    tuple[Any, ...],
+    tuple[tuple[httpx.AsyncClient, ...], asyncio.AbstractEventLoop | None, Iterator[int]],
+] = {}
+
+# httpcore's pool does work quadratic in its size on every request event: for each idle
+# connection it recounts every connection. At -j 256 that was half the CPU of an eval, and
+# throughput fell as -j rose. A pool of N connections is therefore split into clients of at
+# most this many, which keeps the total number of connections what Node would open.
+CONNECTIONS_PER_CLIENT = 16
 
 
 def get_connection_pool_size() -> int:
@@ -224,30 +246,42 @@ def _running_loop() -> asyncio.AbstractEventLoop | None:
 def _get_or_create_client(proxy_url: str | None, tls: TlsOptions) -> httpx.AsyncClient:
     loop = _running_loop()
     # Drop clients whose event loop is gone: their pooled connections cannot be reused.
-    for key, (client, client_loop) in list(_clients.items()):
-        if client.is_closed or (client_loop is not None and client_loop.is_closed()):
+    for key, (group, client_loop, _) in list(_clients.items()):
+        if group[0].is_closed or (client_loop is not None and client_loop.is_closed()):
             del _clients[key]
     concurrency = get_connection_pool_size()
     key = (proxy_url or "", tls, concurrency, id(loop) if loop else None)
     existing = _clients.get(key)
     if existing is not None:
-        return existing[0]
+        group, _, turn = existing
+        return group[next(turn) % len(group)]
     timeout_s = get_request_timeout_ms() / 1000
-    client = httpx.AsyncClient(
-        follow_redirects=True,
-        trust_env=False,
-        proxy=proxy_url or None,
-        verify=_verify_for(tls),
-        # undici's headersTimeout; the overall deadline comes from fetch_with_timeout.
-        timeout=httpx.Timeout(timeout_s, write=None, pool=None),
-        limits=httpx.Limits(
-            max_connections=None,
-            max_keepalive_connections=concurrency,
-            keepalive_expiry=30,
-        ),
+    shards = max(1, math.ceil(concurrency / CONNECTIONS_PER_CLIENT))
+    keepalive = math.ceil(concurrency / shards)
+    verify = _verify_for(tls)
+    if verify is True:
+        # What httpx builds for verify=True with trust_env=False, made once for the group:
+        # loading the CA bundle takes ~30 ms, and -j 1024 makes 64 clients.
+        verify = httpx.create_ssl_context(trust_env=False)
+    group = tuple(
+        httpx.AsyncClient(
+            follow_redirects=True,
+            trust_env=False,
+            proxy=proxy_url or None,
+            verify=verify,
+            # undici's headersTimeout; the overall deadline comes from fetch_with_timeout.
+            timeout=httpx.Timeout(timeout_s, write=None, pool=None),
+            limits=httpx.Limits(
+                max_connections=None,
+                max_keepalive_connections=keepalive,
+                keepalive_expiry=30,
+            ),
+        )
+        for _ in range(shards)
     )
-    _clients[key] = (client, loop)
-    return client
+    turn = itertools.count(1)
+    _clients[key] = (group, loop, turn)
+    return group[0]
 
 
 def get_client() -> httpx.AsyncClient:
@@ -257,13 +291,14 @@ def get_client() -> httpx.AsyncClient:
 
 async def close_client() -> None:
     """Close every shared client (clearAgentCache)."""
-    clients = list(_clients.values())
+    groups = list(_clients.values())
     _clients.clear()
-    for client, loop in clients:
-        if client.is_closed or (loop is not None and loop.is_closed()):
-            continue
-        if loop is None or loop is _running_loop():
-            await client.aclose()
+    for group, loop, _ in groups:
+        for client in group:
+            if client.is_closed or (loop is not None and loop.is_closed()):
+                continue
+            if loop is None or loop is _running_loop():
+                await client.aclose()
 
 
 def clear_agent_cache() -> None:

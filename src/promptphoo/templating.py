@@ -310,14 +310,29 @@ class NunjucksCompatEnvironment(SandboxedEnvironment):
 class Engine:
     """A configured environment plus promptfoo's renderString behaviour."""
 
+    # Compiled templates kept per engine. An eval renders the same few prompt and assertion
+    # templates once per test case, and compiling was a tenth of an eval's CPU. Bounded so
+    # that templates built from per-test data cannot grow it without limit.
+    MAX_COMPILED = 512
+
     def __init__(self, env: NunjucksCompatEnvironment, is_grader: bool) -> None:
         self.env = env
         self.is_grader = is_grader
+        self._compiled: dict[str, jinja2.Template] = {}
 
     def render_string(self, template: str, context: Mapping[str, Any] | None = None) -> str:
         if not self.is_grader and envars.get_env_bool("PROMPTFOO_DISABLE_TEMPLATING"):
             return template
-        return self.env.from_string(template).render({"env": TEMPLATE_ENV, **(context or {})})
+        return self._compile(template).render({"env": TEMPLATE_ENV, **(context or {})})
+
+    def _compile(self, template: str) -> jinja2.Template:
+        compiled = self._compiled.get(template)
+        if compiled is None:
+            compiled = self.env.from_string(template)
+            if len(self._compiled) >= self.MAX_COMPILED:
+                self._compiled.clear()
+            self._compiled[template] = compiled
+        return compiled
 
 
 _engines: dict[tuple[int, bool, bool], Engine] = {}
