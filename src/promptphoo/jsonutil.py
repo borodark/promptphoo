@@ -7,6 +7,7 @@ import math
 import re
 from typing import Any
 
+from promptphoo.jsvalues import js_json_int, js_object_pairs
 from promptphoo.yamlload import load_yaml
 
 _MAX_JSON_LENGTH = 100_000
@@ -16,7 +17,17 @@ def _reject_constant(name: str) -> Any:
     raise ValueError(f"Unexpected token {name} in JSON")
 
 
-_DECODER = json.JSONDecoder(parse_constant=_reject_constant)
+# JSON.parse's values: integers past 2**53 round to doubles, "-0" is -0, and objects list
+# array-index keys first (V8's property order), so ids, hashes and key order computed from parsed
+# data match Node's.
+_JS_HOOKS: dict[str, Any] = {"parse_int": js_json_int, "object_pairs_hook": js_object_pairs}
+_DECODER = json.JSONDecoder(parse_constant=_reject_constant, **_JS_HOOKS)
+
+
+def json_loads(text: str | bytes) -> Any:
+    """json.loads with JSON.parse's values (see _JS_HOOKS) for user data and provider responses,
+    keeping json.loads' leniency (NaN, surrounding whitespace) and its JSONDecodeError."""
+    return json.loads(text, **_JS_HOOKS)
 
 
 def js_json_parse(text: str) -> Any:

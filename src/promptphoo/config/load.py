@@ -17,6 +17,7 @@ from typing import Any
 
 from promptphoo import cli_state, envars
 from promptphoo.files import glob_sync, maybe_load_from_external_file
+from promptphoo.jsonutil import json_loads
 from promptphoo.jsvalues import is_truthy, js_string, json_stringify
 from promptphoo.promptfoo_command import promptfoo_command
 from promptphoo.refs import dereference
@@ -617,7 +618,7 @@ async def _resolve_loaded_config(
     if cmd.get("assertions"):
         if not cmd.get("modelOutputs"):
             raise ConfigResolutionError("You must provide --model-outputs when using --assertions")
-        model_outputs = json.loads(
+        model_outputs = json_loads(
             Path(os.getcwd(), cmd["modelOutputs"]).read_text(encoding="utf-8")
         )
         from promptphoo.assertions.readers import read_assertions

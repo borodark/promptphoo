@@ -59,6 +59,7 @@ from promptphoo.fetch.errors import (
     extract_rate_limit_error_code,
     extract_rate_limit_error_type,
 )
+from promptphoo.jsonutil import json_loads
 from promptphoo.jsvalues import number_to_string
 
 logger = logging.getLogger(__name__)
@@ -104,7 +105,7 @@ class FetchResponse:
         return self.content.decode("utf-8", errors="replace")
 
     def json(self) -> Any:
-        return json.loads(self.text())
+        return json_loads(self.text())
 
     def header(self, name: str) -> str | None:
         """`response.headers.get(name)`, case-insensitively."""

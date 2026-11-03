@@ -23,6 +23,7 @@ from promptphoo.files import (
     is_javascript_file,
     maybe_load_config_from_external_file,
 )
+from promptphoo.jsonutil import json_loads
 from promptphoo.jsvalues import json_stringify
 from promptphoo.refs import dereference
 from promptphoo.safe_mode import check_test_data
@@ -89,7 +90,7 @@ def _parse_jsonl_lines(content: str, path: str) -> list[TestCase]:
         if not line.strip():
             continue
         try:
-            rows.append(json.loads(line))
+            rows.append(json_loads(line))
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse JSONL test file {path} on line {i + 1}: {e}") from e
     return rows
@@ -353,7 +354,7 @@ async def _load_tests_from_glob(
             cases = dereference(maybe_load_config_from_external_file(raw_cases))
         elif test_file.endswith(".json"):
             try:
-                raw = json.loads(Path(test_file).read_text("utf-8"))
+                raw = json_loads(Path(test_file).read_text("utf-8"))
             except json.JSONDecodeError as e:
                 raise ValueError(f"Failed to parse JSON test file {test_file}: {e}") from e
             check_test_data(raw, test_file)

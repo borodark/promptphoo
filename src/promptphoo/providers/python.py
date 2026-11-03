@@ -21,6 +21,7 @@ from typing import Any
 
 from promptphoo import cache, cli_state, envars, python_hooks
 from promptphoo.files import parse_path_or_glob, process_config_file_references
+from promptphoo.jsonutil import json_loads
 from promptphoo.jsvalues import json_stringify
 from promptphoo.providers.base import ApiProvider, ProviderResponse
 from promptphoo.providers.simple import sha256
@@ -102,7 +103,7 @@ class PythonWorker:
             self.proc.stdin.write(f"CALL|{function}|{request}|{response}\n".encode())
             await self.proc.stdin.drain()
             await self._wait_for(lambda line: line == f"DONE|{response}")
-            payload = json.loads(Path(response).read_text(encoding="utf-8"))
+            payload = json_loads(Path(response).read_text(encoding="utf-8"))
         if payload.get("type") == "error":
             raise RuntimeError(
                 f"Error running Python script: {payload.get('error')}\n"

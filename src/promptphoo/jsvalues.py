@@ -11,7 +11,7 @@ import math
 import re
 import secrets
 from collections.abc import Iterable
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Context, Decimal, localcontext
 from typing import Any
 
 
@@ -34,13 +34,69 @@ class Undefined:
 
 UNDEFINED = Undefined()
 
+_MAX_SAFE_INTEGER = 2**53
+
+
+def js_number(n: int) -> int | float:
+    """The JS number an integer denotes: itself up to 2**53, else the nearest double (V8 has no
+    exact integers past 2**53: JSON.parse("9007199254740993") is 9007199254740992)."""
+    if -_MAX_SAFE_INTEGER <= n <= _MAX_SAFE_INTEGER:
+        return n
+    try:
+        return float(n)
+    except OverflowError:
+        return math.inf if n > 0 else -math.inf
+
+
+def js_json_int(text: str) -> int | float:
+    """`parse_int` hook for json.loads: an integer literal as JSON.parse reads it. float() rounds
+    the decimal text correctly, as V8 does, and also takes literals too long for int()."""
+    if len(text) < 16:
+        return -0.0 if text == "-0" else int(text)
+    value = float(text)
+    return int(value) if abs(value) <= _MAX_SAFE_INTEGER else value
+
+
+def is_array_index(key: Any) -> bool:
+    """A canonical array index ("0".."4294967294"): V8 enumerates such keys first."""
+    return (
+        isinstance(key, str)
+        and key.isdecimal()
+        and key.isascii()
+        and (key[0] != "0" or key == "0")
+        and int(key) < 4294967295
+    )
+
+
+def v8_ordered(obj: dict[str, Any]) -> dict[str, Any]:
+    """`obj` in V8's property order: array-index keys first, ascending, then the other keys in
+    insertion order. {b:1, 1:2, 0:3} enumerates (and stringifies) as {"0":3,"1":2,"b":1}.
+    Returns `obj` itself when it has no index keys."""
+    if not any(map(str.isdecimal, obj)):  # the common case, checked at C speed
+        return obj
+    indices = [key for key in obj if is_array_index(key)]
+    if not indices:
+        return obj
+    ordered = {key: obj[key] for key in sorted(indices, key=int)}
+    for key, value in obj.items():
+        ordered.setdefault(key, value)
+    return ordered
+
+
+def js_object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """`object_pairs_hook` for json.loads: the object JSON.parse builds (the last duplicate wins
+    and keeps the first one's place, index keys come first)."""
+    return v8_ordered(dict(pairs))
+
 
 def number_to_string(n: float | int) -> str:
     """JS Number.prototype.toString for finite and special values."""
     if isinstance(n, bool):
         return "true" if n else "false"
     if isinstance(n, int):
-        return str(n)
+        if -_MAX_SAFE_INTEGER <= n <= _MAX_SAFE_INTEGER:
+            return str(n)
+        return number_to_string(js_number(n))
     if math.isnan(n):
         return "NaN"
     if math.isinf(n):
@@ -111,8 +167,12 @@ _NUM_MARK = f"\x00jsnum{secrets.token_hex(8)}_"
 
 def _prepare(value: Any, numbers: list[str] | None = None) -> Any:
     """Convert to a structure json.dumps renders the way JSON.stringify does."""
-    if isinstance(value, bool) or value is None or isinstance(value, str | int):
+    if isinstance(value, bool) or value is None or isinstance(value, str):
         return value
+    if isinstance(value, int):
+        if -_MAX_SAFE_INTEGER <= value <= _MAX_SAFE_INTEGER:
+            return value
+        value = js_number(value)
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
             return None
@@ -124,12 +184,15 @@ def _prepare(value: Any, numbers: list[str] | None = None) -> Any:
         numbers.append(js)
         return f"{_NUM_MARK}{len(numbers) - 1}\x00"
     if isinstance(value, dict):
-        # JSON.stringify drops undefined and function-valued properties.
-        return {
-            str(k): _prepare(v, numbers)
-            for k, v in value.items()
-            if v is not UNDEFINED and not callable(v)
-        }
+        # JSON.stringify drops undefined and function-valued properties, and writes the rest in
+        # V8's property order.
+        return v8_ordered(
+            {
+                str(k): _prepare(v, numbers)
+                for k, v in value.items()
+                if v is not UNDEFINED and not callable(v)
+            }
+        )
     if isinstance(value, list | tuple):
         return [None if v is UNDEFINED or callable(v) else _prepare(v, numbers) for v in value]
     if hasattr(value, "model_dump"):
@@ -146,16 +209,50 @@ class _JsNumber(int):
         return super().__new__(cls, int(_integral_digits(value)))
 
 
-def json_stringify(value: Any, indent: int | str | None = None) -> str:
+# A surrogate pair split over two code points (JS sees one character), or a lone surrogate,
+# which JSON.stringify writes as a \uXXXX escape.
+_SURROGATES = re.compile(r"[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff]")
+
+
+def _surrogate(match: re.Match[str]) -> str:
+    text = match.group()
+    if len(text) == 2:
+        return text.encode("utf-16-le", "surrogatepass").decode("utf-16-le")
+    return f"\\u{ord(text):04x}"
+
+
+def _gap(indent: Any) -> str:
+    """JSON.stringify's `space` argument as its gap: a number gives min(10, n) spaces, a string
+    its first 10 UTF-16 code units, anything else (or less than 1) no gap."""
+    if isinstance(indent, bool) or indent is None:
+        return ""
+    if isinstance(indent, int | float):
+        count = 0 if math.isnan(indent) else min(10, indent)
+        return " " * int(count) if count >= 1 else ""
+    if isinstance(indent, str):
+        if len(indent) <= 5 or indent.isascii():
+            return indent[:10]
+        units = indent.encode("utf-16-le", "surrogatepass")[:20]
+        return units.decode("utf-16-le", "surrogatepass")
+    return ""
+
+
+def json_stringify(value: Any, indent: int | float | str | None = None) -> str:
     """JSON.stringify(value, null, indent). Returns 'undefined' for a bare undefined."""
     if value is UNDEFINED:
         return "undefined"
     numbers: list[str] = []
     prepared = _prepare(value, numbers)
-    if indent in (None, 0, ""):
+    gap = _gap(indent)
+    if not gap:
         out = json.dumps(prepared, ensure_ascii=False, separators=(",", ":"))
     else:
-        out = json.dumps(prepared, ensure_ascii=False, indent=indent)
+        out = json.dumps(prepared, ensure_ascii=False, indent=gap)
+    if not out.isascii():
+        try:
+            out.encode("utf-8")  # fails only on a surrogate; far faster than scanning with re
+        except UnicodeEncodeError:
+            out = _SURROGATES.sub(_surrogate, out)
     if numbers:
         out = re.sub(
             '"' + re.escape(json.dumps(_NUM_MARK)[1:-1]) + r'(\d+)\\u0000"',
@@ -189,33 +286,64 @@ def is_truthy(value: Any) -> bool:
     return True
 
 
-def to_fixed(value: float, digits: int = 0) -> str:
+# toFixed and toPrecision print at most 21 + 100 significant digits; the default context's 28
+# would make quantize raise InvalidOperation past that.
+_DIGITS_CONTEXT = Context(prec=200, rounding=ROUND_HALF_UP)
+
+
+def _range_error(message: str) -> Exception:
+    """A JS RangeError, the way promptphoo raises JS throws (fetch.errors.JsError)."""
+    from promptphoo.fetch.errors import JsError
+
+    return JsError(message, name="RangeError")
+
+
+def _to_integer(value: float) -> float:
+    """ToIntegerOrInfinity: NaN is 0, finite values truncate toward zero."""
+    if math.isnan(value):
+        return 0
+    return value if math.isinf(value) else math.trunc(value)
+
+
+def to_fixed(value: float, digits: float = 0) -> str:
     """Number.prototype.toFixed: round half up on the exact binary value."""
+    places = _to_integer(digits)
+    if not 0 <= places <= 100:
+        raise _range_error("toFixed() digits argument must be between 0 and 100")
+    if isinstance(value, int):
+        value = js_number(value)
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return number_to_string(value)
     if abs(value) >= 1e21:
         return number_to_string(value)
-    quantum = Decimal(1).scaleb(-digits)
-    d = Decimal(value).quantize(quantum, rounding=ROUND_HALF_UP)
+    with localcontext(_DIGITS_CONTEXT):
+        d = Decimal(value).quantize(Decimal(1).scaleb(-int(places)))
     text = f"{d:f}"
     return text[1:] if value == 0 and text.startswith("-") else text
 
 
-def to_precision(value: float, precision: int) -> str:
+def to_precision(value: float, precision: float) -> str:
     """Number.prototype.toPrecision (round half up on the exact value)."""
+    p = _to_integer(precision)
+    if isinstance(value, int):
+        value = js_number(value)
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return number_to_string(value)
+    if not 1 <= p <= 100:
+        raise _range_error("toPrecision() argument must be between 1 and 100")
+    precision = int(p)
     if value == 0:
         return "0" if precision == 1 else "0." + "0" * (precision - 1)
-    d = Decimal(value)
-    exponent = d.adjusted()
-    rounded = d.quantize(Decimal(1).scaleb(exponent - precision + 1), rounding=ROUND_HALF_UP)
-    exponent = rounded.adjusted()
-    if exponent < -6 or exponent >= precision:
-        mantissa = f"{rounded.scaleb(-exponent).quantize(Decimal(1).scaleb(1 - precision)):f}"
-        return f"{mantissa}e{'+' if exponent >= 0 else '-'}{abs(exponent)}"
-    places = max(precision - 1 - exponent, 0)
-    return f"{rounded.quantize(Decimal(1).scaleb(-places)):f}"
+    with localcontext(_DIGITS_CONTEXT):
+        d = Decimal(value)
+        exponent = d.adjusted()
+        rounded = d.quantize(Decimal(1).scaleb(exponent - precision + 1))
+        exponent = rounded.adjusted()
+        if exponent < -6 or exponent >= precision:
+            mantissa = f"{rounded.scaleb(-exponent).quantize(Decimal(1).scaleb(1 - precision)):f}"
+            return f"{mantissa}e{'+' if exponent >= 0 else '-'}{abs(exponent)}"
+        places = max(precision - 1 - exponent, 0)
+        return f"{rounded.quantize(Decimal(1).scaleb(-places)):f}"
 
 
 def node_base64_decode(data: str) -> bytes:

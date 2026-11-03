@@ -89,6 +89,16 @@ Node is in [`docs/DECISIONS.md`](docs/DECISIONS.md). The porting plan these phas
   every time now that anyio no longer installs it, fails at once, and compiled templates are
   cached. At 500 ms the same eval reaches 160 results/s at `-j 256` and 112 at `-j 4096`; at
   0 ms, harness overhead drops by about a quarter.
+- **JS values now match V8 in five more places.** A Node golden of 10,974 cases, recorded for
+  Kung Phoo, the Elixir port, now runs in the suite (`tests/test_js_golden.py`). It found five
+  places where promptphoo differed. Objects now list integer keys first, ascending, as V8 does:
+  `{b: 1, 1: 2}` is written and hashed as `{"1":2,"b":1}`, both in JSON.stringify output and
+  in objects parsed from YAML, JSON files, datasets and provider responses. Integers past 2^53
+  are now doubles, as in Node (`12345678901234567890` is `12345678901234567000`). Lone
+  surrogates are escaped (`"\ud800"`), and a JSON indent is clamped to 10. `toFixed` and
+  `toPrecision` print up to 100 digits and raise Node's RangeError when the digit count is out
+  of range. Dataset ids, prompt ids and cache keys change for configs with integer-like keys or
+  integers past 2^53, and now match Node's.
 - **Verification.** 6,543 tests, 63 byte-identical parity fixtures, a clean-wheel and a
   base-install run, two fully local Ollama runs, and a live Anthropic run in which all 69 requests
   matched Node's on the wire. Results, method and what was not checked are in

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import logging
 import os
 import re
@@ -19,6 +18,7 @@ from typing import Any
 
 from promptphoo import envars, python_hooks
 from promptphoo.files import maybe_load_config_from_external_file, parse_csv_records
+from promptphoo.jsonutil import json_loads
 from promptphoo.jsvalues import json_stringify
 from promptphoo.yamlload import load_yaml
 
@@ -106,7 +106,7 @@ def _parse_structured_prompt(path: str, contents: str, parse: Any, kind: str) ->
 def process_json_file(path: str, prompt: Prompt, label_path: str | None = None) -> list[Prompt]:
     label_path = label_path or path
     contents = Path(path).read_text(encoding="utf-8").removeprefix(_BOM)
-    contents = _parse_structured_prompt(path, contents, json.loads, "JSON")
+    contents = _parse_structured_prompt(path, contents, json_loads, "JSON")
     label = prompt.get("label") or f"{label_path}: {contents}"
     return [defined(raw=contents, label=label, config=prompt.get("config"))]
 
