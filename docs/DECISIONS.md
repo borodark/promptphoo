@@ -946,3 +946,12 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Modules: src/promptphoo/api.py, src/promptphoo/__init__.py, tests/test_evaluate_api.py
 - Commits: (this change)
 
+## 80. A provider can cap its own concurrency: `config.maxConcurrency`
+- Decision: When the rate-limit registry creates a provider's pool, `provider.config.maxConcurrency` (a positive integer; strings of digits accepted, anything else logged and ignored like `maxRetries`) bounds that pool to `min(run concurrency, cap)`, and its floor to `min(minConcurrency, cap)`. The adaptive scheduler still lowers and raises the pool within that bound. Pools are keyed by `get_rate_limit_key`, so the first provider seen for a key sets its cap. Any provider may carry the key; graders are the case it exists for.
+- Rationale: One `maxConcurrency` governs a run, and every pool starts there, so raising it to drive the system under test harder drives the grader just as hard. A grader usually sits on a quota shared with other users of the same deployment (in our case a Console's trials and triage), and 429 backoff only reacts after the quota is hit. Two budgets, two knobs.
+- Alternatives: A separate `graderMaxConcurrency` evaluate option. Rejected: a per-provider setting covers graders, embeddings and any other shared-quota provider with one mechanism, and sits where the provider's `maxRetries` already is. An environment variable. Rejected: the cap belongs to a provider, not a process.
+- Assumption: Upstream has no per-provider cap at 0.125.1; configs that set `maxConcurrency` on a provider are ignored by Node, so a shared config stays valid there and merely runs the grader harder.
+- Implication: With the adaptive scheduler disabled (`PROMPTFOO_DISABLE_ADAPTIVE_SCHEDULER`) the cap has no effect, as nothing else is scheduled either.
+- Modules: src/promptphoo/scheduler/rate_limit_registry.py, tests/test_provider_max_concurrency.py
+- Commits: (this change)
+

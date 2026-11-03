@@ -7,6 +7,9 @@
   `load_api_provider(s)`, `AbortController`, `Eval` and the error types as `src/index.ts` does.
   Hosts embed the evaluator in-process instead of running the CLI and tailing files; state is
   scoped to the call and errors are exceptions (D79).
+- **Per-provider concurrency cap.** `provider.config.maxConcurrency` bounds that provider's
+  pool below the run's `maxConcurrency`, so a grader on a shared quota is not driven as hard as
+  the targets (D80).
 - Version 0.2.0; `python -m build` produces an installable wheel and sdist.
 
 ## 0.1.1 — unreleased

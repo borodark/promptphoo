@@ -124,12 +124,25 @@ class RateLimitRegistry(EventEmitter):
                 on_nested()
         nested_call_started = False
         if rate_limit_key not in self._states:
+            # A provider's own cap (config.maxConcurrency) bounds its pool below the run's
+            # concurrency, so a shared-quota grader is not driven as hard as the targets (D80).
+            provider_cap = _get_provider_max_concurrency(provider)
+            max_concurrency = (
+                min(self._max_concurrency, provider_cap)
+                if provider_cap is not None
+                else self._max_concurrency
+            )
             state = ProviderRateLimitState({
                 "rateLimitKey": rate_limit_key,
-                "maxConcurrency": self._max_concurrency,
-                "minConcurrency": self._min_concurrency,
+                "maxConcurrency": max_concurrency,
+                "minConcurrency": min(self._min_concurrency, max_concurrency),
                 "queueTimeoutMs": self._queue_timeout_ms,
             })  # fmt: skip
+            if provider_cap is not None:
+                logger.debug(
+                    "[RateLimit] %s capped at %d concurrent call(s) by config.maxConcurrency",
+                    sanitize_provider_id_for_log(provider.id()), max_concurrency,
+                )  # fmt: skip
 
             # Forward events
             for event in _FORWARDED_EVENTS:
@@ -258,6 +271,30 @@ def _get_provider_max_retries(provider: Any) -> int | None:
         "[RateLimit] Ignoring invalid provider.config.maxRetries; expected a non-negative integer.",
         json_stringify(
             {"maxRetries": raw, "providerId": sanitize_provider_id_for_log(provider.id())}
+        ),
+    )
+    return None
+
+
+def _get_provider_max_concurrency(provider: Any) -> int | None:
+    """The provider's configured maxConcurrency: a positive integer, else None (no cap). Invalid
+    values are logged like maxRetries typos."""
+    config = getattr(provider, "config", None)
+    raw = config.get("maxConcurrency") if isinstance(config, dict) else None
+    if raw is None:
+        return None
+    value: int | None = None
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool) and float(raw).is_integer():
+        value = int(raw)
+    elif isinstance(raw, str) and _DIGITS_RE.fullmatch(raw.strip()):
+        value = int(raw.strip())
+    if value is not None and value >= 1:
+        return value
+    logger.warning(
+        "%s %s",
+        "[RateLimit] Ignoring invalid provider.config.maxConcurrency; expected a positive integer.",
+        json_stringify(
+            {"maxConcurrency": raw, "providerId": sanitize_provider_id_for_log(provider.id())}
         ),
     )
     return None

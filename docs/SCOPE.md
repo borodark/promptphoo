@@ -162,6 +162,8 @@ These were open when the inventory was first taken, and have since been decided.
 - Library API: `promptphoo.evaluate(suite, options)` / `evaluate_async` port upstream's
   `promptfoo.evaluate()` (`src/evaluate.ts`, `src/node/evaluate.ts`), with the root exports of
   `src/index.ts` (D79). A host embeds the evaluator in-process instead of running the CLI.
+- Per-provider concurrency: `provider.config.maxConcurrency` caps one provider's pool below the
+  run's concurrency (D80); not in upstream, ignored by Node.
 
 - The TLS default: certificates are verified unless `PROMPTFOO_INSECURE_SSL=true` (D61, which
   supersedes D21).

@@ -126,6 +126,10 @@ A wheel for an internal index or a `requirements.txt` comes from `python -m buil
 
 Every place where promptphoo deliberately behaves differently from Node is logged, one numbered decision per choice, in [`docs/DECISIONS.md`](docs/DECISIONS.md). Examples include in-house replacements for the OpenTelemetry SDK and for protobufjs, a separate response cache file (`cache-py.json`), and red-team-only branches that grade locally. The porting plan is in [`docs/PLAN_PORT.md`](docs/PLAN_PORT.md).
 
+Two additions Node does not have, both logged there: the library API (D79) and
+`provider.config.maxConcurrency`, which caps one provider's concurrency below the run's, so a grader
+on a shared quota can be held at, say, 2 while the targets run at 16 (D80).
+
 **Where you see a difference from Node that isn't logged there, that's a bug. Please file it.**
 
 ## Advisory
