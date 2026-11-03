@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — unreleased
+
+- **Library API.** `promptphoo.evaluate(suite, options)` and `evaluate_async` port upstream's
+  `promptfoo.evaluate()` (`src/evaluate.ts`, `src/node/evaluate.ts`); the package root exports
+  `load_api_provider(s)`, `AbortController`, `Eval` and the error types as `src/index.ts` does.
+  Hosts embed the evaluator in-process instead of running the CLI and tailing files; state is
+  scoped to the call and errors are exceptions (D79).
+- Version 0.2.0; `python -m build` produces an installable wheel and sdist.
+
 ## 0.1.1 — unreleased
 
 The first public alpha: a Python 3 port of the promptfoo 0.125.1 eval core. It reads the same

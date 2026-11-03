@@ -159,6 +159,10 @@ first row (4 providers) and the OpenAI-compatible row (37 families).
 
 These were open when the inventory was first taken, and have since been decided.
 
+- Library API: `promptphoo.evaluate(suite, options)` / `evaluate_async` port upstream's
+  `promptfoo.evaluate()` (`src/evaluate.ts`, `src/node/evaluate.ts`), with the root exports of
+  `src/index.ts` (D79). A host embeds the evaluator in-process instead of running the CLI.
+
 - The TLS default: certificates are verified unless `PROMPTFOO_INSECURE_SSL=true` (D61, which
   supersedes D21).
 - Jinja sandboxing: templates and inline expressions render in a `SandboxedEnvironment` (D61).
@@ -188,17 +192,6 @@ These were open when the inventory was first taken, and have since been decided.
   comparison pass.
 - **Default graders:** the Mistral, xAI, Voyage and Azure Content Safety branches are skipped,
   so those credentials fall through to the OpenAI defaults (D33).
-- **Library API (TODO):** Node exposes `promptfoo.evaluate(config, options)` for callers that
-  embed the evaluator; promptphoo has only the CLI. `cli.eval.do_eval` is CLI-shaped (a `cmd`
-  dict, `setup_env()` loading `.env` into `os.environ`, `cli_state` globals, a SIGINT handler
-  that calls `os._exit(130)`), and `evaluator.run.evaluate` wants an already-resolved suite and
-  an `EvaluationStore`. A host such as `etest` (genai-evaluator) therefore still runs
-  `python -m promptphoo eval -c … -o results.json` in a subprocess and tails a progress file
-  written by an `afterEach` hook. Wanted: a small `promptphoo.api.evaluate(config, *,
-  on_progress=None, env=None, output=None) -> dict` that resolves the config the way the CLI
-  does, scopes `cli_state` and the environment to the call, raises instead of exiting, and
-  delivers `progressCallback` and hook events to the caller. Port upstream's `evaluate` shape
-  from `src/index.ts`; record the differences as a decision.
 
 ## Known upstream bugs
 

@@ -931,3 +931,18 @@ How to contribute is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 - Implication: A config var such as `doc: file://../shared/doc.txt` now fails its rows; this breaks a config that works in Node, as the maintainer agreed (D66). Code files keep D74's and D77's rules.
 - Modules: src/promptphoo/files.py, src/promptphoo/evaluator/render.py, src/promptphoo/safe_mode.py, tests/test_security.py
 - Commits: `5a1a14f`
+
+## 79. A library entry point: `promptphoo.evaluate`
+- Decision:
+  - `promptphoo.api` ports `src/evaluate.ts` and `src/node/evaluate.ts`: `evaluate_async(suite, options)` is upstream's `evaluate()` (`eventSource: "library"`), `evaluate_with_source` the inner function. The suite is the mapping a config file holds plus `writeLatestResults`; options are upstream's EvaluateOptions (`cache`, `maxConcurrency`, `repeat`, `delay`, `timeoutMs`, `maxEvalTimeMs`, `progressCallback`, `abortSignal`, `silent`). The call scopes `cli_state` (config, base path, env overrides) and the cache override to itself, loads providers, tests, prompts and filters the way the CLI does, and returns the `Eval` record. `outputPath` on the suite (or in options) writes the same files the CLI writes.
+  - Two Python conveniences upstream has no need for: `evaluate(...)`, synchronous, runs its own event loop and raises if one is already running; `evaluate_in_thread(...)` blocks on a fresh thread for callers inside a loop. The module is named `api`, not `evaluate`, so the function and the module cannot shadow each other at the package root.
+  - The package root ports `src/index.ts` and `src/node/index.ts`: `evaluate`, `evaluate_async`, `evaluate_in_thread`, `evaluate_with_source`, `load_api_provider(s)`, `AbortController`, `AbortSignal`, `AbortError`, `Eval`, `ConfigResolutionError`, `EvalRunError`, `OutputWriteError`, `cache`, `assertions`. They resolve on first access (`__getattr__`), so `import promptphoo` stays as cheap as before for the version check.
+  - A suite's own `evaluateOptions` apply under explicit options, as `do_eval` applies a config's. Upstream's `evaluate.ts` ignores them; a config loaded from YAML and passed to the library should behave as it does on the CLI.
+  - Grading providers named in tests and assertions are not pre-resolved (upstream's `resolveNestedProviders`); promptphoo's evaluator resolves them when the assertion runs (`resolve_runtime_grading_provider_references`), as on the CLI path. `providerRegistry.withEvaluation` has no counterpart: provider instances are per call.
+- Rationale: Hosts that embed an evaluator (a Flask console, an HTTP service, a test runner) were shelling out to `promptphoo eval -c … -o results.json` and tailing a progress file written by an `afterEach` hook, because `cli.eval.do_eval` is CLI-shaped: it loads `.env` into `os.environ`, installs a SIGINT handler that calls `os._exit(130)`, and reports through exit codes. Upstream has had `promptfoo.evaluate()` for this since the beginning.
+- Alternatives: Expose `do_eval`. Rejected: its contract is the CLI's. Make the sync wrapper run the coroutine on the caller's running loop. Rejected: it would deadlock; refusing with a message pointing at `evaluate_async` is safer.
+- Assumption: Library callers hold the suite as a mapping; a path to a config file is still the CLI's job (`promptphoo eval -c`), or `config.load.resolve_configs` for the few who need it.
+- Implication: A cancelled run returns the partial record rather than raising, as upstream's evaluator does; callers check `signal.aborted`. Results of a library run are persisted only with `writeLatestResults`, so they are not in `promptphoo list` by default.
+- Modules: src/promptphoo/api.py, src/promptphoo/__init__.py, tests/test_evaluate_api.py
+- Commits: (this change)
+

@@ -57,10 +57,45 @@ python3 -m venv .venv && .venv/bin/pip install .
 
 The package installs two commands, `promptphoo` and its short form `ph`. It does not install `promptfoo` or `pf`, so it never shadows Node promptfoo, and you always know which tool you are running. Moving an existing promptfoo project over? Read the [migration guide](docs/MIGRATING.md).
 
+### From Python
+
+The same engine is a library. `evaluate` takes the mapping a `promptfooconfig.yaml` would hold
+and returns the eval record; nothing is persisted unless the suite says `writeLatestResults: true`.
+
+```python
+from promptphoo import evaluate
+
+record = evaluate(
+    {
+        "prompts": ["{{question}}"],
+        "providers": ["openai:gpt-4.1-mini"],            # or file://my_provider.py
+        "tests": [
+            {"vars": {"question": "What is 2+2?"},
+             "assert": [{"type": "llm-rubric", "value": "Says four"}]},
+        ],
+    },
+    {"cache": False, "maxConcurrency": 4,
+     "progressCallback": lambda done, total, idx, step, metrics: print(f"{done}/{total}")},
+)
+summary = record.to_evaluate_summary()        # the `results` object of a results.json
+print(summary["stats"], summary["results"][0]["gradingResult"]["reason"])
+```
+
+`file://` providers, test generators, `python` assertions and extension hooks run in the calling
+process. State is scoped to the call: nothing is read from `.env` or written to `os.environ`, and
+errors are exceptions, never exit codes. Cancel with `AbortController` (`abortSignal`); the partial
+record comes back and `signal.aborted` says why. Inside a running event loop await
+`evaluate_async`, or use `evaluate_in_thread` from a Flask view or a worker. The full surface is
+the docstring of `promptphoo.api` (D79).
+
+A wheel for an internal index or a `requirements.txt` comes from `python -m build --wheel`
+(`dist/promptphoo-<version>-py3-none-any.whl`); `pip install promptphoo @ git+<repo>@<ref>` works too.
+
 **No API key?** `examples/local-ollama/` runs the whole path locally: models under test, a model-graded rubric and embeddings. Pull the models it lists with `ollama pull` and run `promptphoo eval -c examples/local-ollama/promptfooconfig.yaml`.
 
 ## What's covered
 
+- **Library:** `promptphoo.evaluate(suite, options)` and `evaluate_async`, upstream's `promptfoo.evaluate()`; `load_api_provider(s)`, `AbortController`, `Eval` and the error types at the package root.
 - **Commands** (as `promptphoo <command>` or `ph <command>`): `eval`, `init`, `validate` (config and target), `list`, `show`, `delete`, `export` (evals and logs), `import`, `retry`, `cache clear`, `config`, `logs`, `debug`, `feedback`, `generate dataset`, `generate assertions`. `share` is registered but always fails; results stay local.
 - **Eval flags:** the full set, including filters, `--repeat`, `--resume`, `--retry-errors`, `--filter-failing`, `--watch`, `-x` extension hooks (Python), `--grader` and `--suggest-prompts`. `--share` only warns, and `--remote` is accepted and ignored.
 - **Prompts and tests:** text, chat JSON, YAML, Markdown, Jinja and CSV prompts; Python prompt functions; test files in YAML, JSON, JSONL and CSV, plus Python `generate_tests`; `defaultTest`; scenarios; `$ref`s.
